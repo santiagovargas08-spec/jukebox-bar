@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <!--
+    maximum-scale=1.0 evita el zoom automático en iOS al hacer focus
+    en inputs, mejorando la experiencia mobile.
+  -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0a0a0f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>🎵 Jukebox Digital — Pide tu canción</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet">
+
+  <!-- Hoja de estilos compartida -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="cliente-body">
+
+  <!-- ══════════════════════════════════════════════════════════
+       HEADER — Logo y nombre del bar
+  ══════════════════════════════════════════════════════════ -->
+  <header class="cliente-header" role="banner">
+    <div class="header-logo">NEON<span>BAR</span></div>
+    <div class="header-tagline">Jukebox Digital · Pide tu canción</div>
+  </header>
+
+  <!-- ══════════════════════════════════════════════════════════
+       CONTENIDO PRINCIPAL
+  ══════════════════════════════════════════════════════════ -->
+  <main class="cliente-main" role="main">
+
+    <!-- ── 1. CAMPO: Nombre o Mesa ─────────────────────────── -->
+    <div class="identity-card card">
+      <label class="campo-label" for="input-nombre">
+        Tu nombre o número de mesa
+      </label>
+      <input
+        type="text"
+        id="input-nombre"
+        class="campo-input"
+        placeholder="Ej: Mesa 5 · Ana García"
+        maxlength="30"
+        autocomplete="off"
+        autocorrect="off"
+        autocapitalize="words"
+        spellcheck="false"
+      >
+    </div>
+
+    <!-- ── 2. BUSCADOR ────────────────────────────────────── -->
+    <div class="search-card card">
+      <label class="campo-label" for="input-buscar">
+        ¿Qué quieres escuchar?
+      </label>
+      <div class="search-box">
+        <input
+          type="search"
+          id="input-buscar"
+          class="campo-input"
+          placeholder="Artista, canción, género..."
+          maxlength="100"
+          autocomplete="off"
+          autocorrect="off"
+          spellcheck="false"
+          enterkeyhint="search"
+        >
+        <button class="btn-search" id="btn-buscar" aria-label="Buscar en YouTube">
+          <!-- Ícono de lupa en SVG (sin dependencias externas) -->
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+               fill="none" stroke="currentColor"
+               stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+               width="20" height="20" aria-hidden="true">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- ── 3. ESTADO DE CARGA ──────────────────────────────── -->
+    <div class="loading-state" id="loading-state" style="display:none;" role="status" aria-live="polite">
+      <div class="loading-spinner" aria-hidden="true"></div>
+      <span>Buscando en YouTube...</span>
+    </div>
+
+    <!-- ── 4. ESTADO DE ERROR ─────────────────────────────── -->
+    <div class="error-state card" id="error-state" style="display:none;" role="alert">
+      <span id="error-message">Error al buscar.</span>
+    </div>
+
+    <!-- ── 5. RESULTADOS DE BÚSQUEDA ──────────────────────── -->
+    <section class="results-section" id="results-section" style="display:none;" aria-label="Resultados de búsqueda">
+      <div class="results-title">
+        Resultados para: <span id="results-query"></span>
+      </div>
+      <div class="results-list" id="results-list" role="list">
+        <!-- Las tarjetas se insertan dinámicamente por JS -->
+      </div>
+    </section>
+
+    <!-- ── 6. COLA EN VIVO ────────────────────────────────── -->
+    <div class="live-queue-card card" id="live-queue-section" style="display:none;">
+      <h3 class="section-title-sm">
+        <span class="neon-dot">◆</span> EN LA FILA AHORA
+      </h3>
+      <div id="live-queue-list" role="list">
+        <!-- Ítems de la cola renderizados por Socket.io -->
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ══════════════════════════════════════════════════════════
+       OVERLAY DE ÉXITO
+       Se muestra después de añadir una canción a la cola.
+  ══════════════════════════════════════════════════════════ -->
+  <div class="success-overlay" id="success-overlay" role="dialog" aria-modal="true" aria-label="Canción añadida">
+    <div class="success-card">
+      <div class="success-icon" aria-hidden="true">🎵</div>
+      <div class="success-title">¡CANCIÓN AÑADIDA!</div>
+      <div class="success-song" id="success-song-name"></div>
+      <div class="success-sub">
+        Tu canción está en la fila.<br>
+        ¡Disfruta la noche en NEON<span style="color:var(--neon-pink)">BAR</span>! 🎉
+      </div>
+      <button class="btn-primary" id="btn-success-close">
+        ➕ Pedir otra canción
+      </button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       SCRIPTS
+  ══════════════════════════════════════════════════════════ -->
+
+  <!-- Socket.io: servido por el servidor Node.js -->
+  <script src="/socket.io/socket.io.js"></script>
+
+  <script>
+    'use strict';
+
+    // ═══════════════════════════════════════════════════════════
+    // ⚠️  CONFIGURACIÓN — REEMPLAZA ESTE VALOR
+    //
+    //  1. Ve a: https://console.cloud.google.com/
+    //  2. Crea un proyecto (o usa uno existente)
+    //  3. Habilita "YouTube Data API v3"
+    //  4. Ve a "Credenciales" → "Crear credencial" → "Clave de API"
+    //  5. Pega tu clave aquí:
+    // ═══════════════════════════════════════════════════════════
+    const YOUTUBE_API_KEY = 'TU_YOUTUBE_DATA_API_KEY_AQUI';
+    // ═══════════════════════════════════════════════════════════
+
+    /** Endpoint base de YouTube Data API v3 */
+    const YT_SEARCH_URL = 'https://www.googleapis.com/youtube/v3/search';
+
+    // ─────────────────────────────────────────────────────────
+    //  REFERENCIAS AL DOM
+    // ─────────────────────────────────────────────────────────
+    const inputNombre      = document.getElementById('input-nombre');
+    const inputBuscar      = document.getElementById('input-buscar');
+    const btnBuscar        = document.getElementById('btn-buscar');
+    const loadingState     = document.getElementById('loading-state');
+    const errorState       = document.getElementById('error-state');
+    const errorMessage     = document.getElementById('error-message');
+    const resultsSection   = document.getElementById('results-section');
+    const resultsQuery     = document.getElementById('results-query');
+    const resultsList      = document.getElementById('results-list');
+    const successOverlay   = document.getElementById('success-overlay');
+    const successSongName  = document.getElementById('success-song-name');
+    const btnSuccessClose  = document.getElementById('btn-success-close');
+    const liveQueueSection = document.getElementById('live-queue-section');
+    const liveQueueList    = document.getElementById('live-queue-list');
+
+    // ─────────────────────────────────────────────────────────
+    //  SOCKET.IO — Tiempo real con el servidor
+    // ─────────────────────────────────────────────────────────
+    const socket = io({ reconnectionDelay: 1000 });
+
+    // Estado inicial al conectar: actualizar la cola en vivo
+    socket.on('estado_inicial', ({ cola }) => {
+      actualizarColaEnVivo(cola);
+    });
+
+    // Cola actualizada (cuando alguien más pide una canción)
+    socket.on('cola_actualizada', ({ cola }) => {
+      actualizarColaEnVivo(cola);
+    });
+
+    // El servidor confirma que nuestra canción fue añadida con éxito
+    socket.on('cancion_confirmada', ({ titulo }) => {
+      mostrarExito(titulo);
+    });
+
+    // El servidor reporta un error al agregar la canción
+    socket.on('error_cancion', ({ mensaje }) => {
+      mostrarError(mensaje);
+    });
+
+    // ─────────────────────────────────────────────────────────
+    //  BÚSQUEDA EN YOUTUBE DATA API v3
+    // ─────────────────────────────────────────────────────────
+    async function buscarVideos(query) {
+      query = query.trim();
+      if (!query) {
+        inputBuscar.focus();
+        return;
+      }
+
+      // Advertencia si la API key no fue configurada
+      if (YOUTUBE_API_KEY === 'TU_YOUTUBE_DATA_API_KEY_AQUI') {
+        mostrarError('⚠️ Configura tu YOUTUBE_API_KEY en el archivo cliente.html');
+        return;
+      }
+
+      // Resetear UI y mostrar carga
+      ocultarResultados();
+      ocultarError();
+      mostrarLoading(true);
+
+      try {
+        // Construir parámetros de la búsqueda
+        const params = new URLSearchParams({
+          part:              'snippet',
+          q:                 query,
+          type:              'video',
+          maxResults:        5,           // Máximo 5 resultados
+          key:               YOUTUBE_API_KEY,
+          videoCategoryId:   '10',        // Categoría: Música
+          relevanceLanguage: 'es',        // Relevancia en español
+          safeSearch:        'none'       // Sin filtro SafeSearch
+        });
+
+        const response = await fetch(`${YT_SEARCH_URL}?${params}`, {
+          method: 'GET',
+          headers: { 'Accept': 'application/json' }
+        });
+
+        // Manejar errores HTTP (incluyendo cuota excedida)
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          const msg = errData?.error?.message || `Error HTTP ${response.status}`;
+          throw new Error(msg);
+        }
+
+        const data = await response.json();
+        mostrarLoading(false);
+        renderizarResultados(data.items || [], query);
+
+      } catch (err) {
+        mostrarLoading(false);
+        // Mensajes de error amigables para errores comunes
+        let mensajeAmigable = 'Error al buscar. Intenta de nuevo.';
+        if (err.message.includes('quota')) {
+          mensajeAmigable = '⚠️ Cuota de YouTube agotada por hoy. Intenta mañana.';
+        } else if (err.message.includes('key')) {
+          mensajeAmigable = '⚠️ API Key inválida. Verifica tu configuración.';
+        } else if (!navigator.onLine) {
+          mensajeAmigable = '⚠️ Sin conexión a Internet.';
+        }
+        mostrarError(mensajeAmigable);
+        console.error('[YouTube API]', err.message);
+      }
+    }
+
+    // ─────────────────────────────────────────────────────────
+    //  RENDERIZAR TARJETAS DE RESULTADOS
+    // ─────────────────────────────────────────────────────────
+    function renderizarResultados(items, query) {
+      resultsList.innerHTML = '';
+
+      if (items.length === 0) {
+        resultsList.innerHTML = '<p class="no-results">Sin resultados. Prueba con otra búsqueda.</p>';
+        resultsSection.style.display = 'block';
+        return;
+      }
+
+      // Mostrar la query como referencia
+      resultsQuery.textContent = `"${query}"`;
+
+      items.forEach((item, index) => {
+        const videoId = item.id?.videoId;
+        if (!videoId) return; // Saltar si no tiene ID de video
+
+        const snippet  = item.snippet || {};
+        const titulo   = snippet.title         || 'Sin título';
+        const canal    = snippet.channelTitle  || 'Canal desconocido';
+        // Preferir thumbnail de calidad media; fallback a la de menor calidad
+        const thumb    = snippet.thumbnails?.medium?.url
+                      || snippet.thumbnails?.default?.url
+                      || '';
+
+        const card = document.createElement('div');
+        card.className = 'result-card card';
+        card.setAttribute('role', 'listitem');
+        // Animación de entrada escalonada
+        card.style.animationDelay = `${index * 0.07}s`;
+
+        // Usar data attributes para pasar datos al handler del botón
+        card.innerHTML = `
+          ${thumb
+            ? `<img
+                 class="result-thumb"
+                 src="${escapeHtml(thumb)}"
+                 alt="${escapeHtml(titulo)}"
+                 loading="lazy"
+                 onerror="this.style.display='none'"
+               >`
+            : `<div class="result-thumb" style="background:var(--bg-card);display:flex;align-items:center;justify-content:center;font-size:2rem;">🎵</div>`
+          }
+          <div class="result-info">
+            <div class="result-title" title="${escapeHtml(titulo)}">${escapeHtml(titulo)}</div>
+            <div class="result-channel">${escapeHtml(canal)}</div>
+            <button
+              class="btn-add"
+              data-video-id="${escapeHtml(videoId)}"
+              data-titulo="${escapeHtml(titulo)}"
+              data-thumb="${escapeHtml(thumb)}"
+              aria-label="Añadir ${escapeHtml(titulo)} a la fila"
+            >
+              ➕ Añadir a la Fila
+            </button>
+          </div>
+        `;
+        resultsList.appendChild(card);
+      });
+
+      // Mostrar la sección de resultados
+      resultsSection.style.display = 'block';
+
+      // Añadir listeners a todos los botones "Añadir"
+      resultsList.querySelectorAll('.btn-add').forEach(btn => {
+        btn.addEventListener('click', () => manejarAgregarCancion(btn));
+      });
+    }
+
+    // ─────────────────────────────────────────────────────────
+    //  MANEJAR CLIC EN "AÑADIR A LA FILA"
+    // ─────────────────────────────────────────────────────────
+    function manejarAgregarCancion(btn) {
+      const nombre = inputNombre.value.trim();
+
+      // Validar que el usuario ingresó su nombre/mesa
+      if (!nombre) {
+        // Scroll al campo de nombre y mostrar feedback visual
+        inputNombre.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        inputNombre.focus();
+        inputNombre.classList.add('input-shake');
+        setTimeout(() => inputNombre.classList.remove('input-shake'), 500);
+        mostrarError('⚠️ Escribe tu nombre o número de mesa primero.');
+        return;
+      }
+
+      // Construir objeto de canción con los datos del botón
+      const cancion = {
+        videoId:   btn.dataset.videoId,
+        titulo:    btn.dataset.titulo,
+        nombre:    nombre,
+        thumbnail: btn.dataset.thumb
+      };
+
+      // Feedback inmediato: deshabilitar el botón
+      btn.disabled        = true;
+      btn.textContent     = '⏳ Añadiendo...';
+      btn.style.opacity   = '0.7';
+
+      // Enviar al servidor vía Socket.io (el servidor responde con 'cancion_confirmada')
+      socket.emit('agregar_cancion', cancion);
+    }
+
+    // ─────────────────────────────────────────────────────────
+    //  OVERLAY DE ÉXITO
+    // ─────────────────────────────────────────────────────────
+    function mostrarExito(titulo) {
+      successSongName.textContent = titulo;
+      // Ocultar resultados para limpiar la pantalla
+      ocultarResultados();
+      // Mostrar overlay con animación
+      successOverlay.classList.add('overlay-visible');
+      // Focus al botón de cerrar para accesibilidad
+      setTimeout(() => btnSuccessClose.focus(), 400);
+    }
+
+    // Cerrar overlay de éxito y resetear para nueva búsqueda
+    btnSuccessClose.addEventListener('click', () => {
+      successOverlay.classList.remove('overlay-visible');
+      inputBuscar.value = '';
+      inputBuscar.focus();
+    });
+
+    // ─────────────────────────────────────────────────────────
+    //  COLA EN VIVO (vista resumida en el cliente)
+    // ─────────────────────────────────────────────────────────
+    function actualizarColaEnVivo(cola) {
+      if (!cola || cola.length === 0) {
+        liveQueueSection.style.display = 'none';
+        return;
+      }
+
+      liveQueueSection.style.display = 'block';
+
+      // Mostrar máximo 4 canciones
+      liveQueueList.innerHTML = cola.slice(0, 4).map((c, i) => `
+        <div class="live-queue-item" role="listitem">
+          <span class="lq-num" aria-hidden="true">${i + 1}</span>
+          <div class="lq-info">
+            <div class="lq-title">${escapeHtml(c.titulo)}</div>
+            <div class="lq-who">📍 ${escapeHtml(c.nombre)} · ${escapeHtml(c.timestamp)}</div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // ─────────────────────────────────────────────────────────
+    //  HELPERS DE UI
+    // ─────────────────────────────────────────────────────────
+
+    /** Mostrar/ocultar spinner de carga */
+    function mostrarLoading(visible) {
+      loadingState.style.display = visible ? 'flex' : 'none';
+    }
+
+    /** Mostrar mensaje de error con auto-ocultamiento */
+    function mostrarError(msg) {
+      errorMessage.textContent = msg;
+      errorState.style.display = 'block';
+      // Scroll al error
+      errorState.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Auto-ocultar a los 5 segundos
+      clearTimeout(mostrarError._timer);
+      mostrarError._timer = setTimeout(ocultarError, 5000);
+    }
+
+    function ocultarError() {
+      errorState.style.display = 'none';
+    }
+
+    /** Ocultar sección de resultados y limpiarla */
+    function ocultarResultados() {
+      resultsSection.style.display = 'none';
+      resultsList.innerHTML = '';
+    }
+
+    /** Escapar HTML para prevenir XSS */
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    // ─────────────────────────────────────────────────────────
+    //  EVENT LISTENERS DE BÚSQUEDA
+    // ─────────────────────────────────────────────────────────
+
+    // Clic en el botón de búsqueda
+    btnBuscar.addEventListener('click', () => {
+      buscarVideos(inputBuscar.value);
+    });
+
+    // Tecla Enter en el campo de búsqueda
+    inputBuscar.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        buscarVideos(inputBuscar.value);
+      }
+    });
+
+    // Tecla Enter en el campo de nombre (pasa al campo de búsqueda)
+    inputNombre.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        inputBuscar.focus();
+      }
+    });
+  </script>
+</body>
+</html>

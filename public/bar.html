@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎵 Jukebox Digital — Pantalla del Bar</title>
+
+  <!-- Google Fonts — Orbitron (futurista) + Rajdhani (cuerpo) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet">
+
+  <!-- Hoja de estilos compartida -->
+  <link rel="stylesheet" href="style.css">
+
+  <style>
+    /* ─── Estilos adicionales específicos de bar.html ─────────── */
+
+    /* Asegurar que el IFrame de YouTube ocupe todo el wrapper */
+    .video-wrapper > div,
+    #youtube-player {
+      position: absolute !important;
+      inset: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+    }
+
+    #youtube-player iframe {
+      width: 100% !important;
+      height: 100% !important;
+    }
+  </style>
+</head>
+<body class="bar-body">
+
+  <!-- ══════════════════════════════════════════════════════════
+       EFECTO SCANLINES (CRT overlay — posición fixed)
+  ══════════════════════════════════════════════════════════ -->
+  <div class="scanlines" aria-hidden="true"></div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       LAYOUT PRINCIPAL — Split Screen 70/30
+  ══════════════════════════════════════════════════════════ -->
+  <div class="bar-layout">
+
+    <!-- ──────────────────────────────────────────────────────
+         PANEL IZQUIERDO (70%) — Reproductor de YouTube
+    ────────────────────────────────────────────────────── -->
+    <div class="panel-video">
+
+      <!-- Contenedor del player — el IFrame API lo convierte en <iframe> -->
+      <div class="video-wrapper">
+
+        <!-- Pantalla idle: se muestra cuando no hay video cargado -->
+        <div class="idle-screen" id="idle-screen">
+          <div class="idle-icon">🎵</div>
+          <div class="idle-text">Jukebox Digital</div>
+          <div class="idle-sub">Escanea el QR y pide tu canción</div>
+        </div>
+
+        <!-- Aquí el YouTube IFrame API insertará el <iframe> -->
+        <div id="youtube-player"></div>
+      </div>
+
+      <!-- Barra inferior: info de la canción actual -->
+      <div class="now-playing-bar">
+        <span class="np-label">▶ REPRODUCIENDO</span>
+        <span class="np-title" id="np-titulo">— Esperando canciones —</span>
+        <span class="np-separator" id="np-sep" style="display:none">|</span>
+        <span class="np-mesa"  id="np-nombre"></span>
+      </div>
+    </div>
+
+    <!-- ──────────────────────────────────────────────────────
+         PANEL DERECHO (30%) — Logo · Promos · Cola
+    ────────────────────────────────────────────────────── -->
+    <div class="panel-info">
+
+      <!-- ── LOGO DEL BAR ────────────────────────────────── -->
+      <!--
+        Para usar tu logo real, reemplaza .logo-placeholder por:
+        <img src="tu-logo.png" alt="Logo del bar" class="bar-logo-img">
+        Y agrega: .bar-logo-img { max-width: 100%; max-height: 120px; }
+      -->
+      <div class="bar-logo-section">
+        <div class="bar-logo">
+          <div class="logo-placeholder">
+            <div class="logo-icon">🎵</div>
+            <div class="logo-text">NEON<span>BAR</span></div>
+            <div class="logo-tagline">Your Digital Jukebox</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Línea divisora de neón -->
+      <div class="neon-divider"></div>
+
+      <!-- ── PROMOCIONES DEL DÍA ─────────────────────────── -->
+      <!--
+        Edita los textos de .promo-text según las promos de tu bar.
+        Puedes añadir o quitar .promo-item según necesites.
+      -->
+      <div class="promo-section">
+        <h3 class="section-title">
+          <span class="neon-dot">◆</span> PROMOS DE HOY
+        </h3>
+        <div class="promo-list">
+          <div class="promo-item">
+            <span class="promo-icon">🍹</span>
+            <div class="promo-text">
+              <strong>2×1 en Cocteles</strong>
+              <small>Válido 8:00 PM – 10:00 PM</small>
+            </div>
+          </div>
+          <div class="promo-item">
+            <span class="promo-icon">🍺</span>
+            <div class="promo-text">
+              <strong>Cerveza artesanal $8.000</strong>
+              <small>Toda la noche</small>
+            </div>
+          </div>
+          <div class="promo-item">
+            <span class="promo-icon">🎤</span>
+            <div class="promo-text">
+              <strong>Karaoke cada Viernes</strong>
+              <small>¡Pide tu canción con el QR!</small>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Línea divisora de neón -->
+      <div class="neon-divider"></div>
+
+      <!-- ── COLA DE PRÓXIMAS CANCIONES ─────────────────── -->
+      <div class="queue-section">
+        <h3 class="section-title">
+          <span class="neon-dot">◆</span> PRÓXIMAS EN FILA
+        </h3>
+        <div class="queue-list" id="queue-list">
+          <!-- Los ítems se renderizan por JavaScript -->
+          <div class="queue-empty" id="queue-empty">
+            <p>🎵 La fila está vacía</p>
+            <small>Escanea el QR para pedir</small>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── QR DE ACCESO ────────────────────────────────── -->
+      <!--
+        Para usar un QR real:
+        1. Genera el QR de http://TU-IP:3000/cliente.html
+           usando https://qrcode.monkey.com o similar.
+        2. Reemplaza .qr-placeholder por: <img src="qr.png" alt="QR">
+      -->
+      <div class="qr-section">
+        <div class="qr-box">
+          <div class="qr-placeholder">
+            <div class="qr-icon">📱</div>
+          </div>
+          <div class="qr-text">
+            <strong>¡PIDE TU CANCIÓN!</strong>
+            <small>Escanea para acceder al Jukebox</small>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /panel-info -->
+  </div><!-- /bar-layout -->
+
+  <!-- ══════════════════════════════════════════════════════════
+       NOTIFICACIÓN FLOTANTE ANIMADA
+       Aparece cuando empieza a reproducirse una canción nueva.
+  ══════════════════════════════════════════════════════════ -->
+  <div class="notification-banner" id="notification-banner" aria-live="polite">
+    <div class="notif-content">
+      <span class="notif-icon">🎵</span>
+      <div class="notif-text">
+        <div class="notif-song" id="notif-song-name">Nombre del tema</div>
+        <div class="notif-who">
+          Pedido por: <span id="notif-quien">—</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       SCRIPTS
+  ══════════════════════════════════════════════════════════ -->
+
+  <!-- Socket.io: entregado por el servidor Node.js automáticamente -->
+  <script src="/socket.io/socket.io.js"></script>
+
+  <script>
+    'use strict';
+
+    // ─────────────────────────────────────────────────────────
+    //  ESTADO LOCAL
+    // ─────────────────────────────────────────────────────────
+    let player       = null;   // Instancia de YT.Player
+    let playerReady  = false;  // ¿El IFrame API está listo para recibir comandos?
+    let pendingVideo = null;   // Video guardado si llegó antes de que el player cargara
+    let notifTimer   = null;   // Referencia al timer de auto-ocultar notificación
+
+    // ─────────────────────────────────────────────────────────
+    //  SOCKET.IO — Conexión al servidor Node.js
+    // ─────────────────────────────────────────────────────────
+    const socket = io({ reconnectionDelay: 1000 });
+
+    // ── Recibir estado inicial (conexión o reconexión) ────────
+    socket.on('estado_inicial', ({ cola, reproduciendo }) => {
+      console.log('[Socket] Estado inicial → cola:', cola.length, '| reproduciendo:', reproduciendo?.titulo ?? 'nada');
+      actualizarCola(cola);
+      if (reproduciendo) {
+        // Hay algo que debería estar sonando → cargarlo
+        cargarVideo(reproduciendo);
+      } else {
+        mostrarIdleScreen(true);
+      }
+    });
+
+    // ── Cola actualizada ──────────────────────────────────────
+    socket.on('cola_actualizada', ({ cola, reproduciendo }) => {
+      actualizarCola(cola);
+      actualizarNowPlayingBar(reproduciendo);
+    });
+
+    // ── Comenzar a reproducir una canción nueva ───────────────
+    socket.on('nueva_reproduccion', (cancion) => {
+      console.log('[Socket] Nueva reproducción:', cancion?.titulo);
+      cargarVideo(cancion);
+      mostrarNotificacion(cancion);
+    });
+
+    // ── Reconexión: pedir estado actualizado ──────────────────
+    socket.on('reconnect', () => {
+      console.log('[Socket] Reconectado — solicitando estado');
+      socket.emit('solicitar_estado');
+    });
+
+    // ─────────────────────────────────────────────────────────
+    //  YOUTUBE IFRAME API
+    //  El script de YouTube llama a esta función cuando termina de cargar.
+    //  DEBE estar en el scope global (window).
+    // ─────────────────────────────────────────────────────────
+    window.onYouTubeIframeAPIReady = function () {
+      console.log('[YT] IFrame API cargada — creando player');
+      player = new YT.Player('youtube-player', {
+        // Dimensiones relativas (el CSS lo hace responsive)
+        height: '100%',
+        width:  '100%',
+        // Opciones del reproductor
+        playerVars: {
+          autoplay:         1,   // Reproducir automáticamente
+          controls:         1,   // Mostrar controles de YouTube
+          rel:              0,   // No mostrar videos relacionados al finalizar
+          modestbranding:   1,   // Reducir presencia del logo de YouTube
+          iv_load_policy:   3,   // Ocultar anotaciones
+          fs:               0,   // Ocultar botón de pantalla completa
+          playsinline:      1,   // Evitar fullscreen en iOS
+          enablejsapi:      1    // Habilitar control por JS
+        },
+        events: {
+          onReady:       onPlayerReady,
+          onStateChange: onPlayerStateChange,
+          onError:       onPlayerError
+        }
+      });
+    };
+
+    // ── Player listo ──────────────────────────────────────────
+    function onPlayerReady(event) {
+      console.log('[YT] Player listo para recibir comandos');
+      playerReady = true;
+      // Si llegó una canción mientras el player cargaba, reproducirla ahora
+      if (pendingVideo) {
+        cargarVideo(pendingVideo);
+        pendingVideo = null;
+      }
+    }
+
+    // ── Cambio de estado del player ───────────────────────────
+    function onPlayerStateChange(event) {
+      switch (event.data) {
+        case YT.PlayerState.ENDED:
+          // Video terminado → informar al servidor para avanzar la cola
+          console.log('[YT] Video terminado → siguiente_cancion');
+          socket.emit('siguiente_cancion');
+          break;
+        case YT.PlayerState.PLAYING:
+          // Video empezando a reproducirse → ocultar idle screen
+          mostrarIdleScreen(false);
+          break;
+        case YT.PlayerState.PAUSED:
+          console.log('[YT] Video en pausa');
+          break;
+      }
+    }
+
+    // ── Error en el player ────────────────────────────────────
+    //    Códigos: 2=ID inválido, 5=HTML5, 100=no encontrado, 101/150=sin embed
+    function onPlayerError(event) {
+      console.error('[YT] Error del player, código:', event.data);
+      // Pasar al siguiente video automáticamente tras 2s
+      setTimeout(() => socket.emit('siguiente_cancion'), 2000);
+    }
+
+    // ─────────────────────────────────────────────────────────
+    //  FUNCIONES DE REPRODUCCIÓN
+    // ─────────────────────────────────────────────────────────
+
+    // Cargar un video en el player de YouTube
+    function cargarVideo(cancion) {
+      if (!cancion) {
+        mostrarIdleScreen(true);
+        return;
+      }
+      // Si el player aún no está listo, guardar para después
+      if (!playerReady || !player || typeof player.loadVideoById !== 'function') {
+        pendingVideo = cancion;
+        return;
+      }
+      console.log('[YT] Cargando video:', cancion.videoId, '—', cancion.titulo);
+      // loadVideoById inicia la reproducción automáticamente (no hay restricción de duración)
+      player.loadVideoById({ videoId: cancion.videoId });
+      actualizarNowPlayingBar(cancion);
+      mostrarIdleScreen(false);
+    }
+
+    // Mostrar u ocultar la pantalla de espera
+    function mostrarIdleScreen(visible) {
+      const el = document.getElementById('idle-screen');
+      if (el) el.style.display = visible ? 'flex' : 'none';
+    }
+
+    // ─────────────────────────────────────────────────────────
+    //  ACTUALIZAR BARRA "REPRODUCIENDO"
+    // ─────────────────────────────────────────────────────────
+    function actualizarNowPlayingBar(cancion) {
+      const tituloEl = document.getElementById('np-titulo');
+      const nombreEl = document.getElementById('np-nombre');
+      const sepEl    = document.getElementById('np-sep');
+
+      if (!cancion) {
+        tituloEl.textContent  = '— Esperando canciones —';
+        nombreEl.textContent  = '';
+        sepEl.style.display   = 'none';
+        return;
+      }
+      tituloEl.textContent = cancion.titulo;
+      nombreEl.textContent = cancion.nombre;
+      sepEl.style.display  = 'inline';
+    }
+
+    // ─────────────────────────────────────────────────────────
+    //  ACTUALIZAR LISTA DE LA COLA (máx. 4 canciones)
+    // ─────────────────────────────────────────────────────────
+    function actualizarCola(cola) {
+      const listEl  = document.getElementById('queue-list');
+      const emptyEl = document.getElementById('queue-empty');
+
+      // Eliminar items previos conservando el empty placeholder
+      listEl.querySelectorAll('.queue-item').forEach(el => el.remove());
+
+      if (!cola || cola.length === 0) {
+        emptyEl.style.display = 'block';
+        return;
+      }
+
+      emptyEl.style.display = 'none';
+
+      // Mostrar máximo 4 canciones en la cola
+      cola.slice(0, 4).forEach((cancion, index) => {
+        const item = document.createElement('div');
+        item.className = 'queue-item';
+        // Delay escalonado para la animación de entrada
+        item.style.animationDelay = `${index * 0.08}s`;
+
+        const thumbHtml = cancion.thumbnail
+          ? `<img
+               class="queue-thumb"
+               src="${escapeHtml(cancion.thumbnail)}"
+               alt=""
+               loading="lazy"
+               onerror="this.style.display='none'"
+             >`
+          : `<div class="queue-thumb-placeholder">🎵</div>`;
+
+        item.innerHTML = `
+          <div class="queue-num">${index + 1}</div>
+          ${thumbHtml}
+          <div class="queue-details">
+            <div class="queue-song-title">${escapeHtml(cancion.titulo)}</div>
+            <div class="queue-song-who">${escapeHtml(cancion.nombre)} · ${escapeHtml(cancion.timestamp)}</div>
+          </div>
+        `;
+        listEl.appendChild(item);
+      });
+    }
+
+    // ─────────────────────────────────────────────────────────
+    //  BANNER DE NOTIFICACIÓN ANIMADO
+    //  Aparece durante 5 segundos cada vez que empieza una canción
+    // ─────────────────────────────────────────────────────────
+    function mostrarNotificacion(cancion) {
+      if (!cancion) return;
+
+      const banner   = document.getElementById('notification-banner');
+      const songName = document.getElementById('notif-song-name');
+      const quien    = document.getElementById('notif-quien');
+
+      songName.textContent = cancion.titulo;
+      quien.textContent    = cancion.nombre;
+
+      // Reiniciar animación
+      banner.classList.remove('notif-show', 'notif-hide');
+      // Forzar reflow para reiniciar la animación CSS
+      void banner.offsetWidth;
+      banner.classList.add('notif-show');
+
+      // Auto-ocultar a los 5 segundos
+      clearTimeout(notifTimer);
+      notifTimer = setTimeout(() => {
+        banner.classList.remove('notif-show');
+        banner.classList.add('notif-hide');
+      }, 5000);
+    }
+
+    // ─────────────────────────────────────────────────────────
+    //  UTILIDAD: Escapar HTML para prevenir XSS
+    // ─────────────────────────────────────────────────────────
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+  </script>
+
+  <!--
+    YouTube IFrame API — Se carga de forma asíncrona.
+    Cuando termina, llama automáticamente a window.onYouTubeIframeAPIReady()
+    que está definida arriba.
+  -->
+  <script src="https://www.youtube.com/iframe_api" async></script>
+</body>
+</html>
