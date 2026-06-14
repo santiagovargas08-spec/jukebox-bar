@@ -614,8 +614,8 @@ button { cursor: pointer; font-family: inherit; border: none; }
 }
 
 .queue-song-title {
-  font-size: 0.78rem;
-  font-weight: 600;
+  font-size: 1.6rem;
+  font-weight: bold;
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
@@ -624,7 +624,7 @@ button { cursor: pointer; font-family: inherit; border: none; }
 }
 
 .queue-song-who {
-  font-size: 0.65rem;
+  font-size: 1.2rem;
   color: var(--neon-cyan);
   text-shadow: 0 0 8px rgba(0, 229, 255, 0.4);
   white-space: nowrap;
