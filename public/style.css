@@ -677,7 +677,7 @@ button { cursor: pointer; font-family: inherit; border: none; }
   letter-spacing: 0.1em;
   color: var(--neon-pink);
   text-shadow: var(--glow-pink);
-  margin-bottom: 10px;
+  margin-bottom: 0px;
 }
 
 .qr-text small {
