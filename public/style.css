@@ -398,9 +398,9 @@ button { cursor: pointer; font-family: inherit; border: none; }
 
 .np-title {
   font-family: var(--font-body);
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--text-primary);
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: #ffffff;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
