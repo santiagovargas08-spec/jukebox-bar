@@ -389,6 +389,7 @@ button { cursor: pointer; font-family: inherit; border: none; }
   overflow: hidden;
   font-size: 2.5rem; /* ✨ Esto hará más grande el nombre de la canción ✨ */
   font-weight: bold;
+  color: #ffffff !important;
 }
 
 .np-label {
@@ -621,6 +622,7 @@ button { cursor: pointer; font-family: inherit; border: none; }
   overflow: hidden;
   text-overflow: ellipsis;
   line-height: 1.2;
+  margin-bottom: 4px;
 }
 
 .queue-song-who {
