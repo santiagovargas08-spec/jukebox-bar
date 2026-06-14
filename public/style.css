@@ -661,10 +661,10 @@ button { cursor: pointer; font-family: inherit; border: none; }
 /* ✨ AQUÍ ESTÁ EL TAMAÑO DEFINIDO PARA TU QR ✨ */
 .bar-qr-img {
   max-width: 100%;
-  max-height: 120px; /* Misma altura que definiste para .bar-logo-img */
+  max-height: 130px; /* Misma altura que definiste para .bar-logo-img */
   object-fit: contain;
   border-radius: 8px;
-  border: 2px solid rgba(255, 0, 85, 0.5); /* Borde neón rosa */
+  border: 3px solid rgba(255, 0, 85, 0.5); /* Borde neón rosa */
   padding: 4px;
   background: white; /* Fondo blanco para que el QR se lea perfecto */
 }
@@ -677,7 +677,7 @@ button { cursor: pointer; font-family: inherit; border: none; }
   letter-spacing: 0.1em;
   color: var(--neon-pink);
   text-shadow: var(--glow-pink);
-  margin-bottom: 3px;
+  margin-bottom: 5px;
 }
 
 .qr-text small {
