@@ -5,12 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>🎵 GENESIS 2.0</title>
 
-  <!-- Google Fonts — Orbitron (futurista) + Rajdhani (cuerpo) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet">
 
-  <!-- Hoja de estilos compartida -->
   <link rel="stylesheet" href="style.css">
 
   <style>
@@ -33,38 +31,27 @@
 </head>
 <body class="bar-body">
 
-  <!-- ══════════════════════════════════════════════════════════
-       EFECTO SCANLINES (CRT overlay — posición fixed)
-  ══════════════════════════════════════════════════════════ -->
   <div class="scanlines" aria-hidden="true"></div>
 
-  <!-- ══════════════════════════════════════════════════════════
-       LAYOUT PRINCIPAL — Split Screen 70/30
-  ══════════════════════════════════════════════════════════ -->
   <div class="bar-layout">
 
-    <!-- ──────────────────────────────────────────────────────
-         PANEL IZQUIERDO (70%) — Reproductor de YouTube
-    ────────────────────────────────────────────────────── -->
     <div class="panel-video">
-	  <div class="top-instruction-bar">
+      
+      <div class="top-instruction-bar">
         Elige la canción desde tu celular
       </div>
-      <!-- Contenedor del player — el IFrame API lo convierte en <iframe> -->
+      
       <div class="video-wrapper">
 
-        <!-- Pantalla idle: se muestra cuando no hay video cargado -->
         <div class="idle-screen" id="idle-screen">
           <div class="idle-icon">🎵</div>
           <div class="idle-text">Jukebox Digital</div>
           <div class="idle-sub">Escanea el QR y pide tu canción</div>
         </div>
 
-        <!-- Aquí el YouTube IFrame API insertará el <iframe> -->
         <div id="youtube-player"></div>
       </div>
 
-      <!-- Barra inferior: info de la canción actual -->
       <div class="now-playing-bar">
         <span class="np-label">▶ REPRODUCIENDO</span>
         <span class="np-title" id="np-titulo">— Esperando canciones —</span>
@@ -73,37 +60,22 @@
       </div>
     </div>
 
-    <!-- ──────────────────────────────────────────────────────
-         PANEL DERECHO (30%) — Logo · Promos · Cola
-    ────────────────────────────────────────────────────── -->
     <div class="panel-info">
 
-      <!-- ── LOGO DEL BAR ────────────────────────────────── -->
-      <!--
-        Para usar tu logo real, reemplaza .logo-placeholder por:
-        <img src="tu-logo.png" alt="Logo del bar" class="bar-logo-img">
-        Y agrega: .bar-logo-img { max-width: 100%; max-height: 120px; }
-      -->
-	<div class="bar-logo-section">
-        
+      <div class="bar-logo-section">
         <img src="GENESIS 2.0.png" alt="Logo del bar Genesis" class="bar-logo-img">
-        
         <div class="logo-text" style="margin-top: 10px;">
           GENESIS<span>2.0</span>
         </div>
-
       </div>
 
       <div class="neon-divider"></div>
 
-
-      <!-- ── COLA DE PRÓXIMAS CANCIONES ─────────────────── -->
       <div class="queue-section">
         <h3 class="section-title">
           <span class="neon-dot">◆</span> PRÓXIMAS EN FILA
         </h3>
         <div class="queue-list" id="queue-list">
-          <!-- Los ítems se renderizan por JavaScript -->
           <div class="queue-empty" id="queue-empty">
             <p>🎵 La fila está vacía</p>
             <small>Escanea el QR para pedir</small>
@@ -111,31 +83,20 @@
         </div>
       </div>
 
-      <!-- ── QR DE ACCESO ────────────────────────────────── -->
-      <!--
-        Para usar un QR real:
-        1. Genera el QR de http://TU-IP:3000/cliente.html
-           usando https://qrcode.monkey.com o similar.
-        2. Reemplaza .qr-placeholder por: <img src="qr.png" alt="QR">
-      -->
-	  <div class="qr-section">
+      <div class="qr-section">
         <div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; padding: 10px 0;">
-          
           <img src="qr-genesis.png" alt="QR del Bar" class="bar-qr-img">
-          
           <div class="qr-text">
             <strong style="font-size: 1.2rem; color: var(--neon-pink); text-shadow: var(--glow-pink);">¡PIDE TU CANCIÓN!</strong>
             <br>
             <small style="font-size: 0.9rem; color: var(--text-muted);">Escanea para acceder al Jukebox</small>
           </div>
-          
         </div>
       </div>
 
-  <!-- ══════════════════════════════════════════════════════════
-       NOTIFICACIÓN FLOTANTE ANIMADA
-       Aparece cuando empieza a reproducirse una canción nueva.
-  ══════════════════════════════════════════════════════════ -->
+    </div>
+  </div>
+
   <div class="notification-banner" id="notification-banner" aria-live="polite">
     <div class="notif-content">
       <span class="notif-icon">🎵</span>
@@ -148,11 +109,6 @@
     </div>
   </div>
 
-  <!-- ══════════════════════════════════════════════════════════
-       SCRIPTS
-  ══════════════════════════════════════════════════════════ -->
-
-  <!-- Socket.io: entregado por el servidor Node.js automáticamente -->
   <script src="/socket.io/socket.io.js"></script>
 
   <script>
@@ -166,6 +122,10 @@
     let pendingVideo = null;   // Video guardado si llegó antes de que el player cargara
     let notifTimer   = null;   // Referencia al timer de auto-ocultar notificación
 
+    // ✨ VARIABLES PARA AUTO-DJ
+    let lastVideoId  = null;   // Guarda el ID de la última canción real para crear el Mix
+    let isAutoDJ     = false;  // Bandera para saber si el algoritmo está al mando
+
     // ─────────────────────────────────────────────────────────
     //  SOCKET.IO — Conexión al servidor Node.js
     // ─────────────────────────────────────────────────────────
@@ -176,7 +136,6 @@
       console.log('[Socket] Estado inicial → cola:', cola.length, '| reproduciendo:', reproduciendo?.titulo ?? 'nada');
       actualizarCola(cola);
       if (reproduciendo) {
-        // Hay algo que debería estar sonando → cargarlo
         cargarVideo(reproduciendo);
       } else {
         mostrarIdleScreen(true);
@@ -186,12 +145,29 @@
     // ── Cola actualizada ──────────────────────────────────────
     socket.on('cola_actualizada', ({ cola, reproduciendo }) => {
       actualizarCola(cola);
-      actualizarNowPlayingBar(reproduciendo);
+
+      if (reproduciendo) {
+        actualizarNowPlayingBar(reproduciendo);
+      }
+
+      // ✨ MAGIA AUTO-DJ: Si no hay canción reproduciendo (fila vacía)
+      if (!reproduciendo) {
+        if (lastVideoId && !isAutoDJ) {
+          // Tenemos una referencia anterior, iniciamos la radio
+          iniciarAutoDJ();
+        } else if (!lastVideoId && !isAutoDJ) {
+          // No hay referencia (bar recién abierto), mostramos idle
+          actualizarNowPlayingBar(null);
+          mostrarIdleScreen(true);
+        }
+      }
     });
 
     // ── Comenzar a reproducir una canción nueva ───────────────
     socket.on('nueva_reproduccion', (cancion) => {
       console.log('[Socket] Nueva reproducción:', cancion?.titulo);
+      // ✨ INTERRUPCIÓN: Apagamos Auto-DJ porque un cliente pidió canción
+      isAutoDJ = false;
       cargarVideo(cancion);
       mostrarNotificacion(cancion);
     });
@@ -204,25 +180,21 @@
 
     // ─────────────────────────────────────────────────────────
     //  YOUTUBE IFRAME API
-    //  El script de YouTube llama a esta función cuando termina de cargar.
-    //  DEBE estar en el scope global (window).
     // ─────────────────────────────────────────────────────────
     window.onYouTubeIframeAPIReady = function () {
       console.log('[YT] IFrame API cargada — creando player');
       player = new YT.Player('youtube-player', {
-        // Dimensiones relativas (el CSS lo hace responsive)
         height: '100%',
         width:  '100%',
-        // Opciones del reproductor
         playerVars: {
-          autoplay:         1,   // Reproducir automáticamente
-          controls:         1,   // Mostrar controles de YouTube
-          rel:              0,   // No mostrar videos relacionados al finalizar
-          modestbranding:   1,   // Reducir presencia del logo de YouTube
-          iv_load_policy:   3,   // Ocultar anotaciones
-          fs:               0,   // Ocultar botón de pantalla completa
-          playsinline:      1,   // Evitar fullscreen en iOS
-          enablejsapi:      1    // Habilitar control por JS
+          autoplay:         1,   
+          controls:         1,   
+          rel:              0,   
+          modestbranding:   1,   
+          iv_load_policy:   3,   
+          fs:               0,   
+          playsinline:      1,   
+          enablejsapi:      1    
         },
         events: {
           onReady:       onPlayerReady,
@@ -236,7 +208,6 @@
     function onPlayerReady(event) {
       console.log('[YT] Player listo para recibir comandos');
       playerReady = true;
-      // Si llegó una canción mientras el player cargaba, reproducirla ahora
       if (pendingVideo) {
         cargarVideo(pendingVideo);
         pendingVideo = null;
@@ -247,14 +218,27 @@
     function onPlayerStateChange(event) {
       switch (event.data) {
         case YT.PlayerState.ENDED:
-          // Video terminado → informar al servidor para avanzar la cola
-          console.log('[YT] Video terminado → siguiente_cancion');
-          socket.emit('siguiente_cancion');
+          if (!isAutoDJ) {
+            // Video de cliente terminó → informar al servidor para avanzar la cola
+            console.log('[YT] Video de cliente terminado → siguiente_cancion');
+            socket.emit('siguiente_cancion');
+          }
           break;
+          
         case YT.PlayerState.PLAYING:
-          // Video empezando a reproducirse → ocultar idle screen
           mostrarIdleScreen(false);
+          // Actualizamos el título visual si el Auto-DJ está pasando de canción
+          if (isAutoDJ && player.getVideoData) {
+            const videoData = player.getVideoData();
+            if (videoData && videoData.title) {
+              actualizarNowPlayingBar({
+                titulo: videoData.title,
+                nombre: '🔥 Auto-DJ (YouTube Mix)'
+              });
+            }
+          }
           break;
+          
         case YT.PlayerState.PAUSED:
           console.log('[YT] Video en pausa');
           break;
@@ -262,10 +246,8 @@
     }
 
     // ── Error en el player ────────────────────────────────────
-    //    Códigos: 2=ID inválido, 5=HTML5, 100=no encontrado, 101/150=sin embed
     function onPlayerError(event) {
       console.error('[YT] Error del player, código:', event.data);
-      // Pasar al siguiente video automáticamente tras 2s
       setTimeout(() => socket.emit('siguiente_cancion'), 2000);
     }
 
@@ -275,20 +257,39 @@
 
     // Cargar un video en el player de YouTube
     function cargarVideo(cancion) {
-      if (!cancion) {
-        mostrarIdleScreen(true);
-        return;
-      }
-      // Si el player aún no está listo, guardar para después
+      if (!cancion) return;
+
       if (!playerReady || !player || typeof player.loadVideoById !== 'function') {
         pendingVideo = cancion;
         return;
       }
+
+      // Guardamos el ID para que el Auto-DJ lo use de base en el futuro
+      lastVideoId = cancion.videoId;
+
       console.log('[YT] Cargando video:', cancion.videoId, '—', cancion.titulo);
-      // loadVideoById inicia la reproducción automáticamente (no hay restricción de duración)
       player.loadVideoById({ videoId: cancion.videoId });
       actualizarNowPlayingBar(cancion);
       mostrarIdleScreen(false);
+    }
+
+    // Iniciar el Mix Automático (Auto-DJ)
+    function iniciarAutoDJ() {
+      if (!playerReady || !player) return;
+
+      console.log('[Auto-DJ] Iniciando mix infinito basado en:', lastVideoId);
+      isAutoDJ = true;
+      mostrarIdleScreen(false);
+
+      player.loadPlaylist({
+        list: 'RD' + lastVideoId,
+        listType: 'playlist'
+      });
+
+      actualizarNowPlayingBar({
+        titulo: 'Cargando selección musical...',
+        nombre: '🔥 Auto-DJ'
+      });
     }
 
     // Mostrar u ocultar la pantalla de espera
@@ -323,7 +324,6 @@
       const listEl  = document.getElementById('queue-list');
       const emptyEl = document.getElementById('queue-empty');
 
-      // Eliminar items previos conservando el empty placeholder
       listEl.querySelectorAll('.queue-item').forEach(el => el.remove());
 
       if (!cola || cola.length === 0) {
@@ -333,21 +333,13 @@
 
       emptyEl.style.display = 'none';
 
-      // Mostrar máximo 4 canciones en la cola
       cola.slice(0, 4).forEach((cancion, index) => {
         const item = document.createElement('div');
         item.className = 'queue-item';
-        // Delay escalonado para la animación de entrada
         item.style.animationDelay = `${index * 0.08}s`;
 
         const thumbHtml = cancion.thumbnail
-          ? `<img
-               class="queue-thumb"
-               src="${escapeHtml(cancion.thumbnail)}"
-               alt=""
-               loading="lazy"
-               onerror="this.style.display='none'"
-             >`
+          ? `<img class="queue-thumb" src="${escapeHtml(cancion.thumbnail)}" alt="" loading="lazy" onerror="this.style.display='none'">`
           : `<div class="queue-thumb-placeholder">🎵</div>`;
 
         item.innerHTML = `
@@ -364,7 +356,6 @@
 
     // ─────────────────────────────────────────────────────────
     //  BANNER DE NOTIFICACIÓN ANIMADO
-    //  Aparece durante 5 segundos cada vez que empieza una canción
     // ─────────────────────────────────────────────────────────
     function mostrarNotificacion(cancion) {
       if (!cancion) return;
@@ -376,13 +367,10 @@
       songName.textContent = cancion.titulo;
       quien.textContent    = cancion.nombre;
 
-      // Reiniciar animación
       banner.classList.remove('notif-show', 'notif-hide');
-      // Forzar reflow para reiniciar la animación CSS
       void banner.offsetWidth;
       banner.classList.add('notif-show');
 
-      // Auto-ocultar a los 5 segundos
       clearTimeout(notifTimer);
       notifTimer = setTimeout(() => {
         banner.classList.remove('notif-show');
@@ -404,11 +392,6 @@
     }
   </script>
 
-  <!--
-    YouTube IFrame API — Se carga de forma asíncrona.
-    Cuando termina, llama automáticamente a window.onYouTubeIframeAPIReady()
-    que está definida arriba.
-  -->
   <script src="https://www.youtube.com/iframe_api" async></script>
 </body>
 </html>
