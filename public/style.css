@@ -319,6 +319,23 @@ button { cursor: pointer; font-family: inherit; border: none; }
 }
 
 /* ─── Panel izquierdo: Video ────────────────────────────────── */
+/* ─── Barra superior de instrucciones ───────────────────────── */
+.top-instruction-bar {
+  background: rgba(0, 0, 0, 0.85);
+  padding: 15px 20px;
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--neon-cyan); /* Color cian eléctrico */
+  text-shadow: var(--glow-cyan);
+  border-bottom: 1px solid rgba(0, 229, 255, 0.3);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  z-index: 10;
+  flex-shrink: 0;
+}
+
 .panel-video {
   position: relative;
   display: flex;
