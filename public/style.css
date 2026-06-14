@@ -388,6 +388,7 @@ button { cursor: pointer; font-family: inherit; border: none; }
   flex-shrink: 0;
   overflow: hidden;
   font-size: 2.5rem; /* ✨ Esto hará más grande el nombre de la canción ✨ */
+  font-weight: bold;
 }
 
 .np-label {
