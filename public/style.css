@@ -667,6 +667,7 @@ button { cursor: pointer; font-family: inherit; border: none; }
   border: 3px solid rgba(255, 0, 85, 0.5); /* Borde neón rosa */
   padding: 4px;
   background: white; /* Fondo blanco para que el QR se lea perfecto */
+  margin-top: 16px;
 }
 
 /* Textos debajo del QR */
@@ -677,7 +678,7 @@ button { cursor: pointer; font-family: inherit; border: none; }
   letter-spacing: 0.1em;
   color: var(--neon-pink);
   text-shadow: var(--glow-pink);
-  margin-bottom: 0px;
+  margin-bottom: 6px;
 }
 
 .qr-text small {
