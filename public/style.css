@@ -799,8 +799,8 @@ button { cursor: pointer; font-family: inherit; border: none; }
 }
 
 .header-logo span {
-  color: var(--neon-pink);
-  text-shadow: var(--glow-pink);
+  color: var(--neon-cyan);
+  text-shadow: var(--glow-cyan);
 }
 
 .header-tagline {
