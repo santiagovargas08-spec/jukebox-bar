@@ -1,20 +1,21 @@
 'use strict';
 
 // ═══════════════════════════════════════════════════════════════
-//  JUKEBOX DIGITAL — Servidor Principal
-//  Stack: Node.js · Express · Socket.io
-//  Estado: en memoria (máxima velocidad, sin latencia de BD)
+//   JUKEBOX DIGITAL — Servidor Principal (Búsquedas Ilimitadas)
+//   Stack: Node.js · Express · Socket.io · Yt-Search
+//   Estado: en memoria (máxima velocidad, sin latencia de BD)
 // ═══════════════════════════════════════════════════════════════
 
 const express = require('express');
 const http    = require('http');
 const { Server } = require('socket.io');
 const path    = require('path');
+const ytSearch = require('yt-search'); // ✨ LIBRERÍA DE BÚSQUEDAS ILIMITADAS
 
 const app    = express();
 const server = http.createServer(app);
 
-// Configuración de Socket.io con CORS abierto (ajusta según necesidades)
+// Configuración de Socket.io con CORS abierto
 const io = new Server(server, {
   cors: { origin: '*', methods: ['GET', 'POST'] },
   pingTimeout:  60000,  // 60s antes de considerar cliente desconectado
@@ -22,23 +23,23 @@ const io = new Server(server, {
 });
 
 // ─────────────────────────────────────────────────────────────
-//  ESTADO EN MEMORIA
-//  • cola         → Array de canciones en espera
-//  • reproduciendo → Canción actualmente en pantalla (o null)
+//   ESTADO EN MEMORIA
+//   • cola         → Array de canciones en espera
+//   • reproduciendo → Canción actualmente en pantalla (o null)
 // ─────────────────────────────────────────────────────────────
 let cola          = [];   // [ { id, videoId, titulo, nombre, thumbnail, timestamp } ]
 let reproduciendo = null; // La canción que el bar está mostrando ahora mismo
 
 // ─────────────────────────────────────────────────────────────
-//  ARCHIVOS ESTÁTICOS
-//  Sirve todo desde /public (bar.html, cliente.html, style.css)
+//   ARCHIVOS ESTÁTICOS
+//   Sirve todo desde /public (bar.html, cliente.html, style.css)
 // ─────────────────────────────────────────────────────────────
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ─────────────────────────────────────────────────────────────
-//  FUNCIÓN AUXILIAR: Intentar auto-iniciar reproducción
-//  Si no hay nada reproduciendo y hay canciones en cola,
-//  saca la primera y la marca como "reproduciendo".
+//   FUNCIÓN AUXILIAR: Intentar auto-iniciar reproducción
+//   Si no hay nada reproduciendo y hay canciones en cola,
+//   saca la primera y la marca como "reproduciendo".
 // ─────────────────────────────────────────────────────────────
 function intentarReproducir() {
   if (!reproduciendo && cola.length > 0) {
@@ -54,7 +55,7 @@ function intentarReproducir() {
 }
 
 // ─────────────────────────────────────────────────────────────
-//  SOCKET.IO — GESTIÓN DE EVENTOS EN TIEMPO REAL
+//   SOCKET.IO — GESTIÓN DE EVENTOS EN TIEMPO REAL
 // ─────────────────────────────────────────────────────────────
 io.on('connection', (socket) => {
   const clienteId = socket.id.slice(0, 8); // ID corto para logs
@@ -64,6 +65,27 @@ io.on('connection', (socket) => {
   //    Esto permite que bar.html se recupere de una reconexión
   //    sin perder el estado de la cola.
   socket.emit('estado_inicial', { cola, reproduciendo });
+
+  // ── NUEVO: CLIENTE → Solicita buscar una canción en YouTube (Búsquedas Ilimitadas) ──
+  socket.on('buscar_canciones', async (query) => {
+    try {
+      if (!query || !query.trim()) return;
+      
+      console.log(`[🔍] Buscando: "${query}" desde el cliente [${clienteId}]`);
+      
+      // La librería busca en YouTube simulando la navegación de un usuario real
+      const r = await ytSearch(query.trim());
+      
+      // Tomamos los primeros 25 resultados que sean videos reales (evitamos listas de reproducción o canales)
+      const videos = r.videos ? r.videos.slice(0, 25) : [];
+      
+      // Enviamos los resultados ÚNICAMENTE al celular que hizo la búsqueda para no saturar al resto
+      socket.emit('resultados_busqueda', { items: videos, query });
+    } catch (error) {
+      console.error(`[❌] Error en búsqueda de [${clienteId}]:`, error.message);
+      socket.emit('error_busqueda', { mensaje: 'Error en el buscador. Intenta de nuevo.' });
+    }
+  });
 
   // ── 2. CLIENTE → Agrega una canción a la cola ───────────────
   //    Datos esperados: { videoId, titulo, nombre, thumbnail }
@@ -109,7 +131,7 @@ io.on('connection', (socket) => {
       console.log(`\n[►] Siguiente → "${reproduciendo.titulo}" (${reproduciendo.nombre})`);
       io.emit('nueva_reproduccion', reproduciendo);
     } else {
-      // Cola vacía: pantalla del bar queda en estado idle
+      // Cola vacía: pantalla del bar queda en estado idle o pasa al Auto-DJ si lo implementaste en el front
       reproduciendo = null;
       console.log('[■] Cola vacía — esperando más canciones');
     }
@@ -129,7 +151,7 @@ io.on('connection', (socket) => {
 });
 
 // ─────────────────────────────────────────────────────────────
-//  INICIO DEL SERVIDOR
+//   INICIO DEL SERVIDOR
 // ─────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
