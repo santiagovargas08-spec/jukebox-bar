@@ -135,6 +135,9 @@
     const liveQueueSection = document.getElementById('live-queue-section');
     const liveQueueList    = document.getElementById('live-queue-list');
 
+    // ✨ Memoria caché para resultados instantáneos
+    const cacheBusquedas = {};
+
     // ─────────────────────────────────────────────────────────
     //  SOCKET.IO — Tiempo real con el servidor
     // ─────────────────────────────────────────────────────────
@@ -145,39 +148,52 @@
     socket.on('cancion_confirmada', ({ titulo }) => mostrarExito(titulo));
     socket.on('error_cancion', ({ mensaje }) => mostrarError(mensaje));
 
-    // ✨ NUEVO: Recibir resultados del servidor (Sin API de Google)
+    // Recibir resultados del servidor
     socket.on('resultados_busqueda', ({ items, query }) => {
+      // Guardamos el resultado en la memoria caché para futuras búsquedas
+      cacheBusquedas[query.toLowerCase()] = items; 
+      
       mostrarLoading(false);
       renderizarResultados(items, query);
     });
 
-    // ✨ NUEVO: Recibir errores de búsqueda del servidor
+    // Recibir errores de búsqueda del servidor
     socket.on('error_busqueda', ({ mensaje }) => {
       mostrarLoading(false);
       mostrarError(mensaje);
     });
 
     // ─────────────────────────────────────────────────────────
-    //  BÚSQUEDA VÍA SOCKET (SIN LÍMITES)
+    //  BÚSQUEDA VÍA SOCKET (CON CACHÉ Y AUTO-BÚSQUEDA)
     // ─────────────────────────────────────────────────────────
     function buscarVideos(query) {
       query = query.trim();
       if (!query) {
-        inputBuscar.focus();
+        ocultarResultados();
         return;
       }
 
-      // Resetear UI y mostrar carga
+      const queryLower = query.toLowerCase();
+
+      // Magia de velocidad: Si ya buscamos esto antes, lo cargamos al instante
+      if (cacheBusquedas[queryLower]) {
+        console.log("Cargando desde caché al instante ⚡");
+        ocultarError();
+        mostrarLoading(false);
+        renderizarResultados(cacheBusquedas[queryLower], query);
+        return;
+      }
+
+      // Si es una búsqueda nueva, mostramos carga y consultamos al servidor
       ocultarResultados();
       ocultarError();
       mostrarLoading(true);
 
-      // Enviamos la petición de búsqueda a nuestro servidor Node.js
       socket.emit('buscar_canciones', query);
     }
 
     // ─────────────────────────────────────────────────────────
-    //  RENDERIZAR TARJETAS DE RESULTADOS (Adaptado a yt-search)
+    //  RENDERIZAR TARJETAS DE RESULTADOS
     // ─────────────────────────────────────────────────────────
     function renderizarResultados(items, query) {
       resultsList.innerHTML = '';
@@ -191,7 +207,6 @@
       resultsQuery.textContent = `"${query}"`;
 
       items.forEach((item, index) => {
-        // La estructura de yt-search es más directa
         const videoId = item.videoId;
         if (!videoId) return;
 
@@ -228,7 +243,6 @@
 
       resultsSection.style.display = 'block';
 
-      // Añadir listeners a los botones "Añadir"
       resultsList.querySelectorAll('.btn-add').forEach(btn => {
         btn.addEventListener('click', () => manejarAgregarCancion(btn));
       });
@@ -280,7 +294,7 @@
     });
 
     // ─────────────────────────────────────────────────────────
-    //  COLA EN VIVO (vista resumida en el cliente)
+    //  COLA EN VIVO (vista resumida)
     // ─────────────────────────────────────────────────────────
     function actualizarColaEnVivo(cola) {
       if (!cola || cola.length === 0) {
@@ -335,13 +349,36 @@
     }
 
     // ─────────────────────────────────────────────────────────
-    //  EVENT LISTENERS DE BÚSQUEDA
+    //  EVENT LISTENERS DE BÚSQUEDA (SÚPER ÁGIL)
     // ─────────────────────────────────────────────────────────
-    btnBuscar.addEventListener('click', () => buscarVideos(inputBuscar.value));
+    let timerBusqueda = null;
+
+    // Buscar automáticamente mientras el usuario escribe
+    inputBuscar.addEventListener('input', (e) => {
+      clearTimeout(timerBusqueda);
+      const query = e.target.value.trim();
+
+      if (query.length === 0) {
+        ocultarResultados();
+        return;
+      }
+
+      if (query.length >= 3) {
+        timerBusqueda = setTimeout(() => {
+          buscarVideos(query);
+        }, 700); // 700ms de espera antes de autocompletar la búsqueda
+      }
+    });
+
+    btnBuscar.addEventListener('click', () => {
+      clearTimeout(timerBusqueda);
+      buscarVideos(inputBuscar.value);
+    });
 
     inputBuscar.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
+        clearTimeout(timerBusqueda);
         buscarVideos(inputBuscar.value);
       }
     });
