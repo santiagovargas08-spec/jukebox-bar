@@ -12,10 +12,11 @@
   <link rel="stylesheet" href="style.css">
   
   <style>
-    /* Estilos específicos para darle un tono Cyberpunk Magenta de Administrador */
+    /* 🎨 Tema Cyberpunk Cian para el Administrador */
     :root {
-      --neon-admin: #ff0055;
-      --neon-admin-glow: rgba(255, 0, 85, 0.5);
+      --neon-admin: #00f0ff; /* Neón Cian Principal */
+      --neon-admin-glow: rgba(0, 240, 255, 0.5);
+      --neon-danger: #ff0055; /* Rojo para acciones destructivas */
     }
     body.admin-body {
       background-color: #050508;
@@ -42,7 +43,7 @@
     
     .panel-section {
       background: rgba(15, 15, 25, 0.8);
-      border: 1px solid rgba(255, 0, 85, 0.2);
+      border: 1px solid rgba(0, 240, 255, 0.2);
       border-radius: 12px;
       padding: 20px;
       margin-bottom: 20px;
@@ -62,7 +63,7 @@
       display: flex;
       align-items: center;
       gap: 15px;
-      background: rgba(255, 0, 85, 0.05);
+      background: rgba(0, 240, 255, 0.05);
       padding: 15px;
       border-radius: 8px;
       border-left: 4px solid var(--neon-admin);
@@ -77,7 +78,7 @@
     .track-title { font-size: 1.2rem; font-weight: bold; color: #fff; }
     .track-author { color: #8a8a9e; font-size: 0.9rem; }
     
-    /* Botones */
+    /* Botones y Buscador */
     .btn-admin {
       background: transparent;
       border: 1px solid var(--neon-admin);
@@ -92,14 +93,58 @@
     }
     .btn-admin:hover {
       background: var(--neon-admin);
+      color: #000;
       box-shadow: 0 0 12px var(--neon-admin-glow);
     }
+    
+    /* Botones Peligrosos (Rojos) */
     .btn-danger-zone {
       background: rgba(255, 0, 85, 0.1);
+      border: 1px solid var(--neon-danger);
+      color: var(--neon-danger);
       width: 100%;
     }
+    .btn-danger-zone:hover {
+      background: var(--neon-danger);
+      color: #fff;
+      box-shadow: 0 0 12px rgba(255, 0, 85, 0.5);
+    }
+    .btn-delete-item {
+      background: #3a0d1a;
+      border: 1px solid var(--neon-danger);
+      color: #ff99bb;
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.8rem;
+    }
+    .btn-delete-item:hover {
+      background: var(--neon-danger);
+      color: #fff;
+    }
+
+    /* Buscador Admin */
+    .admin-search-box {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    .admin-input {
+      flex: 1;
+      padding: 10px 15px;
+      background: #0a0a0f;
+      border: 1px solid var(--neon-admin);
+      color: #fff;
+      border-radius: 6px;
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 1rem;
+      outline: none;
+    }
+    .admin-input:focus {
+      box-shadow: 0 0 8px var(--neon-admin-glow);
+    }
     
-    /* Lista de la cola */
+    /* Listas */
     .admin-queue-list {
       display: flex;
       flex-direction: column;
@@ -112,20 +157,7 @@
       background: #11111e;
       padding: 12px;
       border-radius: 6px;
-      border: 1px solid rgba(255,255,255,0.05);
-    }
-    .btn-delete-item {
-      background: #3a0d1a;
-      border: 1px solid #ff0055;
-      color: #ff99bb;
-      padding: 5px 10px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 0.8rem;
-    }
-    .btn-delete-item:hover {
-      background: #ff0055;
-      color: #fff;
+      border: 1px solid rgba(0, 240, 255, 0.1);
     }
     .empty-msg { color: #666; text-align: center; padding: 20px; }
   </style>
@@ -134,7 +166,7 @@
 
   <header class="admin-header">
     <h1 class="admin-title">GENESIS <span>CONTROL PANEL</span></h1>
-    <p style="color: #666; margin: 5px 0 0 0;">Moderación y Control en Tiempo Real</p>
+    <p style="color: #666; margin: 5px 0 0 0;">Moderación y DJ en Tiempo Real</p>
   </header>
 
   <section class="panel-section">
@@ -144,10 +176,13 @@
   </section>
 
   <section class="panel-section">
-    <h2 class="section-title">🚨 Zona de Peligro</h2>
-    <button class="btn-admin btn-danger-zone" id="btn-vaciar">
-      💥 Vaciar toda la fila de canciones
-    </button>
+    <h2 class="section-title">💿 Agregar Canción (DJ)</h2>
+    <div class="admin-search-box">
+      <input type="text" id="input-buscar-admin" class="admin-input" placeholder="Buscar artista, canción...">
+      <button class="btn-admin" id="btn-buscar-admin">🔍 Buscar</button>
+    </div>
+    <div class="admin-queue-list" id="admin-results">
+      </div>
   </section>
 
   <section class="panel-section">
@@ -156,11 +191,18 @@
       </div>
   </section>
 
+  <section class="panel-section">
+    <h2 class="section-title" style="color: var(--neon-danger);">🚨 Zona de Peligro</h2>
+    <button class="btn-danger-zone" id="btn-vaciar">
+      💥 Vaciar toda la fila de canciones
+    </button>
+  </section>
+
   <script src="/socket.io/socket.io.js"></script>
   <script>
     'use strict';
 
-    // 🔒 SEGURIDAD BÁSICA: Contraseña para entrar al panel
+    // 🔒 SEGURIDAD BÁSICA
     const password = prompt("Introduce la contraseña de administrador de GENESIS 2.0:");
     if (password === "genesis123") {
       document.getElementById('body-panel').style.display = 'block';
@@ -176,8 +218,14 @@
     const listaCola        = document.getElementById('lista-cola');
     const countCola        = document.getElementById('count-cola');
     const btnVaciar        = document.getElementById('btn-vaciar');
+    
+    const inputBuscarAdmin = document.getElementById('input-buscar-admin');
+    const btnBuscarAdmin   = document.getElementById('btn-buscar-admin');
+    const adminResults     = document.getElementById('admin-results');
 
-    // ESCUCHAR ESTADOS DEL SERVIDOR
+    // ─────────────────────────────────────────────────────────
+    //  ESCUCHAR ESTADOS DEL SERVIDOR
+    // ─────────────────────────────────────────────────────────
     socket.on('estado_inicial', (data) => actualizarPanel(data));
     socket.on('cola_actualizada', (data) => actualizarPanel(data));
 
@@ -189,7 +237,7 @@
             <img class="admin-thumb" src="${reproduciendo.thumbnail || '🎵'}" onerror="this.style.display='none'">
             <div class="track-details">
               <div class="track-title">${escapeHtml(reproduciendo.titulo)}</div>
-              <div class="track-author">Pedida por: <strong>${escapeHtml(reproduciendo.nombre)}</strong> · Fila: ${reproduciendo.timestamp}</div>
+              <div class="track-author">Pedida por: <strong style="color:var(--neon-admin);">${escapeHtml(reproduciendo.nombre)}</strong> · Fila: ${reproduciendo.timestamp}</div>
             </div>
             <button class="btn-admin" id="btn-saltar">⏭️ Saltar</button>
           </div>
@@ -212,13 +260,13 @@
         <div class="admin-queue-item">
           <div style="flex:1; padding-right:10px;">
             <div style="font-weight:bold; font-size:1rem;">${index + 1}. ${escapeHtml(c.titulo)}</div>
-            <div style="color:#666; font-size:0.85rem;">📍 Mesa/Nombre: ${escapeHtml(c.nombre)} · ${c.timestamp}</div>
+            <div style="color:#666; font-size:0.85rem;">📍 Mesa/Nombre: <span style="${c.nombre === '👑 DJ / Admin' ? 'color:var(--neon-admin);' : ''}">${escapeHtml(c.nombre)}</span> · ${c.timestamp}</div>
           </div>
           <button class="btn-delete-item" data-id="${c.id}">❌ Eliminar</button>
         </div>
       `).join('');
 
-      // Asignar eventos para borrar canciones individuales
+      // Eventos para borrar canciones
       listaCola.querySelectorAll('.btn-delete-item').forEach(btn => {
         btn.addEventListener('click', () => {
           const id = btn.dataset.id;
@@ -227,7 +275,71 @@
       });
     }
 
-    // EVENTO VACIAR COLA COMPLETA
+    // ─────────────────────────────────────────────────────────
+    //  BUSCADOR DEL DJ
+    // ─────────────────────────────────────────────────────────
+    btnBuscarAdmin.addEventListener('click', () => {
+      const q = inputBuscarAdmin.value.trim();
+      if (q) {
+        adminResults.innerHTML = '<div class="empty-msg">Buscando en YouTube... ⏳</div>';
+        socket.emit('buscar_canciones', q);
+      }
+    });
+
+    inputBuscarAdmin.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') btnBuscarAdmin.click();
+    });
+
+    // Recibir resultados del buscador
+    socket.on('resultados_busqueda', ({ items }) => {
+      // Solo mostramos si el admin buscó algo recientemente (para no cruzarnos con búsquedas de clientes)
+      if (document.activeElement === inputBuscarAdmin || inputBuscarAdmin.value !== '') {
+        if (!items || items.length === 0) {
+          adminResults.innerHTML = '<div class="empty-msg">Sin resultados.</div>';
+          return;
+        }
+
+        adminResults.innerHTML = items.slice(0, 5).map((item) => `
+          <div class="admin-queue-item">
+            <img class="admin-thumb" src="${item.thumbnail}" onerror="this.style.display='none'">
+            <div style="flex:1; padding-right:10px;">
+              <div style="font-weight:bold; font-size:0.9rem;">${escapeHtml(item.title)}</div>
+            </div>
+            <button class="btn-admin btn-add-dj" 
+              data-id="${escapeHtml(item.videoId)}" 
+              data-title="${escapeHtml(item.title)}" 
+              data-thumb="${escapeHtml(item.thumbnail)}">
+              ➕ Añadir
+            </button>
+          </div>
+        `).join('');
+
+        // Eventos para añadir la canción como DJ
+        adminResults.querySelectorAll('.btn-add-dj').forEach(btn => {
+          btn.addEventListener('click', () => {
+            socket.emit('agregar_cancion', {
+              videoId:   btn.dataset.id,
+              titulo:    btn.dataset.title,
+              nombre:    '👑 DJ / Admin', // Identificador destacado
+              thumbnail: btn.dataset.thumb
+            });
+            
+            adminResults.innerHTML = `<div class="empty-msg" style="color:var(--neon-admin);">¡Canción añadida a la fila con éxito! 🎵</div>`;
+            inputBuscarAdmin.value = '';
+          });
+        });
+      }
+    });
+
+    socket.on('error_busqueda', () => {
+      if (inputBuscarAdmin.value !== '') {
+        adminResults.innerHTML = '<div class="empty-msg" style="color:var(--neon-danger);">Error en la búsqueda.</div>';
+      }
+    });
+
+    // ─────────────────────────────────────────────────────────
+    //  VACIAR COLA COMPLETA
+    // ─────────────────────────────────────────────────────────
     btnVaciar.addEventListener('click', () => {
       if (confirm("¿Estás seguro de que quieres borrar TODAS las canciones de la lista de espera?")) {
         socket.emit('admin_vaciar_cola');
