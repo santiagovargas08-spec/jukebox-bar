@@ -144,7 +144,7 @@
       box-shadow: 0 0 8px var(--neon-admin-glow);
     }
     
-    /* Listas */
+    /* Listas y Drag & Drop */
     .admin-queue-list {
       display: flex;
       flex-direction: column;
@@ -158,7 +158,28 @@
       padding: 12px;
       border-radius: 6px;
       border: 1px solid rgba(0, 240, 255, 0.1);
+      transition: background 0.2s ease;
     }
+    
+    /* ✨ Clases para Drag and Drop */
+    .drag-handle {
+      cursor: grab;
+      font-size: 1.5rem;
+      color: rgba(0, 240, 255, 0.4);
+      margin-right: 15px;
+      padding: 0 5px;
+      user-select: none;
+    }
+    .drag-handle:active {
+      cursor: grabbing;
+      color: var(--neon-admin);
+    }
+    .admin-queue-item.dragging {
+      opacity: 0.5;
+      border: 1px dashed var(--neon-admin);
+      background: rgba(0, 240, 255, 0.05);
+    }
+    
     .empty-msg { color: #666; text-align: center; padding: 20px; }
   </style>
 </head>
@@ -255,13 +276,15 @@
         return;
       }
 
+      // ✨ Añadido draggable y drag-handle para reordenar
       listaCola.innerHTML = cola.map((c, index) => `
-        <div class="admin-queue-item">
+        <div class="admin-queue-item" draggable="true" data-id="${c.id}">
+          <div class="drag-handle" title="Arrastrar para mover">☰</div>
           <div style="flex:1; padding-right:10px;">
             <div style="font-weight:bold; font-size:1rem;">${index + 1}. ${escapeHtml(c.titulo)}</div>
             <div style="color:#666; font-size:0.85rem;">📍 Mesa/Nombre: <span style="${c.nombre === '👑 DJ / Admin' ? 'color:var(--neon-admin);' : ''}">${escapeHtml(c.nombre)}</span> · ${c.timestamp}</div>
           </div>
-          <button class="btn-delete-item" data-id="${c.id}">❌ Eliminar</button>
+          <button class="btn-delete-item" data-id="${c.id}">❌</button>
         </div>
       `).join('');
 
@@ -272,6 +295,60 @@
           socket.emit('admin_eliminar_cancion', id);
         });
       });
+
+      // 🔥 Inicializamos los eventos de Drag & Drop
+      configurarDragAndDrop();
+    }
+
+    // ─────────────────────────────────────────────────────────
+    //  MAGIA DRAG & DROP
+    // ─────────────────────────────────────────────────────────
+    let elementoArrastrado = null;
+
+    function configurarDragAndDrop() {
+      const items = document.querySelectorAll('#lista-cola .admin-queue-item');
+
+      items.forEach(item => {
+        item.addEventListener('dragstart', (e) => {
+          elementoArrastrado = item;
+          item.classList.add('dragging');
+          e.dataTransfer.effectAllowed = 'move';
+        });
+
+        item.addEventListener('dragend', () => {
+          item.classList.remove('dragging');
+          elementoArrastrado = null;
+          
+          // Al soltar, enviamos el nuevo orden al servidor
+          enviarNuevoOrdenAlServidor();
+        });
+
+        item.addEventListener('dragover', (e) => {
+          e.preventDefault(); // Necesario para permitir soltar (drop)
+          const elementoActivo = document.querySelector('.dragging');
+          if (!elementoActivo || elementoActivo === item) return;
+
+          // Determinar si soltamos arriba o abajo del elemento
+          const rect = item.getBoundingClientRect();
+          const offset = e.clientY - rect.top - (rect.height / 2);
+          
+          if (offset > 0) {
+            item.parentNode.insertBefore(elementoActivo, item.nextSibling);
+          } else {
+            item.parentNode.insertBefore(elementoActivo, item);
+          }
+        });
+      });
+    }
+
+    function enviarNuevoOrdenAlServidor() {
+      // Obtenemos todos los IDs (c.id) de las tarjetas en su nuevo orden visual
+      const nuevoOrdenIds = Array.from(document.querySelectorAll('#lista-cola .admin-queue-item'))
+                                 .map(item => item.dataset.id);
+      
+      // Emitimos el evento. NOTA: Tu backend en Node.js debe escuchar 'reordenar_cola'
+      // y organizar su array interno según este nuevo orden de IDs.
+      socket.emit('reordenar_cola', nuevoOrdenIds);
     }
 
     // ─────────────────────────────────────────────────────────
@@ -291,7 +368,6 @@
 
     // Recibir resultados del buscador
     socket.on('resultados_busqueda', ({ items }) => {
-      // Solo mostramos si el admin buscó algo recientemente (para no cruzarnos con búsquedas de clientes)
       if (document.activeElement === inputBuscarAdmin || inputBuscarAdmin.value !== '') {
         if (!items || items.length === 0) {
           adminResults.innerHTML = '<div class="empty-msg">Sin resultados.</div>';
@@ -319,7 +395,7 @@
             socket.emit('agregar_cancion', {
               videoId:   btn.dataset.id,
               titulo:    btn.dataset.title,
-              nombre:    '👑 DJ / Admin', // Identificador destacado
+              nombre:    '👑 DJ / Admin', 
               thumbnail: btn.dataset.thumb
             });
             
