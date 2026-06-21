@@ -7,32 +7,41 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="style.css">
 
   <style>
-    /* ─── Estilos limpios para el contenedor del video ─────────── */
+    /* ─── Estilos adicionales específicos de bar.html ─────────── */
+
+    /* ELEVAR EL VIDEO: Lo mantenemos en una capa alta y limpia de filtros */
     .video-wrapper {
       position: relative;
-      border-radius: 12px; /* Bordes más suaves y modernos */
+      z-index: 999999 !important; 
+      box-shadow: none !important; 
+      border-radius: 8px;
       overflow: hidden;
       background: #000;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.5); /* Sombra elegante, no brillante */
     }
 
+    /* Asegurar que el reproductor y el iframe no tengan filtros de color o mezcla */
     .video-wrapper > div,
     #youtube-player {
       position: absolute !important;
       inset: 0 !important;
       width: 100% !important;
       height: 100% !important;
+      filter: none !important;
+      mix-blend-mode: normal !important;
+      opacity: 1 !important;
+      z-index: 999999 !important; 
     }
 
     #youtube-player iframe {
       width: 100% !important;
       height: 100% !important;
       border: none !important;
+      filter: none !important; 
     }
   </style>
 </head>
@@ -50,7 +59,7 @@
 
         <div class="idle-screen" id="idle-screen">
           <div class="idle-icon">🎵</div>
-          <div class="idle-text">GENESIS 2.0</div>
+          <div class="idle-text">Jukebox Digital</div>
           <div class="idle-sub">Escanea el QR y pide tu canción</div>
         </div>
 
@@ -68,16 +77,17 @@
     <div class="panel-info">
 
       <div class="bar-logo-section">
-        <img src="GENESIS 2.0.png" alt="Logo de Genesis" class="bar-logo-img">
-        <div class="logo-text">
-          GENESIS <span style="color: #1DB954;">2.0</span> </div>
+        <img src="GENESIS 2.0.png" alt="Logo del bar Genesis" class="bar-logo-img" style="filter: drop-shadow(0 0 15px #00f0ff);">
+        <div class="logo-text" style="margin-top: 10px;">
+          GENESIS<span style="color: #00f0ff; text-shadow: 0 0 10px #00f0ff;">2.0</span>
+        </div>
       </div>
 
-      <div class="clean-divider"></div>
+      <div class="neon-divider"></div>
 
       <div class="queue-section">
         <h3 class="section-title">
-          PRÓXIMAS EN FILA
+          <span class="neon-dot">◆</span> PRÓXIMAS EN FILA
         </h3>
         <div class="queue-list" id="queue-list">
           <div class="queue-empty" id="queue-empty">
@@ -91,7 +101,8 @@
         <div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; padding: 10px 0;">
           <img src="qr-genesis.png" alt="QR del Bar" class="bar-qr-img">
           <div class="qr-text">
-            <strong style="font-size: 1.2rem; color: #fff;">¡PIDE TU CANCIÓN!</strong>
+            <strong style="font-size: 1.2rem; color: #00f0ff; text-shadow: 0 0 10px rgba(0, 240, 255, 0.8);">¡PIDE TU CANCIÓN!</strong>
+            <br>
           </div>
         </div>
       </div>
@@ -116,16 +127,26 @@
   <script>
     'use strict';
 
+    // ─────────────────────────────────────────────────────────
+    //  ESTADO LOCAL
+    // ─────────────────────────────────────────────────────────
     let player       = null;  
     let playerReady  = false;  
     let pendingVideo = null;   
     let notifTimer   = null;   
+
+    // ✨ VARIABLES PARA AUTO-DJ
     let lastVideoId  = null;   
     let isAutoDJ     = false;  
 
+    // ─────────────────────────────────────────────────────────
+    //  SOCKET.IO — Conexión al servidor Node.js
+    // ─────────────────────────────────────────────────────────
     const socket = io({ reconnectionDelay: 1000 });
 
+    // ── Recibir estado inicial (conexión o reconexión) ────────
     socket.on('estado_inicial', ({ cola, reproduciendo }) => {
+      console.log('[Socket] Estado inicial → cola:', cola.length, '| reproduciendo:', reproduciendo?.titulo ?? 'nada');
       actualizarCola(cola);
       if (reproduciendo) {
         cargarVideo(reproduciendo);
@@ -134,11 +155,15 @@
       }
     });
 
+    // ── Cola actualizada ──────────────────────────────────────
     socket.on('cola_actualizada', ({ cola, reproduciendo }) => {
       actualizarCola(cola);
+
       if (reproduciendo) {
         actualizarNowPlayingBar(reproduciendo);
       }
+
+      // ✨ MAGIA AUTO-DJ: Si no hay canción reproduciendo (fila vacía)
       if (!reproduciendo) {
         if (lastVideoId && !isAutoDJ) {
           iniciarAutoDJ();
@@ -149,32 +174,48 @@
       }
     });
 
+    // ── Comenzar a reproducir una canción nueva ───────────────
     socket.on('nueva_reproduccion', (cancion) => {
+      console.log('[Socket] Nueva reproducción:', cancion?.titulo);
       isAutoDJ = false;
       cargarVideo(cancion);
       mostrarNotificacion(cancion);
     });
 
+    // ── Reconexión: pedir estado actualizado ──────────────────
     socket.on('reconnect', () => {
+      console.log('[Socket] Reconectado — solicitando estado');
       socket.emit('solicitar_estado');
     });
 
+    // ─────────────────────────────────────────────────────────
+    //  YOUTUBE IFRAME API
+    // ─────────────────────────────────────────────────────────
     window.onYouTubeIframeAPIReady = function () {
+      console.log('[YT] IFrame API cargada — creando player');
       player = new YT.Player('youtube-player', {
         height: '100%',
         width:  '100%',
         playerVars: {
-          autoplay: 1, controls: 1, rel: 0, modestbranding: 1, iv_load_policy: 3, fs: 0, playsinline: 1, enablejsapi: 1    
+          autoplay:         1,   
+          controls:         1,   
+          rel:              0,   
+          modestbranding:   1,   
+          iv_load_policy:   3,   
+          fs:               0,   
+          playsinline:      1,   
+          enablejsapi:      1    
         },
         events: {
-          onReady: onPlayerReady,
+          onReady:       onPlayerReady,
           onStateChange: onPlayerStateChange,
-          onError: onPlayerError
+          onError:       onPlayerError
         }
       });
     };
 
     function onPlayerReady(event) {
+      console.log('[YT] Player listo para recibir comandos');
       playerReady = true;
       if (pendingVideo) {
         cargarVideo(pendingVideo);
@@ -185,31 +226,51 @@
     function onPlayerStateChange(event) {
       switch (event.data) {
         case YT.PlayerState.ENDED:
-          if (!isAutoDJ) socket.emit('siguiente_cancion');
+          if (!isAutoDJ) {
+            console.log('[YT] Video de cliente terminado → siguiente_cancion');
+            socket.emit('siguiente_cancion');
+          }
           break;
+          
         case YT.PlayerState.PLAYING:
           mostrarIdleScreen(false);
           if (isAutoDJ && player.getVideoData) {
             const videoData = player.getVideoData();
             if (videoData && videoData.title) {
-              actualizarNowPlayingBar({ titulo: videoData.title, nombre: '🔥 Auto-DJ (YouTube Mix)' });
+              actualizarNowPlayingBar({
+                titulo: videoData.title,
+                nombre: '🔥 Auto-DJ (YouTube Mix)'
+              });
             }
           }
+          break;
+          
+        case YT.PlayerState.PAUSED:
+          console.log('[YT] Video en pausa');
           break;
       }
     }
 
     function onPlayerError(event) {
+      console.error('[YT] Error del player, código:', event.data);
       setTimeout(() => socket.emit('siguiente_cancion'), 2000);
     }
 
+    // ─────────────────────────────────────────────────────────
+    //  FUNCIONES DE REPRODUCCIÓN
+    // ─────────────────────────────────────────────────────────
+
     function cargarVideo(cancion) {
       if (!cancion) return;
+
       if (!playerReady || !player || typeof player.loadVideoById !== 'function') {
         pendingVideo = cancion;
         return;
       }
+
       lastVideoId = cancion.videoId;
+
+      console.log('[YT] Cargando video:', cancion.videoId, '—', cancion.titulo);
       player.loadVideoById({ videoId: cancion.videoId });
       actualizarNowPlayingBar(cancion);
       mostrarIdleScreen(false);
@@ -217,10 +278,20 @@
 
     function iniciarAutoDJ() {
       if (!playerReady || !player) return;
+
+      console.log('[Auto-DJ] Iniciando mix infinito basado en:', lastVideoId);
       isAutoDJ = true;
       mostrarIdleScreen(false);
-      player.loadPlaylist({ list: 'RD' + lastVideoId, listType: 'playlist' });
-      actualizarNowPlayingBar({ titulo: 'Cargando selección musical...', nombre: '🔥 Auto-DJ' });
+
+      player.loadPlaylist({
+        list: 'RD' + lastVideoId,
+        listType: 'playlist'
+      });
+
+      actualizarNowPlayingBar({
+        titulo: 'Cargando selección musical...',
+        nombre: '🔥 Auto-DJ'
+      });
     }
 
     function mostrarIdleScreen(visible) {
@@ -228,6 +299,9 @@
       if (el) el.style.display = visible ? 'flex' : 'none';
     }
 
+    // ─────────────────────────────────────────────────────────
+    //  ACTUALIZAR BARRA "REPRODUCIENDO"
+    // ─────────────────────────────────────────────────────────
     function actualizarNowPlayingBar(cancion) {
       const tituloEl = document.getElementById('np-titulo');
       const nombreEl = document.getElementById('np-nombre');
@@ -244,6 +318,9 @@
       sepEl.style.display  = 'inline';
     }
 
+    // ─────────────────────────────────────────────────────────
+    //  ACTUALIZAR LISTA DE LA COLA (máx. 4 canciones)
+    // ─────────────────────────────────────────────────────────
     function actualizarCola(cola) {
       const listEl  = document.getElementById('queue-list');
       const emptyEl = document.getElementById('queue-empty');
@@ -260,7 +337,8 @@
       cola.slice(0, 4).forEach((cancion, index) => {
         const item = document.createElement('div');
         item.className = 'queue-item';
-        
+        item.style.animationDelay = `${index * 0.08}s`;
+
         const thumbHtml = cancion.thumbnail
           ? `<img class="queue-thumb" src="${escapeHtml(cancion.thumbnail)}" alt="" loading="lazy" onerror="this.style.display='none'">`
           : `<div class="queue-thumb-placeholder">🎵</div>`;
@@ -270,15 +348,19 @@
           ${thumbHtml}
           <div class="queue-details">
             <div class="queue-song-title">${escapeHtml(cancion.titulo)}</div>
-            <div class="queue-song-who">${escapeHtml(cancion.nombre)}</div>
+            <div class="queue-song-who">${escapeHtml(cancion.nombre)} · ${escapeHtml(cancion.timestamp)}</div>
           </div>
         `;
         listEl.appendChild(item);
       });
     }
 
+    // ─────────────────────────────────────────────────────────
+    //  BANNER DE NOTIFICACIÓN ANIMADO
+    // ─────────────────────────────────────────────────────────
     function mostrarNotificacion(cancion) {
       if (!cancion) return;
+
       const banner   = document.getElementById('notification-banner');
       const songName = document.getElementById('notif-song-name');
       const quien    = document.getElementById('notif-quien');
@@ -297,6 +379,9 @@
       }, 5000);
     }
 
+    // ─────────────────────────────────────────────────────────
+    //  UTILIDAD: Escapar HTML para prevenir XSS
+    // ─────────────────────────────────────────────────────────
     function escapeHtml(str) {
       if (!str) return '';
       return String(str)
