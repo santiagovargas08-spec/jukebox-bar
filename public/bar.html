@@ -14,17 +14,22 @@
   <style>
     /* ─── Estilos adicionales específicos de bar.html ─────────── */
 
-    /* Aislar el contenedor del video de cualquier efecto del body o scanlines */
+    /* 1. DOMAR LAS SCANLINES: Le bajamos la prioridad para que se queden en el fondo */
+    .scanlines {
+      z-index: 9000 !important; 
+    }
+
+    /* 2. ELEVAR EL VIDEO: Lo mandamos a la capa más alta posible (Nivel Dios) */
     .video-wrapper {
       position: relative;
-      z-index: 9998 !important; 
+      z-index: 999999 !important; 
       box-shadow: none !important; 
       border-radius: 8px;
       overflow: hidden;
-      background: #000; /* Fondo negro puro por si el video no ocupa todo el ancho */
+      background: #000;
     }
 
-    /* Asegurar que el IFrame de YouTube ocupe todo el wrapper y esté limpio */
+    /* Asegurar que el reproductor y el iframe no tengan filtros */
     .video-wrapper > div,
     #youtube-player {
       position: absolute !important;
@@ -34,7 +39,7 @@
       filter: none !important;
       mix-blend-mode: normal !important;
       opacity: 1 !important;
-      z-index: 9999 !important;
+      z-index: 999999 !important; 
     }
 
     #youtube-player iframe {
@@ -132,14 +137,14 @@
     // ─────────────────────────────────────────────────────────
     //  ESTADO LOCAL
     // ─────────────────────────────────────────────────────────
-    let player       = null;  // Instancia de YT.Player
-    let playerReady  = false;  // ¿El IFrame API está listo para recibir comandos?
-    let pendingVideo = null;   // Video guardado si llegó antes de que el player cargara
-    let notifTimer   = null;   // Referencia al timer de auto-ocultar notificación
+    let player       = null;  
+    let playerReady  = false;  
+    let pendingVideo = null;   
+    let notifTimer   = null;   
 
     // ✨ VARIABLES PARA AUTO-DJ
-    let lastVideoId  = null;   // Guarda el ID de la última canción real para crear el Mix
-    let isAutoDJ     = false;  // Bandera para saber si el algoritmo está al mando
+    let lastVideoId  = null;   
+    let isAutoDJ     = false;  
 
     // ─────────────────────────────────────────────────────────
     //  SOCKET.IO — Conexión al servidor Node.js
@@ -168,10 +173,8 @@
       // ✨ MAGIA AUTO-DJ: Si no hay canción reproduciendo (fila vacía)
       if (!reproduciendo) {
         if (lastVideoId && !isAutoDJ) {
-          // Tenemos una referencia anterior, iniciamos la radio
           iniciarAutoDJ();
         } else if (!lastVideoId && !isAutoDJ) {
-          // No hay referencia (bar recién abierto), mostramos idle
           actualizarNowPlayingBar(null);
           mostrarIdleScreen(true);
         }
@@ -181,7 +184,6 @@
     // ── Comenzar a reproducir una canción nueva ───────────────
     socket.on('nueva_reproduccion', (cancion) => {
       console.log('[Socket] Nueva reproducción:', cancion?.titulo);
-      // ✨ INTERRUPCIÓN: Apagamos Auto-DJ porque un cliente pidió canción
       isAutoDJ = false;
       cargarVideo(cancion);
       mostrarNotificacion(cancion);
@@ -219,7 +221,6 @@
       });
     };
 
-    // ── Player listo ──────────────────────────────────────────
     function onPlayerReady(event) {
       console.log('[YT] Player listo para recibir comandos');
       playerReady = true;
@@ -229,12 +230,10 @@
       }
     }
 
-    // ── Cambio de estado del player ───────────────────────────
     function onPlayerStateChange(event) {
       switch (event.data) {
         case YT.PlayerState.ENDED:
           if (!isAutoDJ) {
-            // Video de cliente terminó → informar al servidor para avanzar la cola
             console.log('[YT] Video de cliente terminado → siguiente_cancion');
             socket.emit('siguiente_cancion');
           }
@@ -242,7 +241,6 @@
           
         case YT.PlayerState.PLAYING:
           mostrarIdleScreen(false);
-          // Actualizamos el título visual si el Auto-DJ está pasando de canción
           if (isAutoDJ && player.getVideoData) {
             const videoData = player.getVideoData();
             if (videoData && videoData.title) {
@@ -260,7 +258,6 @@
       }
     }
 
-    // ── Error en el player ────────────────────────────────────
     function onPlayerError(event) {
       console.error('[YT] Error del player, código:', event.data);
       setTimeout(() => socket.emit('siguiente_cancion'), 2000);
@@ -270,7 +267,6 @@
     //  FUNCIONES DE REPRODUCCIÓN
     // ─────────────────────────────────────────────────────────
 
-    // Cargar un video en el player de YouTube
     function cargarVideo(cancion) {
       if (!cancion) return;
 
@@ -279,7 +275,6 @@
         return;
       }
 
-      // Guardamos el ID para que el Auto-DJ lo use de base en el futuro
       lastVideoId = cancion.videoId;
 
       console.log('[YT] Cargando video:', cancion.videoId, '—', cancion.titulo);
@@ -288,7 +283,6 @@
       mostrarIdleScreen(false);
     }
 
-    // Iniciar el Mix Automático (Auto-DJ)
     function iniciarAutoDJ() {
       if (!playerReady || !player) return;
 
@@ -307,7 +301,6 @@
       });
     }
 
-    // Mostrar u ocultar la pantalla de espera
     function mostrarIdleScreen(visible) {
       const el = document.getElementById('idle-screen');
       if (el) el.style.display = visible ? 'flex' : 'none';
