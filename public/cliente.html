@@ -143,6 +143,14 @@
     // ─────────────────────────────────────────────────────────
     const socket = io({ reconnectionDelay: 1000 });
 
+    // 🧠 MAGIA LOCALSTORAGE: Recuperar nombre apenas carga la página
+    window.addEventListener('DOMContentLoaded', () => {
+      const nombreGuardado = localStorage.getItem('genesis_cliente_nombre');
+      if (nombreGuardado) {
+        inputNombre.value = nombreGuardado;
+      }
+    });
+
     socket.on('estado_inicial', ({ cola }) => actualizarColaEnVivo(cola));
     socket.on('cola_actualizada', ({ cola }) => actualizarColaEnVivo(cola));
     socket.on('cancion_confirmada', ({ titulo }) => mostrarExito(titulo));
@@ -262,6 +270,9 @@
         mostrarError('⚠️ Escribe tu nombre o número de mesa primero.');
         return;
       }
+
+      // 🧠 MAGIA LOCALSTORAGE: Guardar/Actualizar el nombre en el celular
+      localStorage.setItem('genesis_cliente_nombre', nombre);
 
       const cancion = {
         videoId:   btn.dataset.videoId,
