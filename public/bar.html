@@ -14,18 +14,34 @@
   <style>
     /* ─── Estilos adicionales específicos de bar.html ─────────── */
 
-    /* Asegurar que el IFrame de YouTube ocupe todo el wrapper */
+    /* Aislar el contenedor del video de cualquier efecto del body o scanlines */
+    .video-wrapper {
+      position: relative;
+      z-index: 9998 !important; 
+      box-shadow: none !important; 
+      border-radius: 8px;
+      overflow: hidden;
+      background: #000; /* Fondo negro puro por si el video no ocupa todo el ancho */
+    }
+
+    /* Asegurar que el IFrame de YouTube ocupe todo el wrapper y esté limpio */
     .video-wrapper > div,
     #youtube-player {
       position: absolute !important;
       inset: 0 !important;
       width: 100% !important;
       height: 100% !important;
+      filter: none !important;
+      mix-blend-mode: normal !important;
+      opacity: 1 !important;
+      z-index: 9999 !important;
     }
 
     #youtube-player iframe {
       width: 100% !important;
       height: 100% !important;
+      border: none !important;
+      filter: none !important; 
     }
   </style>
 </head>
@@ -116,7 +132,7 @@
     // ─────────────────────────────────────────────────────────
     //  ESTADO LOCAL
     // ─────────────────────────────────────────────────────────
-    let player       = null;   // Instancia de YT.Player
+    let player       = null;  // Instancia de YT.Player
     let playerReady  = false;  // ¿El IFrame API está listo para recibir comandos?
     let pendingVideo = null;   // Video guardado si llegó antes de que el player cargara
     let notifTimer   = null;   // Referencia al timer de auto-ocultar notificación
