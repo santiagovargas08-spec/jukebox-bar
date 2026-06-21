@@ -2,275 +2,393 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>⚡ GENESIS 2.0 — Pide tu canción</title>
-  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0a0a0f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>🎵 GENESIS 2.0 Pide tu cancion</title>
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
-  
-  <style>
-    /* 🎨 Tema Cyberpunk Cian (GENESIS 2.0) */
-    :root {
-      --neon-cyan: #00f0ff;
-      --neon-glow: rgba(0, 240, 255, 0.5);
-      --bg-dark: #050508;
-      --panel-bg: rgba(15, 15, 25, 0.8);
-    }
-    
-    body {
-      background-color: var(--bg-dark);
-      font-family: 'Rajdhani', sans-serif;
-      color: #fff;
-      padding: 15px;
-      max-width: 500px;
-      margin: 0 auto;
-    }
-    
-    .header {
-      text-align: center;
-      margin-bottom: 20px;
-      border-bottom: 1px dashed var(--neon-cyan);
-      padding-bottom: 15px;
-    }
-    
-    .logo-text {
-      font-family: 'Orbitron', sans-serif;
-      font-size: 2.2rem;
-      color: #fff;
-      text-shadow: 0 0 10px var(--neon-glow);
-      margin: 0;
-      letter-spacing: 2px;
-    }
-    .logo-text span { color: var(--neon-cyan); }
-    
-    .panel {
-      background: var(--panel-bg);
-      border: 1px solid rgba(0, 240, 255, 0.2);
-      border-radius: 12px;
-      padding: 15px;
-      margin-bottom: 15px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-    }
-    
-    label {
-      display: block;
-      font-family: 'Orbitron', sans-serif;
-      color: var(--neon-cyan);
-      font-size: 0.9rem;
-      margin-bottom: 5px;
-    }
-    
-    input {
-      width: 100%;
-      box-sizing: border-box;
-      padding: 12px;
-      background: #0a0a0f;
-      border: 1px solid var(--neon-cyan);
-      color: #fff;
-      border-radius: 6px;
-      font-family: 'Rajdhani', sans-serif;
-      font-size: 1rem;
-      margin-bottom: 10px;
-      outline: none;
-    }
-    input:focus { box-shadow: 0 0 8px var(--neon-glow); }
-    
-    button.btn-neon {
-      width: 100%;
-      background: transparent;
-      border: 1px solid var(--neon-cyan);
-      color: #fff;
-      padding: 12px;
-      border-radius: 6px;
-      font-family: 'Orbitron', sans-serif;
-      cursor: pointer;
-      font-size: 1rem;
-      transition: all 0.2s ease;
-      text-transform: uppercase;
-    }
-    button.btn-neon:hover, button.btn-neon:active {
-      background: var(--neon-cyan);
-      color: #000;
-      box-shadow: 0 0 15px var(--neon-glow);
-    }
-    
-    /* Resultados */
-    .resultado-item {
-      display: flex;
-      align-items: center;
-      background: #11111e;
-      padding: 10px;
-      border-radius: 6px;
-      margin-bottom: 10px;
-      border: 1px solid rgba(0, 240, 255, 0.1);
-    }
-    .thumb {
-      width: 60px;
-      height: 45px;
-      object-fit: cover;
-      border-radius: 4px;
-      margin-right: 10px;
-    }
-    .info { flex: 1; }
-    .titulo { font-weight: bold; font-size: 0.95rem; line-height: 1.2; margin-bottom: 5px; }
-    
-    .btn-pedir {
-      background: rgba(0, 240, 255, 0.1);
-      border: 1px solid var(--neon-cyan);
-      color: var(--neon-cyan);
-      padding: 6px 12px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-family: 'Orbitron', sans-serif;
-      font-size: 0.8rem;
-    }
-    .btn-pedir:active { background: var(--neon-cyan); color: #000; }
-    
-    .mensaje-sistema { text-align: center; color: #888; margin-top: 10px; font-size: 0.9rem; }
-    .notificacion {
-      color: var(--neon-cyan);
-      text-align: center;
-      font-weight: bold;
-      padding: 10px;
-      border-radius: 6px;
-      background: rgba(0, 240, 255, 0.1);
-      display: none;
-      margin-bottom: 15px;
-    }
-  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body class="cliente-body">
 
-  <div class="header">
-    <h1 class="logo-text">GENESIS <span>2.0</span></h1>
-    <p style="color: #888; margin: 5px 0 0 0;">El control de la música es tuyo</p>
-  </div>
+  <header class="cliente-header" role="banner" style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+    <img src="GENESIS 2.0.png" alt="Logo Genesis 2.0" style="width: 90px; height: auto; object-fit: contain; filter: drop-shadow(0 0 8px var(--neon-cyan));">
+    
+    <div class="header-logo" style="margin-top: 0;">GENESIS<span>2.0</span></div>
+    <div class="header-tagline">Pide tu canción</div>
+  </header>
 
-  <div id="notificacion" class="notificacion">🎵 ¡Canción enviada a la pista!</div>
+  <main class="cliente-main" role="main">
 
-  <div class="panel">
-    <label for="input-nombre">📍 TU NOMBRE / MESA</label>
-    <input type="text" id="input-nombre" placeholder="Ej: Mesa 4 - Carlos" autocomplete="off">
-  </div>
+    <div class="identity-card card">
+      <label class="campo-label" for="input-nombre">
+        Tu nombre o número de mesa
+      </label>
+      <input
+        type="text"
+        id="input-nombre"
+        class="campo-input"
+        placeholder="Ej: Mesa 5 · Ana García"
+        maxlength="30"
+        autocomplete="off"
+        autocorrect="off"
+        autocapitalize="words"
+        spellcheck="false"
+      >
+    </div>
 
-  <div class="panel">
-    <label for="input-buscar">💿 BUSCAR CANCIÓN</label>
-    <input type="text" id="input-buscar" placeholder="Artista o nombre de la canción..." autocomplete="off">
-    <button class="btn-neon" id="btn-buscar">🔍 Buscar</button>
-  </div>
+    <div class="search-card card">
+      <label class="campo-label" for="input-buscar">
+        ¿Qué quieres escuchar?
+      </label>
+      <div class="search-box">
+        <input
+          type="search"
+          id="input-buscar"
+          class="campo-input"
+          placeholder="Artista, canción, género..."
+          maxlength="100"
+          autocomplete="off"
+          autocorrect="off"
+          spellcheck="false"
+          enterkeyhint="search"
+        >
+        <button class="btn-search" id="btn-buscar" aria-label="Buscar en YouTube">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+               fill="none" stroke="currentColor"
+               stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+               width="20" height="20" aria-hidden="true">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+        </button>
+      </div>
+    </div>
 
-  <div id="resultados">
-    <div class="mensaje-sistema">Busca una canción para empezar la fiesta.</div>
+    <div class="loading-state" id="loading-state" style="display:none;" role="status" aria-live="polite">
+      <div class="loading-spinner" aria-hidden="true"></div>
+      <span>Buscando sin límites...</span>
+    </div>
+
+    <div class="error-state card" id="error-state" style="display:none;" role="alert">
+      <span id="error-message">Error al buscar.</span>
+    </div>
+
+    <section class="results-section" id="results-section" style="display:none;" aria-label="Resultados de búsqueda">
+      <div class="results-title">
+        Resultados para: <span id="results-query"></span>
+      </div>
+      <div class="results-list" id="results-list" role="list">
+        </div>
+    </section>
+
+    <div class="live-queue-card card" id="live-queue-section" style="display:none;">
+      <h3 class="section-title-sm">
+        <span class="neon-dot">◆</span> EN LA FILA AHORA
+      </h3>
+      <div id="live-queue-list" role="list">
+        </div>
+    </div>
+
+  </main>
+
+  <div class="success-overlay" id="success-overlay" role="dialog" aria-modal="true" aria-label="Canción añadida">
+    <div class="success-card">
+      <div class="success-icon" aria-hidden="true">🎵</div>
+      <div class="success-title">¡CANCIÓN AÑADIDA!</div>
+      <div class="success-song" id="success-song-name"></div>
+      <div class="success-sub">
+        Tu canción está en la fila.<br>
+        ¡Disfruta la noche en GENESIS<span style="color:var(--neon-cyan); text-shadow: 0 0 5px var(--neon-cyan);">2.0</span>! 🎉
+      </div>
+      <button class="btn-primary" id="btn-success-close">
+        ➕ Pedir otra canción
+      </button>
+    </div>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
+
   <script>
     'use strict';
 
-    const socket = io();
+    // ─────────────────────────────────────────────────────────
+    //  REFERENCIAS AL DOM
+    // ─────────────────────────────────────────────────────────
+    const inputNombre      = document.getElementById('input-nombre');
+    const inputBuscar      = document.getElementById('input-buscar');
+    const btnBuscar        = document.getElementById('btn-buscar');
+    const loadingState     = document.getElementById('loading-state');
+    const errorState       = document.getElementById('error-state');
+    const errorMessage     = document.getElementById('error-message');
+    const resultsSection   = document.getElementById('results-section');
+    const resultsQuery     = document.getElementById('results-query');
+    const resultsList      = document.getElementById('results-list');
+    const successOverlay   = document.getElementById('success-overlay');
+    const successSongName  = document.getElementById('success-song-name');
+    const btnSuccessClose  = document.getElementById('btn-success-close');
+    const liveQueueSection = document.getElementById('live-queue-section');
+    const liveQueueList    = document.getElementById('live-queue-list');
 
-    // Elementos del DOM
-    const inputNombre  = document.getElementById('input-nombre');
-    const inputBuscar  = document.getElementById('input-buscar');
-    const btnBuscar    = document.getElementById('btn-buscar');
-    const boxResultados= document.getElementById('resultados');
-    const notificacion = document.getElementById('notificacion');
+    // ✨ Memoria caché para resultados instantáneos
+    const cacheBusquedas = {};
 
     // ─────────────────────────────────────────────────────────
-    // 🧠 MAGIA LOCALSTORAGE: Recuperar nombre al entrar
+    //  SOCKET.IO — Tiempo real con el servidor
     // ─────────────────────────────────────────────────────────
-    window.addEventListener('DOMContentLoaded', () => {
-      const nombreGuardado = localStorage.getItem('genesis_cliente_nombre');
-      if (nombreGuardado) {
-        inputNombre.value = nombreGuardado;
-      }
-    });
+    const socket = io({ reconnectionDelay: 1000 });
 
-    // ─────────────────────────────────────────────────────────
-    // BUSCADOR
-    // ─────────────────────────────────────────────────────────
-    btnBuscar.addEventListener('click', () => {
-      const q = inputBuscar.value.trim();
-      if (q) {
-        boxResultados.innerHTML = '<div class="mensaje-sistema">⏳ Buscando en YouTube...</div>';
-        socket.emit('buscar_canciones', q);
-      }
-    });
-
-    inputBuscar.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') btnBuscar.click();
-    });
+    socket.on('estado_inicial', ({ cola }) => actualizarColaEnVivo(cola));
+    socket.on('cola_actualizada', ({ cola }) => actualizarColaEnVivo(cola));
+    socket.on('cancion_confirmada', ({ titulo }) => mostrarExito(titulo));
+    socket.on('error_cancion', ({ mensaje }) => mostrarError(mensaje));
 
     // Recibir resultados del servidor
-    socket.on('resultados_busqueda', ({ items }) => {
-      if (!items || items.length === 0) {
-        boxResultados.innerHTML = '<div class="mensaje-sistema">No se encontraron resultados.</div>';
+    socket.on('resultados_busqueda', ({ items, query }) => {
+      // Guardamos el resultado en la memoria caché para futuras búsquedas
+      cacheBusquedas[query.toLowerCase()] = items; 
+      
+      mostrarLoading(false);
+      renderizarResultados(items, query);
+    });
+
+    // Recibir errores de búsqueda del servidor
+    socket.on('error_busqueda', ({ mensaje }) => {
+      mostrarLoading(false);
+      mostrarError(mensaje);
+    });
+
+    // ─────────────────────────────────────────────────────────
+    //  BÚSQUEDA VÍA SOCKET (CON CACHÉ Y AUTO-BÚSQUEDA)
+    // ─────────────────────────────────────────────────────────
+    function buscarVideos(query) {
+      query = query.trim();
+      if (!query) {
+        ocultarResultados();
         return;
       }
 
-      boxResultados.innerHTML = items.map(item => `
-        <div class="resultado-item">
-          <img class="thumb" src="${item.thumbnail}" onerror="this.style.display='none'">
-          <div class="info">
-            <div class="titulo">${escapeHtml(item.title)}</div>
+      const queryLower = query.toLowerCase();
+
+      // Magia de velocidad: Si ya buscamos esto antes, lo cargamos al instante
+      if (cacheBusquedas[queryLower]) {
+        console.log("Cargando desde caché al instante ⚡");
+        ocultarError();
+        mostrarLoading(false);
+        renderizarResultados(cacheBusquedas[queryLower], query);
+        return;
+      }
+
+      // Si es una búsqueda nueva, mostramos carga y consultamos al servidor
+      ocultarResultados();
+      ocultarError();
+      mostrarLoading(true);
+
+      socket.emit('buscar_canciones', query);
+    }
+
+    // ─────────────────────────────────────────────────────────
+    //  RENDERIZAR TARJETAS DE RESULTADOS
+    // ─────────────────────────────────────────────────────────
+    function renderizarResultados(items, query) {
+      resultsList.innerHTML = '';
+
+      if (!items || items.length === 0) {
+        resultsList.innerHTML = '<p class="no-results">Sin resultados. Prueba con otra búsqueda.</p>';
+        resultsSection.style.display = 'block';
+        return;
+      }
+
+      resultsQuery.textContent = `"${query}"`;
+
+      items.forEach((item, index) => {
+        const videoId = item.videoId;
+        if (!videoId) return;
+
+        const titulo = item.title       || 'Sin título';
+        const canal  = item.author?.name || 'Canal desconocido';
+        const thumb  = item.thumbnail   || '';
+
+        const card = document.createElement('div');
+        card.className = 'result-card card';
+        card.setAttribute('role', 'listitem');
+        card.style.animationDelay = `${index * 0.05}s`;
+
+        card.innerHTML = `
+          ${thumb
+            ? `<img class="result-thumb" src="${escapeHtml(thumb)}" alt="${escapeHtml(titulo)}" loading="lazy" onerror="this.style.display='none'">`
+            : `<div class="result-thumb" style="background:var(--bg-card);display:flex;align-items:center;justify-content:center;font-size:2rem;">🎵</div>`
+          }
+          <div class="result-info">
+            <div class="result-title" title="${escapeHtml(titulo)}">${escapeHtml(titulo)}</div>
+            <div class="result-channel">${escapeHtml(canal)}</div>
+            <button
+              class="btn-add"
+              data-video-id="${escapeHtml(videoId)}"
+              data-titulo="${escapeHtml(titulo)}"
+              data-thumb="${escapeHtml(thumb)}"
+              aria-label="Añadir ${escapeHtml(titulo)} a la fila"
+            >
+              ➕ Añadir a la Fila
+            </button>
           </div>
-          <button class="btn-pedir" 
-            data-id="${escapeHtml(item.videoId)}" 
-            data-title="${escapeHtml(item.title)}" 
-            data-thumb="${escapeHtml(item.thumbnail)}">
-            + PEDIR
-          </button>
+        `;
+        resultsList.appendChild(card);
+      });
+
+      resultsSection.style.display = 'block';
+
+      resultsList.querySelectorAll('.btn-add').forEach(btn => {
+        btn.addEventListener('click', () => manejarAgregarCancion(btn));
+      });
+    }
+
+    // ─────────────────────────────────────────────────────────
+    //  MANEJAR CLIC EN "AÑADIR A LA FILA"
+    // ─────────────────────────────────────────────────────────
+    function manejarAgregarCancion(btn) {
+      const nombre = inputNombre.value.trim();
+
+      if (!nombre) {
+        inputNombre.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        inputNombre.focus();
+        inputNombre.classList.add('input-shake');
+        setTimeout(() => inputNombre.classList.remove('input-shake'), 500);
+        mostrarError('⚠️ Escribe tu nombre o número de mesa primero.');
+        return;
+      }
+
+      const cancion = {
+        videoId:   btn.dataset.videoId,
+        titulo:    btn.dataset.titulo,
+        nombre:    nombre,
+        thumbnail: btn.dataset.thumb
+      };
+
+      btn.disabled        = true;
+      btn.textContent     = '⏳ Añadiendo...';
+      btn.style.opacity   = '0.7';
+
+      socket.emit('agregar_cancion', cancion);
+    }
+
+    // ─────────────────────────────────────────────────────────
+    //  OVERLAY DE ÉXITO
+    // ─────────────────────────────────────────────────────────
+    function mostrarExito(titulo) {
+      successSongName.textContent = titulo;
+      ocultarResultados();
+      successOverlay.classList.add('overlay-visible');
+      setTimeout(() => btnSuccessClose.focus(), 400);
+    }
+
+    btnSuccessClose.addEventListener('click', () => {
+      successOverlay.classList.remove('overlay-visible');
+      inputBuscar.value = '';
+      inputBuscar.focus();
+    });
+
+    // ─────────────────────────────────────────────────────────
+    //  COLA EN VIVO (vista resumida)
+    // ─────────────────────────────────────────────────────────
+    function actualizarColaEnVivo(cola) {
+      if (!cola || cola.length === 0) {
+        liveQueueSection.style.display = 'none';
+        return;
+      }
+
+      liveQueueSection.style.display = 'block';
+      liveQueueList.innerHTML = cola.slice(0, 4).map((c, i) => `
+        <div class="live-queue-item" role="listitem">
+          <span class="lq-num" aria-hidden="true">${i + 1}</span>
+          <div class="lq-info">
+            <div class="lq-title">${escapeHtml(c.titulo)}</div>
+            <div class="lq-who">📍 ${escapeHtml(c.nombre)} · ${escapeHtml(c.timestamp)}</div>
+          </div>
         </div>
       `).join('');
-
-      // Evento para los botones "PEDIR"
-      document.querySelectorAll('.btn-pedir').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const nombreUsuario = inputNombre.value.trim();
-          
-          if (!nombreUsuario) {
-            alert('⚠️ Por favor, ingresa tu nombre o número de mesa antes de pedir una canción.');
-            inputNombre.focus();
-            return;
-          }
-
-          // 🧠 MAGIA LOCALSTORAGE: Guardar/Actualizar nombre en el celular del cliente
-          localStorage.setItem('genesis_cliente_nombre', nombreUsuario);
-
-          // Enviar la canción al servidor
-          socket.emit('agregar_cancion', {
-            videoId:   btn.dataset.id,
-            titulo:    btn.dataset.title,
-            nombre:    nombreUsuario,
-            thumbnail: btn.dataset.thumb
-          });
-
-          // Limpiar búsqueda y mostrar éxito
-          inputBuscar.value = '';
-          boxResultados.innerHTML = '<div class="mensaje-sistema">¡Excelente elección! Sigue buscando más música.</div>';
-          mostrarNotificacion();
-        });
-      });
-    });
-
-    socket.on('error_busqueda', () => {
-      boxResultados.innerHTML = '<div class="mensaje-sistema" style="color: #ff0055;">Hubo un error al buscar. Intenta de nuevo.</div>';
-    });
-
-    // Utilidad: Mostrar mensaje de éxito temporal
-    function mostrarNotificacion() {
-      notificacion.style.display = 'block';
-      setTimeout(() => {
-        notificacion.style.display = 'none';
-      }, 3000);
     }
 
-    // Utilidad: Seguridad básica contra inyección HTML
+    // ─────────────────────────────────────────────────────────
+    //  HELPERS DE UI
+    // ─────────────────────────────────────────────────────────
+    function mostrarLoading(visible) {
+      loadingState.style.display = visible ? 'flex' : 'none';
+    }
+
+    function mostrarError(msg) {
+      errorMessage.textContent = msg;
+      errorState.style.display = 'block';
+      errorState.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      clearTimeout(mostrarError._timer);
+      mostrarError._timer = setTimeout(ocultarError, 5000);
+    }
+
+    function ocultarError() {
+      errorState.style.display = 'none';
+    }
+
+    function ocultarResultados() {
+      resultsSection.style.display = 'none';
+      resultsList.innerHTML = '';
+    }
+
     function escapeHtml(str) {
       if (!str) return '';
-      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
     }
+
+    // ─────────────────────────────────────────────────────────
+    //  EVENT LISTENERS DE BÚSQUEDA (SÚPER ÁGIL)
+    // ─────────────────────────────────────────────────────────
+    let timerBusqueda = null;
+
+    // Buscar automáticamente mientras el usuario escribe
+    inputBuscar.addEventListener('input', (e) => {
+      clearTimeout(timerBusqueda);
+      const query = e.target.value.trim();
+
+      if (query.length === 0) {
+        ocultarResultados();
+        return;
+      }
+
+      if (query.length >= 3) {
+        timerBusqueda = setTimeout(() => {
+          buscarVideos(query);
+        }, 700); // 700ms de espera antes de autocompletar la búsqueda
+      }
+    });
+
+    btnBuscar.addEventListener('click', () => {
+      clearTimeout(timerBusqueda);
+      buscarVideos(inputBuscar.value);
+    });
+
+    inputBuscar.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        clearTimeout(timerBusqueda);
+        buscarVideos(inputBuscar.value);
+      }
+    });
+
+    inputNombre.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        inputBuscar.focus();
+      }
+    });
   </script>
 </body>
 </html>
