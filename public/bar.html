@@ -43,6 +43,11 @@
       border: none !important;
       filter: none !important; 
     }
+
+    /* Disminuir el tamaño de la letra de la canción que está sonando */
+    #np-titulo {
+      font-size: 1.2rem !important; 
+    }
   </style>
 </head>
 <body class="bar-body">
@@ -90,9 +95,10 @@
           <span class="neon-dot">◆</span> PRÓXIMAS EN FILA
         </h3>
         <div class="queue-list" id="queue-list">
-          <div class="neon-dot" id="queue-empty">
+          <div class="queue-empty" id="queue-empty">
             <p>🎵 La fila está vacía</p>
-            <small>Escanea el QR para pedir</small>
+            <!-- 👇 Texto en color blanco 👇 -->
+            <small style="color: #ffffff;">Escanea el QR para pedir</small>
           </div>
         </div>
       </div>
@@ -100,9 +106,9 @@
       <div class="qr-section">
         <div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; padding: 10px 0;">
           <img src="qr-genesis.png" alt="QR del Bar" class="bar-qr-img">
-          <div class="qr-text">
-            <strong style="font-size: 1.2rem; color: #00f0ff; text-shadow: 0 0 10px rgba(0, 240, 255, 0.8);">¡PIDE TU CANCIÓN DESDE TU CEL!</strong>
-            <br>
+          <!-- 👇 Texto modificado en dos renglones y letra más pequeña 👇 -->
+          <div class="qr-text" style="font-size: 1rem; color: #00f0ff; text-shadow: 0 0 10px rgba(0, 240, 255, 0.8); font-weight: bold; line-height: 1.4;">
+            PIDE TU CANCIÓN<br>DESDE TU CELULAR
           </div>
         </div>
       </div>
