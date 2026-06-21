@@ -111,6 +111,26 @@ io.on('connection', (socket) => {
     io.emit('cola_actualizada', { cola, reproduciendo });
   });
 
+  // 🔥 NUEVO: Reordenar la fila (Drag & Drop)
+  socket.on('reordenar_cola', (nuevoOrdenIds) => {
+    console.log(`[⚡ ADMIN] Reordenó la fila de espera visualmente.`);
+    const colaReordenada = [];
+    
+    nuevoOrdenIds.forEach(id => {
+      // Usamos String para asegurar que el ID que llega del HTML coincida con el número del backend
+      const cancion = cola.find(c => String(c.id) === String(id));
+      if (cancion) {
+        colaReordenada.push(cancion);
+      }
+    });
+
+    // Actualizamos la memoria del servidor con el nuevo orden
+    cola = colaReordenada;
+    
+    // Le decimos a todos (Bar y Clientes) que actualicen su pantalla de inmediato
+    io.emit('cola_actualizada', { cola, reproduciendo });
+  });
+
   // Función interna para avanzar la lista
   function avanzarCola() {
     if (cola.length > 0) {
