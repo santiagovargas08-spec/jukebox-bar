@@ -127,6 +127,7 @@
     </div>
   </div>
 
+
   <script src="/socket.io/socket.io.js"></script>
 
   <script>
@@ -395,6 +396,25 @@
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
+    }
+
+    // ─────────────────────────────────────────────────────────
+    //  MODO PANTALLA COMPLETA (Clic en el logo)
+    // ─────────────────────────────────────────────────────────
+    const logoSection = document.querySelector('.bar-logo-section');
+    if (logoSection) {
+      logoSection.style.cursor = 'pointer'; // Cambia el cursor a una manito
+      logoSection.addEventListener('click', () => {
+        if (!document.fullscreenElement) {
+          // Si no está en pantalla completa, entrar
+          document.documentElement.requestFullscreen().catch(err => {
+            console.error(`Error al intentar pantalla completa: ${err.message}`);
+          });
+        } else {
+          // Si ya está en pantalla completa, salir
+          document.exitFullscreen();
+        }
+      });
     }
   </script>
 
