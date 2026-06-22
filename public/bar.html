@@ -46,7 +46,7 @@
 
     /* Disminuir el tamaño de la letra de la canción que está sonando */
     #np-titulo {
-      font-size: 1.5rem !important; 
+      font-size: 1.2rem !important; 
     }
   </style>
 </head>
@@ -105,7 +105,6 @@
       <div class="qr-section">
         <div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; padding: 10px 0;">
           <img src="qr-genesis.png" alt="QR del Bar" class="bar-qr-img">
-          <!-- 👇 Texto modificado en dos renglones y letra más pequeña 👇 -->
           <div class="qr-text" style="font-size: 1rem; color: #00f0ff; text-shadow: 0 0 10px rgba(0, 240, 255, 0.8); font-weight: bold; line-height: 1.4;">
             PIDE TU CANCIÓN<br>DESDE TU CELULAR
           </div>
@@ -127,7 +126,6 @@
     </div>
   </div>
 
-
   <script src="/socket.io/socket.io.js"></script>
 
   <script>
@@ -141,9 +139,16 @@
     let pendingVideo = null;   
     let notifTimer   = null;   
 
-    // ✨ VARIABLES PARA AUTO-DJ
     let lastVideoId  = null;   
     let isAutoDJ     = false;  
+
+    // Detectar si este TV es esclavo mirando la URL (?esclavo=true)
+    const isEsclavo  = new URLSearchParams(window.location.search).has('esclavo');
+
+    // Variables para arrancar el día con música
+    let pendingAutoDJ = false;
+    // Semilla musical inicial (puedes cambiar este ID por el video que prefieras)
+    const cancionSemilla = 'fXw0jcYbqdo'; 
 
     // ─────────────────────────────────────────────────────────
     //  SOCKET.IO — Conexión al servidor Node.js
@@ -154,10 +159,22 @@
     socket.on('estado_inicial', ({ cola, reproduciendo }) => {
       console.log('[Socket] Estado inicial → cola:', cola.length, '| reproduciendo:', reproduciendo?.titulo ?? 'nada');
       actualizarCola(cola);
+      
       if (reproduciendo) {
         cargarVideo(reproduciendo);
       } else {
-        mostrarIdleScreen(true);
+        // Si no hay música, el Maestro enciende el Auto-DJ de fondo
+        if (!isEsclavo) {
+          lastVideoId = cancionSemilla; 
+          if (playerReady) {
+            iniciarAutoDJ();
+          } else {
+            pendingAutoDJ = true; 
+          }
+        } else {
+          // El esclavo solo muestra la pantalla de inicio y espera
+          mostrarIdleScreen(true);
+        }
       }
     });
 
@@ -169,10 +186,10 @@
         actualizarNowPlayingBar(reproduciendo);
       }
 
-      // ✨ MAGIA AUTO-DJ: Si no hay canción reproduciendo (fila vacía)
+      // MAGIA AUTO-DJ: Si no hay canción reproduciendo (fila vacía)
       if (!reproduciendo) {
         if (lastVideoId && !isAutoDJ) {
-          iniciarAutoDJ();
+          if (!isEsclavo) iniciarAutoDJ();
         } else if (!lastVideoId && !isAutoDJ) {
           actualizarNowPlayingBar(null);
           mostrarIdleScreen(true);
@@ -223,16 +240,23 @@
     function onPlayerReady(event) {
       console.log('[YT] Player listo para recibir comandos');
       playerReady = true;
+      
       if (pendingVideo) {
         cargarVideo(pendingVideo);
         pendingVideo = null;
+      } 
+      // Si había un Auto-DJ pendiente por iniciar al cargar la página
+      else if (pendingAutoDJ && !isEsclavo) {
+        iniciarAutoDJ();
+        pendingAutoDJ = false;
       }
     }
 
     function onPlayerStateChange(event) {
       switch (event.data) {
         case YT.PlayerState.ENDED:
-          if (!isAutoDJ) {
+          // Solo el maestro pide la siguiente canción
+          if (!isAutoDJ && !isEsclavo) {
             console.log('[YT] Video de cliente terminado → siguiente_cancion');
             socket.emit('siguiente_cancion');
           }
@@ -259,7 +283,10 @@
 
     function onPlayerError(event) {
       console.error('[YT] Error del player, código:', event.data);
-      setTimeout(() => socket.emit('siguiente_cancion'), 2000);
+      // Solo el maestro se salta el video si hay error
+      if (!isEsclavo) {
+        setTimeout(() => socket.emit('siguiente_cancion'), 2000);
+      }
     }
 
     // ─────────────────────────────────────────────────────────
@@ -403,19 +430,18 @@
     // ─────────────────────────────────────────────────────────
     const logoSection = document.querySelector('.bar-logo-section');
     if (logoSection) {
-      logoSection.style.cursor = 'pointer'; // Cambia el cursor a una manito
+      logoSection.style.cursor = 'pointer'; 
       logoSection.addEventListener('click', () => {
         if (!document.fullscreenElement) {
-          // Si no está en pantalla completa, entrar
           document.documentElement.requestFullscreen().catch(err => {
             console.error(`Error al intentar pantalla completa: ${err.message}`);
           });
         } else {
-          // Si ya está en pantalla completa, salir
           document.exitFullscreen();
         }
       });
     }
+
   </script>
 
   <script src="https://www.youtube.com/iframe_api" async></script>
