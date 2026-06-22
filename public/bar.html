@@ -147,8 +147,40 @@
 
     // Variables para arrancar el día con música
     let pendingAutoDJ = false;
-    // Semilla musical inicial (puedes cambiar este ID por el video que prefieras)
-    const cancionSemilla = 'fXw0jcYbqdo'; 
+
+    // 👇 Lista Maestra de Canciones para abrir el bar (Variado Colombiano) 👇
+    const semillasMix = [
+      // 🥃 MÚSICA POPULAR Y DESPECHO
+      'nJ7rBzClyCg', // Jessi Uribe - Dulce Pecado
+      'Qk7rhW-SB1g', // Yeison Jimenez - Aventurero
+      'D14H7qE1Tq0', // Alzate - Maldita Traición
+      'y9Q30K7xLko', // Luis Alberto Posada - Me Tomas y Me Dejas
+      'c8mP91kZ9C8', // Darío Gómez - Nadie es Eterno
+      'Wj6HkY10Y9U', // Pipe Bueno - Recostada en la Cama
+      'z_a9OvhN168', // Arelys Henao - Señor Prohibido
+
+      // 🪗 VALLENATO (Clásico y Nueva Ola)
+      '5R-7E5u2t8U', // Diomedes Díaz - La Plata
+      'wDeZiEZGS3Q', // Binomio de Oro - Me Ilusioné
+      'W0Wc3eQ0Y5k', // Silvestre Dangond - Niégame Tres Veces
+      'lM0D-l3w-X0', // Los Inquietos - Volver
+      'R5j71wB27cE', // Patricia Teherán - Tarde lo Conocí
+      'a-H_h2v4O0I', // Kaleth Morales - Vivo en el Limbo
+
+      // 🔥 REGUETÓN Y URBANO
+      'ca48oMV59LU', // Karol G - PROVENZA
+      'TapXs54Ah3E', // J Balvin - Ay Vamos
+      '2aD2hYg1_n8', // Feid - Normal
+      'eHhLzHofkE8', // Ryan Castro - Mujeriego
+      'I_mQv7-QIfs', // Blessd - Medallo
+
+      // 🎺 SALSA Y TROPICAL (Para prender el ambiente)
+      'eM6A7gJ_U2Y', // Grupo Niche - Cali Pachanguero
+      'G8v7gBWe3c4'  // Joe Arroyo - La Rebelión
+    ];
+    
+    // El sistema elige una canción al azar de la lista maestra cada vez que se abre la página
+    const cancionSemilla = semillasMix[Math.floor(Math.random() * semillasMix.length)];
 
     // ─────────────────────────────────────────────────────────
     //  SOCKET.IO — Conexión al servidor Node.js
@@ -172,7 +204,7 @@
             pendingAutoDJ = true; 
           }
         } else {
-          // El esclavo solo muestra la pantalla de inicio y espera
+          // El esclavo solo muestra la pantalla de inicio y espera en silencio
           mostrarIdleScreen(true);
         }
       }
