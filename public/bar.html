@@ -422,7 +422,7 @@
       listEl.querySelectorAll('.queue-item').forEach(el => el.remove());
 
       // Validación para ocultar el QR si hay 3 o más canciones
-      if (cola && cola.length >= 3) {
+      if (cola && cola.length >= 4) {
         if (qrSection) qrSection.classList.add('qr-oculto');
       } else {
         if (qrSection) qrSection.classList.remove('qr-oculto');
