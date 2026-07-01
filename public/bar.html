@@ -57,16 +57,15 @@
       display: flex;
       flex-direction: column;
       gap: 10px;
-      transition: transform 0.5s ease; /* Transición suave para el reinicio */
+      transition: transform 0.5s ease;
     }
 
     .qr-oculto {
       display: none !important;
     }
 
-    /* ─── NUEVOS ESTILOS: EFECTOS Y BARRIDO INTELIGENTE ─── */
+    /* ─── ESTILOS: EFECTOS Y BARRIDO INTELIGENTE ─── */
     
-    /* Etiqueta de Canción Nueva (Ahora ubicada junto al nombre) */
     .badge-nueva {
       background: #00f0ff;
       color: #000;
@@ -86,7 +85,6 @@
       to { opacity: 0.4; box-shadow: none; } 
     }
 
-    /* Resaltar la fila de la canción recién agregada (Duración aumentada a 8s) */
     .resaltar-nueva {
       animation: flashBg 8s ease-out forwards;
     }
@@ -96,7 +94,6 @@
       100% { background-color: transparent; transform: scale(1); border: 1px solid transparent; }
     }
 
-    /* Etiqueta de multiplicador (Anti-Borrachos) */
     .badge-multiplicador {
       color: #ff0055;
       font-weight: bold;
@@ -104,17 +101,37 @@
       margin-left: 5px;
     }
 
-    /* Animación de barrido controlada por JS (Aumentada a 25s para ser más lenta) */
+    /* ─── ANIMACIÓN DE BARRIDO ACTUALIZADA ─── */
     .hacer-barrido {
+      /* La variable --distancia-barrido se inyecta desde JavaScript */
       animation: barridoUnico 25s linear forwards;
     }
 
     @keyframes barridoUnico {
-      0% { transform: translateY(0); }
-      45% { transform: translateY(-100%); } /* Sube más despacio */
-      45.1% { transform: translateY(100%); opacity: 0; } /* Baja invisible */
-      46% { opacity: 1; }
-      100% { transform: translateY(0); } /* Vuelve a su lugar */
+      0% { 
+        transform: translateY(0); 
+      }
+      80% { 
+        /* Termina de hacer scroll exactamente hasta la última canción (Toma 20 segundos) */
+        transform: translateY(var(--distancia-barrido)); 
+      } 
+      95% { 
+        /* Se queda quieto mostrando la última canción (Toma unos 3.75 segundos) */
+        transform: translateY(var(--distancia-barrido)); 
+      } 
+      95.1% { 
+        /* Regresa instantáneamente al inicio sin hacer scroll, totalmente invisible para que no se note el salto */
+        transform: translateY(0); 
+        opacity: 0; 
+      } 
+      96% { 
+        /* Vuelve a aparecer la lista completa suavemente */
+        opacity: 1; 
+      }
+      100% { 
+        transform: translateY(0); 
+        opacity: 1; 
+      } 
     }
   </style>
 </head>
@@ -204,7 +221,7 @@
     // Variables para el control de la Cola y Barrido
     let totalCancionesAnterior = 0;
     let intervaloBarrido = null;
-    let tiempoDescanso = 50000; // Aumentado a 30 segundos de espera entre barridos
+    let tiempoDescanso = 30000; // 30 segundos de espera entre barridos
 
     const isEsclavo  = new URLSearchParams(window.location.search).has('esclavo');
     let pendingAutoDJ = false;
@@ -345,7 +362,6 @@
       const emptyEl = document.getElementById('queue-empty');
       const qrSection = document.getElementById('seccion-qr'); 
 
-      // 1. Detectar si hay una canción nueva sumada a la fila
       const hayCancionNueva = cola.length > totalCancionesAnterior;
       totalCancionesAnterior = cola.length;
 
@@ -365,7 +381,6 @@
 
       emptyEl.style.display = 'none';
 
-      // 2. FILTRO ANTI-BORRACHOS (Agrupar Duplicados)
       const colaAgrupada = [];
       cola.forEach(cancion => {
         let existente = colaAgrupada.find(c => c.videoId === cancion.videoId);
@@ -376,12 +391,10 @@
         }
       });
 
-      // 3. Renderizar las canciones
       colaAgrupada.forEach((cancion, index) => {
         const item = document.createElement('div');
         item.className = 'queue-item';
         
-        // Si es el último elemento y hubo una adición real a la cola, resaltarlo
         if (hayCancionNueva && index === colaAgrupada.length - 1) {
           item.classList.add('resaltar-nueva');
         }
@@ -390,17 +403,14 @@
           ? `<img class="queue-thumb" src="${escapeHtml(cancion.thumbnail)}" alt="" loading="lazy" onerror="this.style.display='none'">`
           : `<div class="queue-thumb-placeholder">🎵</div>`;
 
-        // Etiqueta (x2, x3) si la pidieron varias veces
         const multiplicadorHtml = cancion.cantidad > 1 
           ? `<span class="badge-multiplicador">(x${cancion.cantidad})</span>` 
           : '';
 
-        // Letrero NUEVA si corresponde (ahora se renderizará junto al nombre)
         const nuevaHtml = (hayCancionNueva && index === colaAgrupada.length - 1)
           ? `<span class="badge-nueva">¡Nueva!</span>`
           : '';
 
-        // SE ELIMINÓ EL TIMESTAMP Y SE MOVIÓ nuevaHtml AL DIV DE QUIÉN LO PIDIÓ
         item.innerHTML = `
           <div class="queue-num">${index + 1}</div>
           ${thumbHtml}
@@ -416,9 +426,11 @@
         listEl.appendChild(item);
       });
 
-      // 4. LÓGICA DE BARRIDO CADA 30 SEGUNDOS (Solo si hay 8 o más en total)
+      // 4. LÓGICA DE BARRIDO ACTUALIZADA (Solo si hay 8 o más)
       if (cola.length >= 8) {
-        iniciarCicloBarrido(listEl, hayCancionNueva);
+        // Le damos un pequeño tiempo (50ms) para que el navegador dibuje las canciones
+        // y podamos medir correctamente la altura antes de animar.
+        setTimeout(() => iniciarCicloBarrido(listEl, hayCancionNueva), 50);
       } else {
         detenerCicloBarrido(listEl);
       }
@@ -426,21 +438,32 @@
 
     // Funciones de control del barrido
     function iniciarCicloBarrido(listEl, forzarInmediato) {
-      clearInterval(intervaloBarrido); // Limpiar cualquier reloj anterior
+      clearInterval(intervaloBarrido); 
 
       const ejecutarAnimacion = () => {
-        // Quita la clase, forza redibujado y vuelve a ponerla para reiniciar la animación CSS
-        listEl.classList.remove('hacer-barrido');
-        void listEl.offsetWidth; 
-        listEl.classList.add('hacer-barrido');
+        // CALCULAMOS CUÁNTO DEBE BAJAR EXACTAMENTE
+        const contenedor = listEl.parentElement;
+        const alturaVisible = contenedor.offsetHeight;
+        const alturaTotal = listEl.scrollHeight;
+        
+        // Solo animamos si la lista de canciones es más grande que el contenedor visual
+        if (alturaTotal > alturaVisible) {
+          // Calculamos la distancia exacta hasta el final de la lista, más un margen de 20px
+          const distanciaScroll = alturaTotal - alturaVisible + 20;
+          // Le inyectamos este valor a nuestro CSS
+          listEl.style.setProperty('--distancia-barrido', `-${distanciaScroll}px`);
+
+          // Reiniciamos la animación CSS
+          listEl.classList.remove('hacer-barrido');
+          void listEl.offsetWidth; 
+          listEl.classList.add('hacer-barrido');
+        }
       };
 
       if (forzarInmediato) {
-        // Si alguien acaba de pedir, mostramos el barrido de inmediato
         ejecutarAnimacion();
       }
 
-      // Se repite cada 30 segundos
       intervaloBarrido = setInterval(ejecutarAnimacion, tiempoDescanso);
     }
 
