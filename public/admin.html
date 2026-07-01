@@ -10,6 +10,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
   
   <link rel="stylesheet" href="style.css">
+
+  <script src="https://bernardo-castilho.github.io/DragDropTouch/DragDropTouch.js"></script>
   
   <style>
     /* 🎨 Tema Cyberpunk Cian para el Administrador */
@@ -169,6 +171,7 @@
       margin-right: 15px;
       padding: 0 5px;
       user-select: none;
+      touch-action: none; /* 🔥 AÑADIDO: Evita el scroll en iPhone al arrastrar */
     }
     .drag-handle:active {
       cursor: grabbing;
@@ -183,7 +186,8 @@
     .empty-msg { color: #666; text-align: center; padding: 20px; }
   </style>
 </head>
-<body class="admin-body" style="display: none;" id="body-panel">
+
+<body class="admin-body" id="body-panel">
 
   <header class="admin-header">
     <h1 class="admin-title">GENESIS 2.0<span>CONTROL PANEL</span></h1>
@@ -222,14 +226,7 @@
   <script>
     'use strict';
 
-    // 🔒 SEGURIDAD BÁSICA
-    const password = prompt("Introduce la contraseña de administrador de GENESIS 2.0:");
-    if (password === "genesis123") {
-      document.getElementById('body-panel').style.display = 'block';
-    } else {
-      alert("Acceso denegado.");
-      window.location.href = "/cliente.html";
-    }
+    // 🔥 ELIMINADA LA VALIDACIÓN DE CONTRASEÑA 🔥
 
     const socket = io();
 
