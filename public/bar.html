@@ -3,391 +3,540 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Jukebox Digital - Pantalla del Bar</title>
-  
+  <title>🎵 GENESIS 2.0</title>
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght=400;700;900&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="style.css">
 
   <style>
-    /* ═══════════════════════════════════════════════════════════════
-       VARIABLES Y BASE
-    ═══════════════════════════════════════════════════════════════ */
-    :root {
-      --bg-deep:       #050508;
-      --bg-dark:       #0a0a0f;
-      --bg-panel:      #0d0d16;
-      --neon-pink:     #ff0055;
-      --neon-cyan:     #00e5ff;
-      --text-primary:  #f0f0f8;
-      --text-muted:    #7070a0;
-      --text-dim:      #404060;
-      --border-dark:   rgba(255,255,255,0.06);
-      --glow-pink:     0 0 8px rgba(255, 0, 85, 0.6), 0 0 20px rgba(255, 0, 85, 0.3);
-      --glow-cyan:     0 0 8px rgba(0, 229, 255, 0.6), 0 0 20px rgba(0, 229, 255, 0.3);
-      --font-display:  'Orbitron', sans-serif;
-      --font-body:     'Rajdhani', sans-serif;
-      --radius-sm:     6px;
-      --radius-md:     12px;
-    }
+    /* ─── Estilos adicionales específicos de bar.html ─────────── */
 
-    *, *::before, *::after {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
-    body {
-      background-color: var(--bg-deep);
-      color: var(--text-primary);
-      font-family: var(--font-body);
-      overflow: hidden;
-      height: 100vh;
-      padding: 12px; /* Margen de seguridad para TV (Overscan) */
-    }
-
-    /* ═══════════════════════════════════════════════════════════════
-       LAYOUT PRINCIPAL (70% - 30%)
-    ═══════════════════════════════════════════════════════════════ */
-    .bar-layout {
-      display: grid;
-      grid-template-columns: 70% 30%;
-      height: calc(100vh - 24px);
-      width: 100%;
-      border-radius: var(--radius-md);
-      overflow: hidden;
-      box-shadow: 0 0 40px rgba(0, 0, 0, 0.8);
-      border: 1px solid var(--border-dark);
-    }
-
-    /* ─── Panel Izquierdo: Video ──────────────────────────────── */
-    .panel-video {
-      display: flex;
-      flex-direction: column;
-      background: #000;
-      border-right: 1px solid var(--border-dark);
-      position: relative;
-    }
-
-    .top-instruction-bar {
-      background: rgba(0, 0, 0, 0.9);
-      padding: 15px 20px;
-      text-align: center;
-      font-family: var(--font-display);
-      font-size: 1.8rem;
-      font-weight: 700;
-      color: var(--neon-cyan);
-      text-shadow: var(--glow-cyan);
-      border-bottom: 1px solid rgba(0, 229, 255, 0.3);
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      z-index: 10;
-    }
-
+    /* ELEVAR EL VIDEO: Lo mantenemos en una capa alta y limpia de filtros */
     .video-wrapper {
-      flex: 1;
       position: relative;
-      background: radial-gradient(ellipse at center, #0d0d1a 0%, #050508 70%);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .idle-text {
-      font-family: var(--font-display);
-      font-size: 2rem;
-      color: var(--text-muted);
-      letter-spacing: 0.2em;
-      animation: neonPulse 2.5s infinite;
-    }
-
-    .now-playing-bar {
-      display: flex;
-      align-items: center;
-      gap: 15px;
-      padding: 15px 20px;
-      background: rgba(0, 0, 0, 0.9);
-      border-top: 2px solid var(--neon-pink);
-    }
-
-    .np-title {
-      font-family: var(--font-body);
-      font-size: 2.8rem;
-      font-weight: bold;
-      color: #fff;
-      white-space: nowrap;
+      z-index: 999999 !important; 
+      box-shadow: none !important; 
+      border-radius: 8px;
       overflow: hidden;
-      text-overflow: ellipsis;
-      flex: 1;
+      background: #000;
     }
 
-    .np-mesa {
-      font-family: var(--font-display);
-      font-size: 1.2rem;
-      color: var(--neon-cyan);
-      text-shadow: var(--glow-cyan);
-      white-space: nowrap;
+    /* Asegurar que el reproductor y el iframe no tengan filtros de color o mezcla */
+    .video-wrapper > div,
+    #youtube-player {
+      position: absolute !important;
+      inset: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+      filter: none !important;
+      mix-blend-mode: normal !important;
+      opacity: 1 !important;
+      z-index: 999999 !important; 
     }
 
-    /* ─── Panel Derecho: Info, Cola y QR ──────────────────────── */
-    .panel-info {
-      display: flex;
-      flex-direction: column;
-      background: var(--bg-panel);
-      padding: 20px;
-      gap: 15px;
-      overflow: hidden;
+    #youtube-player iframe {
+      width: 100% !important;
+      height: 100% !important;
+      border: none !important;
+      filter: none !important; 
     }
 
-    .logo-text {
-      font-family: var(--font-display);
-      font-size: 2.2rem;
-      font-weight: 900;
-      letter-spacing: 0.15em;
-      color: var(--text-primary);
-      text-shadow: var(--glow-cyan);
-      text-align: center;
-      margin-bottom: 10px;
+    /* Disminuir el tamaño de la letra de la canción que está sonando */
+    #np-titulo {
+      font-size: 1.2rem !important; 
     }
 
-    .logo-text span {
-      color: var(--neon-pink);
-      text-shadow: var(--glow-pink);
-    }
-
-    /* ─── Sección de la Cola de Canciones (Barrido) ───────────── */
+    /* 🔄 NUEVOS ESTILOS PARA EL BARRIDO AUTOMÁTICO EN LA TV ───────────────── */
     .queue-section {
       flex: 1;
       min-height: 0;
-      position: relative;
-      overflow: hidden; /* Oculta lo que sale del área visible */
       display: flex;
       flex-direction: column;
-      border-top: 1px solid var(--border-dark);
-      border-bottom: 1px solid var(--border-dark);
-      padding: 10px 0;
+      overflow: hidden; /* Esconde el desborde y barras manuales */
     }
 
-    .section-title {
-      font-family: var(--font-display);
-      font-size: 1rem;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      margin-bottom: 15px;
-      letter-spacing: 0.15em;
-      text-align: center;
-    }
-
-    .queue-wrapper {
-      flex: 1;
-      overflow: hidden;
-      position: relative;
-    }
-
-    .queue-list {
+    #queue-list {
       display: flex;
       flex-direction: column;
       gap: 10px;
-      /* Animación de barrido */
-      animation: barridoVertical 15s linear infinite;
-      will-change: transform; /* Optimización GPU */
+      position: relative;
+      will-change: transform; /* Optimización de rendimiento para WebOS */
     }
 
-    /* Pausa la animación si pasas el mouse (opcional, pero útil) y si está vacío */
-    .queue-list:hover { animation-play-state: paused; }
-    .queue-list:empty { animation: none; }
-
-    @keyframes barridoVertical {
-      0%   { transform: translateY(100%); }
-      100% { transform: translateY(-100%); }
+    /* Animación de barrido: se activa solo cuando la cola tiene elementos */
+    .queue-list-animada {
+      animation: barridoVerticalTV 20s linear infinite;
     }
 
-    .queue-item {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 10px;
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid var(--border-dark);
-      border-left: 3px solid var(--neon-pink);
-      border-radius: var(--radius-sm);
+    @keyframes barridoVerticalTV {
+      0% {
+        transform: translateY(60%);
+      }
+      100% {
+        transform: translateY(-100%);
+      }
     }
 
-    .queue-thumb {
-      width: 60px;
-      height: 45px;
-      background: #222;
-      border-radius: 4px;
-      flex-shrink: 0;
-    }
-
-    .queue-details {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .queue-song-title {
-      font-size: 1.6rem;
-      font-weight: bold;
-      color: var(--text-primary);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      line-height: 1.1;
-    }
-
-    .queue-song-who {
-      font-size: 1.1rem;
-      color: var(--neon-cyan);
-      margin-top: 4px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    /* ─── Sección QR ──────────────────────────────────────────── */
+    /* Control de transición para ocultar el QR suavemente */
     .qr-section {
-      text-align: center;
-      padding-top: 10px;
-      flex-shrink: 0;
-      transition: all 0.3s ease;
+      transition: all 0.4s ease-in-out;
+      opacity: 1;
+      max-height: 300px; 
+      overflow: hidden;
     }
 
-    .bar-qr-img {
-      max-height: 130px;
-      object-fit: contain;
-      border-radius: 8px;
-      border: 3px solid rgba(255, 0, 85, 0.5);
-      padding: 4px;
-      background: white;
-    }
-
-    .qr-text {
-      margin-top: 8px;
-    }
-
-    .qr-text strong {
-      display: block;
-      font-family: var(--font-display);
-      font-size: 0.9rem;
-      color: var(--neon-pink);
-      letter-spacing: 0.1em;
-    }
-
-    /* Clase mágica para ocultar el QR */
-    .oculto-dinamico {
+    /* Clase mágica inyectada por JS cuando hay 3 o más canciones */
+    .qr-oculto-tv {
       display: none !important;
-    }
-
-    /* Animaciones base */
-    @keyframes neonPulse {
-      0%, 100% { opacity: 1; text-shadow: var(--glow-cyan); }
-      50%      { opacity: 0.5; text-shadow: none; }
+      opacity: 0 !important;
+      max-height: 0 !important;
+      padding: 0 !important;
+      margin: 0 !important;
     }
   </style>
 </head>
-<body>
+<body class="bar-body">
 
   <div class="bar-layout">
-    
+
     <div class="panel-video">
+      
       <div class="top-instruction-bar">
-        Escanea el código QR y pide tu canción
+        Elige la canción desde tu celular
       </div>
       
       <div class="video-wrapper">
-        <div class="idle-text">CYBER-JUKEBOX ACTIVADO</div>
+
+        <div class="idle-screen" id="idle-screen">
+          <div class="idle-icon">🎵</div>
+          <div class="idle-text">Jukebox Digital</div>
+          <div class="idle-sub">Escanea el QR y pide tu canción</div>
+        </div>
+
+        <div id="youtube-player"></div>
       </div>
 
       <div class="now-playing-bar">
-        <div class="np-title">Esperando peticiones...</div>
-        <div class="np-mesa">Auto-DJ</div>
+        <span class="np-label">▶ REPRODUCIENDO</span>
+        <span class="np-title" id="np-titulo">— Esperando canciones —</span>
+        <span class="np-separator" id="np-sep" style="display:none">|</span>
+        <span class="np-mesa"  id="np-nombre"></span>
       </div>
     </div>
 
     <div class="panel-info">
-      
-      <div class="logo-text">NEON<span>CLUB</span></div>
 
-      <div class="queue-section">
-        <div class="section-title">En Fila</div>
-        <div class="queue-wrapper">
-          <div class="queue-list" id="queueList">
-            </div>
+      <div class="bar-logo-section">
+        <img src="GENESIS 2.0.png" alt="Logo del bar Genesis" class="bar-logo-img" style="filter: drop-shadow(0 0 15px #00f0ff);">
+        <div class="logo-text" style="margin-top: 10px;">
+          GENESIS<span style="color: #00f0ff; text-shadow: 0 0 10px #00f0ff;">2.0</span>
         </div>
       </div>
 
-      <div class="qr-section" id="qrSection">
-        <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://tubar.com" alt="QR Code" class="bar-qr-img">
-        <div class="qr-text">
-          <strong>¡PIDE TU CANCIÓN AQUÍ!</strong>
+      <div class="neon-divider"></div>
+
+      <div class="queue-section">
+        <h3 class="section-title">
+          <span class="neon-dot">◆</span> PRÓXIMAS EN FILA
+        </h3>
+        <div class="queue-list" id="queue-list">
+          <div class="queue-empty" id="queue-empty">
+            <p style="color: #00f0ff; text-shadow: 0 0 8px rgba(0, 240, 255, 0.6);">🎵 La fila está vacía</p>
+            <small style="color: #ffffff;">Escanea el QR para pedir</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="qr-section">
+        <div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; padding: 10px 0;">
+          <img src="qr-genesis.png" alt="QR del Bar" class="bar-qr-img">
+          <div class="qr-text" style="font-size: 1rem; color: #00f0ff; text-shadow: 0 0 10px rgba(0, 240, 255, 0.8); font-weight: bold; line-height: 1.4;">
+            PIDE TU CANCIÓN<br>DESDE TU CELULAR
+          </div>
         </div>
       </div>
 
     </div>
   </div>
 
-  <script>
-    const queueList = document.getElementById('queueList');
-    const qrSection = document.getElementById('qrSection');
-
-    /**
-     * Evalúa la cantidad de canciones en la lista.
-     * Si hay 3 o más, oculta el QR para darle espacio al barrido.
-     */
-    function evaluarEspacioQR() {
-      const cantidadCanciones = queueList.children.length;
-      
-      if (cantidadCanciones >= 3) {
-        qrSection.classList.add('oculto-dinamico');
-      } else {
-        qrSection.classList.remove('oculto-dinamico');
-      }
-    }
-
-    /**
-     * SCRIPT DE SIMULACIÓN (Para que veas cómo funciona al abrir el HTML)
-     * Elimina esto en tu proyecto real y reemplázalo con tu lógica de base de datos.
-     */
-    let contadorCanciones = 1;
-    const cancionesDemo = [
-      { titulo: "Blinding Lights - The Weeknd", mesa: "Mesa 04" },
-      { titulo: "Cyberpunk 2077 Theme", mesa: "Barra Principal" },
-      { titulo: "Daft Punk - Harder, Better...", mesa: "VIP 1" },
-      { titulo: "Kavinsky - Nightcall", mesa: "Mesa 12" },
-      { titulo: "Perturbator - Future Club", mesa: "Mesa 02" }
-    ];
-
-    function agregarCancionDemo() {
-      // Tomamos una canción aleatoria para la demo
-      const randomSong = cancionesDemo[Math.floor(Math.random() * cancionesDemo.length)];
-      
-      const itemHTML = `
-        <div class="queue-item">
-          <div class="queue-thumb"></div>
-          <div class="queue-details">
-            <div class="queue-song-title">${contadorCanciones}. ${randomSong.titulo}</div>
-            <div class="queue-song-who">Pedido por: ${randomSong.mesa}</div>
-          </div>
+  <div class="notification-banner" id="notification-banner" aria-live="polite">
+    <div class="notif-content">
+      <span class="notif-icon">🎵</span>
+      <div class="notif-text">
+        <div class="notif-song" id="notif-song-name">Nombre del tema</div>
+        <div class="notif-who">
+          Pedido por: <span id="notif-quien">—</span>
         </div>
-      `;
-      
-      // Inyectar en el HTML
-      queueList.insertAdjacentHTML('beforeend', itemHTML);
-      contadorCanciones++;
+      </div>
+    </div>
+  </div>
 
-      // ¡IMPORTANTE! Llamar a la validación del QR después de modificar la lista
-      evaluarEspacioQR();
+  <script src="/socket.io/socket.io.js"></script>
+
+  <script>
+    'use strict';
+
+    // ─────────────────────────────────────────────────────────
+    //  ESTADO LOCAL
+    // ─────────────────────────────────────────────────────────
+    let player       = null;  
+    let playerReady  = false;  
+    let pendingVideo = null;   
+    let notifTimer   = null;   
+
+    let lastVideoId  = null;   
+    let isAutoDJ     = false;  
+
+    // Detectar si este TV es esclavo mirando la URL (?esclavo=true)
+    const isEsclavo  = new URLSearchParams(window.location.search).has('esclavo');
+
+    // Variables para arrancar el día con música
+    let pendingAutoDJ = false;
+
+    // 👇 Lista Maestra de Canciones para abrir el bar (Variado Colombiano) 👇
+    const semillasMix = [
+      // 🥃 MÚSICA POPULAR Y DESPECHO
+      'nJ7rBzClyCg', // Jessi Uribe - Dulce Pecado
+      'Qk7rhW-SB1g', // Yeison Jimenez - Aventurero
+      'D14H7qE1Tq0', // Alzate - Maldita Traición
+      'y9Q30K7xLko', // Luis Alberto Posada - Me Tomas y Me Dejas
+      'c8mP91kZ9C8', // Darío Gómez - Nadie es Eterno
+      'Wj6HkY10Y9U', // Pipe Bueno - Recostada en la Cama
+      'z_a9OvhN168', // Arelys Henao - Señor Prohibido
+
+      // 🪗 VALLENATO (Clásico y Nueva Ola)
+      '5R-7E5u2t8U', // Diomedes Díaz - La Plata
+      'wDeZiEZGS3Q', // Binomio de Oro - Me Ilusioné
+      'W0Wc3eQ0Y5k', // Silvestre Dangond - Niégame Tres Veces
+      'lM0D-l3w-X0', // Los Inquietos - Volver
+      'R5j71wB27cE', // Patricia Teherán - Tarde lo Conocí
+      'a-H_h2v4O0I', // Kaleth Morales - Vivo en el Limbo
+
+      // 🔥 REGUETÓN Y URBANO
+      'ca48oMV59LU', // Karol G - PROVENZA
+      'TapXs54Ah3E', // J Balvin - Ay Vamos
+      '2aD2hYg1_n8', // Feid - Normal
+      'eHhLzHofkE8', // Ryan Castro - Mujeriego
+      'I_mQv7-QIfs', // Blessd - Medallo
+
+      // 🎺 SALSA Y TROPICAL (Para prender el ambiente)
+      'eM6A7gJ_U2Y', // Grupo Niche - Cali Pachanguero
+      'G8v7gBWe3c4'  // Joe Arroyo - La Rebelión
+    ];
+    
+    // El sistema elige una canción al azar de la lista maestra cada vez que se abre la página
+    const cancionSemilla = semillasMix[Math.floor(Math.random() * semillasMix.length)];
+
+    // ─────────────────────────────────────────────────────────
+    //  SOCKET.IO — Conexión al servidor Node.js
+    // ─────────────────────────────────────────────────────────
+    const socket = io({ reconnectionDelay: 1000 });
+
+    // ── Recibir estado inicial (conexión o reconexión) ────────
+    socket.on('estado_inicial', ({ cola, reproduciendo }) => {
+      console.log('[Socket] Estado inicial → cola:', cola.length, '| reproduciendo:', reproduciendo?.titulo ?? 'nada');
+      actualizarCola(cola);
+      
+      if (reproduciendo) {
+        cargarVideo(reproduciendo);
+      } else {
+        // Si no hay música, el Maestro enciende el Auto-DJ de fondo
+        if (!isEsclavo) {
+          lastVideoId = cancionSemilla; 
+          if (playerReady) {
+            iniciarAutoDJ();
+          } else {
+            pendingAutoDJ = true; 
+          }
+        } else {
+          // El esclavo solo muestra la pantalla de inicio y espera en silencio
+          mostrarIdleScreen(true);
+        }
+      }
+    });
+
+    // ── Cola actualizada ──────────────────────────────────────
+    socket.on('cola_actualizada', ({ cola, reproduciendo }) => {
+      actualizarCola(cola);
+
+      if (reproduciendo) {
+        actualizarNowPlayingBar(reproduciendo);
+      }
+
+      // MAGIA AUTO-DJ: Si no hay canción reproduciendo (fila vacía)
+      if (!reproduciendo) {
+        if (lastVideoId && !isAutoDJ) {
+          if (!isEsclavo) iniciarAutoDJ();
+        } else if (!lastVideoId && !isAutoDJ) {
+          actualizarNowPlayingBar(null);
+          mostrarIdleScreen(true);
+        }
+      }
+    });
+
+    // ── Comenzar a reproducir una canción nueva ───────────────
+    socket.on('nueva_reproduccion', (cancion) => {
+      console.log('[Socket] Nueva reproducción:', cancion?.titulo);
+      isAutoDJ = false;
+      cargarVideo(cancion);
+      mostrarNotificacion(cancion);
+    });
+
+    // ── Reconexión: pedir estado actualizado ──────────────────
+    socket.on('reconnect', () => {
+      console.log('[Socket] Reconectado — solicitando estado');
+      socket.emit('solicitar_estado');
+    });
+
+    // ─────────────────────────────────────────────────────────
+    //  YOUTUBE IFRAME API
+    // ─────────────────────────────────────────────────────────
+    window.onYouTubeIframeAPIReady = function () {
+      console.log('[YT] IFrame API cargada — creando player');
+      player = new YT.Player('youtube-player', {
+        height: '100%',
+        width:  '100%',
+        playerVars: {
+          autoplay:         1,   
+          controls:         1,   
+          rel:              0,   
+          modestbranding:   1,   
+          iv_load_policy:   3,   
+          fs:               0,   
+          playsinline:      1,   
+          enablejsapi:      1    
+        },
+        events: {
+          onReady:       onPlayerReady,
+          onStateChange: onPlayerStateChange,
+          onError:       onPlayerError
+        }
+      });
+    };
+
+    function onPlayerReady(event) {
+      console.log('[YT] Player listo para recibir comandos');
+      playerReady = true;
+      
+      if (pendingVideo) {
+        cargarVideo(pendingVideo);
+        pendingVideo = null;
+      } 
+      // Si había un Auto-DJ pendiente por iniciar al cargar la página
+      else if (pendingAutoDJ && !isEsclavo) {
+        iniciarAutoDJ();
+        pendingAutoDJ = false;
+      }
     }
 
-    // Simulamos que entra una canción nueva cada 4 segundos (máximo 6 para la prueba)
-    const intervaloSimulacion = setInterval(() => {
-      agregarCancionDemo();
-      if (contadorCanciones > 6) {
-        clearInterval(intervaloSimulacion);
+    function onPlayerStateChange(event) {
+      switch (event.data) {
+        case YT.PlayerState.ENDED:
+          // Solo el maestro pide la siguiente canción
+          if (!isAutoDJ && !isEsclavo) {
+            console.log('[YT] Video de cliente terminado → siguiente_cancion');
+            socket.emit('siguiente_cancion');
+          }
+          break;
+          
+        case YT.PlayerState.PLAYING:
+          mostrarIdleScreen(false);
+          if (isAutoDJ && player.getVideoData) {
+            const videoData = player.getVideoData();
+            if (videoData && videoData.title) {
+              actualizarNowPlayingBar({
+                titulo: videoData.title,
+                nombre: '🔥 Auto-DJ (YouTube Mix)'
+              });
+            }
+          }
+          break;
+          
+        case YT.PlayerState.PAUSED:
+          console.log('[YT] Video en pausa');
+          break;
       }
-    }, 4000);
+    }
+
+    function onPlayerError(event) {
+      console.error('[YT] Error del player, código:', event.data);
+      // Solo el maestro se salta el video si hay error
+      if (!isEsclavo) {
+        setTimeout(() => socket.emit('siguiente_cancion'), 2000);
+      }
+    }
+
+    // ─────────────────────────────────────────────────────────
+    //  FUNCIONES DE REPRODUCCIÓN
+    // ─────────────────────────────────────────────────────────
+
+    function cargarVideo(cancion) {
+      if (!cancion) return;
+
+      if (!playerReady || !player || typeof player.loadVideoById !== 'function') {
+        pendingVideo = cancion;
+        return;
+      }
+
+      lastVideoId = cancion.videoId;
+
+      console.log('[YT] Cargando video:', cancion.videoId, '—', cancion.titulo);
+      player.loadVideoById({ videoId: cancion.videoId });
+      actualizarNowPlayingBar(cancion);
+      mostrarIdleScreen(false);
+    }
+
+    function iniciarAutoDJ() {
+      if (!playerReady || !player) return;
+
+      console.log('[Auto-DJ] Iniciando mix infinito basado en:', lastVideoId);
+      isAutoDJ = true;
+      mostrarIdleScreen(false);
+
+      player.loadPlaylist({
+        list: 'RD' + lastVideoId,
+        listType: 'playlist'
+      });
+
+      actualizarNowPlayingBar({
+        titulo: 'Cargando selección musical...',
+        nombre: '🔥 Auto-DJ'
+      });
+    }
+
+    function mostrarIdleScreen(visible) {
+      const el = document.getElementById('idle-screen');
+      if (el) el.style.display = visible ? 'flex' : 'none';
+    }
+
+    // ─────────────────────────────────────────────────────────
+    //  ACTUALIZAR BARRA "REPRODUCIENDO"
+    // ─────────────────────────────────────────────────────────
+    function actualizarNowPlayingBar(cancion) {
+      const tituloEl = document.getElementById('np-titulo');
+      const nombreEl = document.getElementById('np-nombre');
+      const sepEl    = document.getElementById('np-sep');
+
+      if (!cancion) {
+        tituloEl.textContent  = '— Esperando canciones —';
+        nombreEl.textContent  = '';
+        sepEl.style.display   = 'none';
+        return;
+      }
+      tituloEl.textContent = cancion.titulo;
+      nombreEl.textContent = cancion.nombre;
+      sepEl.style.display  = 'inline';
+    }
+
+    // ─────────────────────────────────────────────────────────
+    //  ACTUALIZAR LISTA DE LA COLA (Modificada con Lógica de QR y Barrido)
+    // ─────────────────────────────────────────────────────────
+    function actualizarCola(cola) {
+      const listEl  = document.getElementById('queue-list');
+      const emptyEl = document.getElementById('queue-empty');
+      const qrEl    = document.querySelector('.qr-section');
+
+      listEl.querySelectorAll('.queue-item').forEach(el => el.remove());
+
+      // 1. CONTROL DINÁMICO DEL QR (Si hay 3 o más canciones en fila, se apaga)
+      if (cola && cola.length >= 3) {
+        if (qrEl) qrEl.classList.add('qr-oculto-tv');
+      } else {
+        if (qrEl) qrEl.classList.remove('qr-oculto-tv');
+      }
+
+      if (!cola || cola.length === 0) {
+        emptyEl.style.display = 'block';
+        listEl.classList.remove('queue-list-animada'); // Apaga el barrido si está vacío
+        return;
+      }
+
+      emptyEl.style.display = 'none';
+      
+      // 2. ACTIVAR BARRIDO AUTOMÁTICO EN LA TV
+      listEl.classList.add('queue-list-animada');
+
+      // Eliminé el .slice(0, 4) para que muestre TODAS las canciones acumuladas en fila aprovechando el barrido vertical
+      cola.forEach((cancion, index) => {
+        const item = document.createElement('div');
+        item.className = 'queue-item';
+        item.style.animationDelay = `${index * 0.08}s`;
+
+        const thumbHtml = cancion.thumbnail
+          ? `<img class="queue-thumb" src="${escapeHtml(cancion.thumbnail)}" alt="" loading="lazy" onerror="this.style.display='none'">`
+          : `<div class="queue-thumb-placeholder">🎵</div>`;
+
+        item.innerHTML = `
+          <div class="queue-num">${index + 1}</div>
+          ${thumbHtml}
+          <div class="queue-details">
+            <div class="queue-song-title">${escapeHtml(cancion.titulo)}</div>
+            <div class="queue-song-who">${escapeHtml(cancion.nombre)} · ${escapeHtml(cancion.timestamp)}</div>
+          </div>
+        `;
+        listEl.appendChild(item);
+      });
+    }
+
+    // ─────────────────────────────────────────────────────────
+    //  BANNER DE NOTIFICACIÓN ANIMADO
+    // ─────────────────────────────────────────────────────────
+    function mostrarNotificacion(cancion) {
+      if (!cancion) return;
+
+      const banner   = document.getElementById('notification-banner');
+      const songName = document.getElementById('notif-song-name');
+      const quien    = document.getElementById('notif-quien');
+
+      songName.textContent = cancion.titulo;
+      quien.textContent    = cancion.nombre;
+
+      banner.classList.remove('notif-show', 'notif-hide');
+      void banner.offsetWidth;
+      banner.classList.add('notif-show');
+
+      clearTimeout(notifTimer);
+      notifTimer = setTimeout(() => {
+        banner.classList.remove('notif-show');
+        banner.classList.add('notif-hide');
+      }, 5000);
+    }
+
+    // ─────────────────────────────────────────────────────────
+    //  UTILIDAD: Escapar HTML para prevenir XSS
+    // ─────────────────────────────────────────────────────────
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    // ─────────────────────────────────────────────────────────
+    //  MODO PANTALLA COMPLETA (Clic en el logo)
+    // ─────────────────────────────────────────────────────────
+    const logoSection = document.querySelector('.bar-logo-section');
+    if (logoSection) {
+      logoSection.style.cursor = 'pointer'; 
+      logoSection.addEventListener('click', () => {
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen().catch(err => {
+            console.error(`Error al intentar pantalla completa: ${err.message}`);
+          });
+        } else {
+          document.exitFullscreen();
+        }
+      });
+    }
 
   </script>
+
+  <script src="https://www.youtube.com/iframe_api" async></script>
 </body>
 </html>
