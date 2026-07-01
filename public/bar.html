@@ -101,10 +101,9 @@
       margin-left: 5px;
     }
 
-    /* ─── ANIMACIÓN DE BARRIDO ACTUALIZADA ─── */
+    /* ─── ANIMACIÓN DE BARRIDO ACTUALIZADA SIN PERDIDA DE BRILLO ─── */
     .hacer-barrido {
-      /* La variable --distancia-barrido se inyecta desde JavaScript */
-      animation: barridoUnico 25s linear forwards;
+      animation: barridoUnico 5s linear forwards;
     }
 
     @keyframes barridoUnico {
@@ -112,25 +111,16 @@
         transform: translateY(0); 
       }
       80% { 
-        /* Termina de hacer scroll exactamente hasta la última canción (Toma 20 segundos) */
+        /* Termina de hacer scroll exactamente hasta la última canción */
         transform: translateY(var(--distancia-barrido)); 
       } 
-      95% { 
-        /* Se queda quieto mostrando la última canción (Toma unos 3.75 segundos) */
+      99.9% { 
+        /* Se queda quieto mostrando la última canción, sin bajar el brillo ni cambiar opacidad */
         transform: translateY(var(--distancia-barrido)); 
       } 
-      95.1% { 
-        /* Regresa instantáneamente al inicio sin hacer scroll, totalmente invisible para que no se note el salto */
-        transform: translateY(0); 
-        opacity: 0; 
-      } 
-      96% { 
-        /* Vuelve a aparecer la lista completa suavemente */
-        opacity: 1; 
-      }
       100% { 
+        /* Regresa instantáneamente al inicio sin efectos raros */
         transform: translateY(0); 
-        opacity: 1; 
       } 
     }
   </style>
@@ -426,7 +416,7 @@
         listEl.appendChild(item);
       });
 
-      // 4. LÓGICA DE BARRIDO ACTUALIZADA (Solo si hay 8 o más)
+      // LÓGICA DE BARRIDO ACTUALIZADA (Solo si hay 8 o más)
       if (cola.length >= 8) {
         // Le damos un pequeño tiempo (50ms) para que el navegador dibuje las canciones
         // y podamos medir correctamente la altura antes de animar.
