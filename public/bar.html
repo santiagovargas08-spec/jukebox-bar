@@ -7,7 +7,7 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght=400;700;900&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="style.css">
 
@@ -49,52 +49,32 @@
       font-size: 1.2rem !important; 
     }
 
-    /* 🔄 NUEVOS ESTILOS PARA EL BARRIDO AUTOMÁTICO EN LA TV ───────────────── */
+    /* ─── NUEVOS ESTILOS: BARRIDO Y QR (Agregados sin alterar lo anterior) ─── */
     .queue-section {
-      flex: 1;
-      min-height: 0;
+      overflow: hidden; /* Oculta las canciones que se salen del área */
       display: flex;
       flex-direction: column;
-      overflow: hidden; /* Esconde el desborde y barras manuales */
+      flex: 1; /* Permite que tome el espacio vacío si el QR desaparece */
     }
 
     #queue-list {
       display: flex;
       flex-direction: column;
       gap: 10px;
-      position: relative;
-      will-change: transform; /* Optimización de rendimiento para WebOS */
     }
 
-    /* Animación de barrido: se activa solo cuando la cola tiene elementos */
     .queue-list-animada {
-      animation: barridoVerticalTV 20s linear infinite;
+      /* Animación de barrido suave de 15 segundos */
+      animation: barridoVerticalTV 15s linear infinite;
     }
 
     @keyframes barridoVerticalTV {
-      0% {
-        transform: translateY(60%);
-      }
-      100% {
-        transform: translateY(-100%);
-      }
+      0% { transform: translateY(80%); }
+      100% { transform: translateY(-100%); }
     }
 
-    /* Control de transición para ocultar el QR suavemente */
-    .qr-section {
-      transition: all 0.4s ease-in-out;
-      opacity: 1;
-      max-height: 300px; 
-      overflow: hidden;
-    }
-
-    /* Clase mágica inyectada por JS cuando hay 3 o más canciones */
-    .qr-oculto-tv {
+    .qr-oculto {
       display: none !important;
-      opacity: 0 !important;
-      max-height: 0 !important;
-      padding: 0 !important;
-      margin: 0 !important;
     }
   </style>
 </head>
@@ -150,7 +130,7 @@
         </div>
       </div>
 
-      <div class="qr-section">
+      <div class="qr-section" id="seccion-qr">
         <div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; padding: 10px 0;">
           <img src="qr-genesis.png" alt="QR del Bar" class="bar-qr-img">
           <div class="qr-text" style="font-size: 1rem; color: #00f0ff; text-shadow: 0 0 10px rgba(0, 240, 255, 0.8); font-weight: bold; line-height: 1.4;">
@@ -432,34 +412,32 @@
     }
 
     // ─────────────────────────────────────────────────────────
-    //  ACTUALIZAR LISTA DE LA COLA (Modificada con Lógica de QR y Barrido)
+    //  ACTUALIZAR LISTA DE LA COLA (Modificada para Barrido y QR)
     // ─────────────────────────────────────────────────────────
     function actualizarCola(cola) {
       const listEl  = document.getElementById('queue-list');
       const emptyEl = document.getElementById('queue-empty');
-      const qrEl    = document.querySelector('.qr-section');
+      const qrSection = document.getElementById('seccion-qr'); // Variable para el QR
 
       listEl.querySelectorAll('.queue-item').forEach(el => el.remove());
 
-      // 1. CONTROL DINÁMICO DEL QR (Si hay 3 o más canciones en fila, se apaga)
+      // Validación para ocultar el QR si hay 3 o más canciones
       if (cola && cola.length >= 3) {
-        if (qrEl) qrEl.classList.add('qr-oculto-tv');
+        if (qrSection) qrSection.classList.add('qr-oculto');
       } else {
-        if (qrEl) qrEl.classList.remove('qr-oculto-tv');
+        if (qrSection) qrSection.classList.remove('qr-oculto');
       }
 
       if (!cola || cola.length === 0) {
         emptyEl.style.display = 'block';
-        listEl.classList.remove('queue-list-animada'); // Apaga el barrido si está vacío
+        listEl.classList.remove('queue-list-animada'); // Apagamos el barrido
         return;
       }
 
       emptyEl.style.display = 'none';
-      
-      // 2. ACTIVAR BARRIDO AUTOMÁTICO EN LA TV
-      listEl.classList.add('queue-list-animada');
+      listEl.classList.add('queue-list-animada'); // Encendemos el barrido
 
-      // Eliminé el .slice(0, 4) para que muestre TODAS las canciones acumuladas en fila aprovechando el barrido vertical
+      // Recorremos todas las canciones (se quitó el limitador de 4)
       cola.forEach((cancion, index) => {
         const item = document.createElement('div');
         item.className = 'queue-item';
