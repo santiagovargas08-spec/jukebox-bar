@@ -64,12 +64,12 @@
     }
 
     .queue-list-animada {
-      /* Animación de barrido suave de 15 segundos */
-      animation: barridoVerticalTV 15s linear infinite;
+      /* Animación de barrido más lenta (20 segundos) y en bucle */
+      animation: barridoVerticalTV 20s linear infinite;
     }
 
     @keyframes barridoVerticalTV {
-      0% { transform: translateY(80%); }
+      0% { transform: translateY(100%); } /* Empieza desde más abajo para dar tiempo */
       100% { transform: translateY(-100%); }
     }
 
@@ -412,16 +412,16 @@
     }
 
     // ─────────────────────────────────────────────────────────
-    //  ACTUALIZAR LISTA DE LA COLA (Modificada para Barrido y QR)
+    //  ACTUALIZAR LISTA DE LA COLA (Modificada para Barrido Dinámico)
     // ─────────────────────────────────────────────────────────
     function actualizarCola(cola) {
       const listEl  = document.getElementById('queue-list');
       const emptyEl = document.getElementById('queue-empty');
-      const qrSection = document.getElementById('seccion-qr'); // Variable para el QR
+      const qrSection = document.getElementById('seccion-qr'); 
 
       listEl.querySelectorAll('.queue-item').forEach(el => el.remove());
 
-      // Validación para ocultar el QR si hay 3 o más canciones
+      // Validación para ocultar el QR si hay 4 o más canciones
       if (cola && cola.length >= 4) {
         if (qrSection) qrSection.classList.add('qr-oculto');
       } else {
@@ -435,13 +435,11 @@
       }
 
       emptyEl.style.display = 'none';
-      listEl.classList.add('queue-list-animada'); // Encendemos el barrido
 
-      // Recorremos todas las canciones (se quitó el limitador de 4)
+      // Añadimos las canciones a la lista
       cola.forEach((cancion, index) => {
         const item = document.createElement('div');
         item.className = 'queue-item';
-        item.style.animationDelay = `${index * 0.08}s`;
 
         const thumbHtml = cancion.thumbnail
           ? `<img class="queue-thumb" src="${escapeHtml(cancion.thumbnail)}" alt="" loading="lazy" onerror="this.style.display='none'">`
@@ -457,6 +455,18 @@
         `;
         listEl.appendChild(item);
       });
+
+      // 🔥 LÓGICA DE BARRIDO INTELIGENTE
+      if (cola.length >= 8) {
+        // Quitamos la clase temporalmente y forzamos al navegador a redibujar 
+        // Esto reinicia la animación para que arranque apenas entra la canción
+        listEl.classList.remove('queue-list-animada');
+        void listEl.offsetWidth; 
+        listEl.classList.add('queue-list-animada');
+      } else {
+        // Si hay menos de 8, desactivamos el barrido para que se pueda leer estático
+        listEl.classList.remove('queue-list-animada');
+      }
     }
 
     // ─────────────────────────────────────────────────────────
