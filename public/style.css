@@ -558,10 +558,11 @@ button { cursor: pointer; font-family: inherit; border: none; }
   min-height: 0;
 }
 
-.queue-list {
+.queue-list, #queue-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px; /* ✨ Reducimos la separación entre canciones para ahorrar espacio ✨ */
+  transition: transform 0.5s ease;
 }
 
 /* Estado vacío */
@@ -586,7 +587,7 @@ button { cursor: pointer; font-family: inherit; border: none; }
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 7px 8px;
+  padding: 6px 10px !important; /* ✨ Hacemos el recuadro más delgado ✨ */
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--border-dark);
   border-left: 2px solid var(--neon-pink);
@@ -629,6 +630,7 @@ button { cursor: pointer; font-family: inherit; border: none; }
 .queue-details {
   flex: 1;
   min-width: 0;
+  line-height: 1.1 !important; /* ✨ Juntamos más los textos internos ✨ */
 }
 
 .queue-song-title {
