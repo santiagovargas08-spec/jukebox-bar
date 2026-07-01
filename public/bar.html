@@ -57,14 +57,14 @@
       display: flex;
       flex-direction: column;
       gap: 10px;
-      transition: transform 0.5s ease;
+      /* La transición y el transform ahora los controla dinámicamente JavaScript */
     }
 
     .qr-oculto {
       display: none !important;
     }
 
-    /* ─── ESTILOS: EFECTOS Y BARRIDO INTELIGENTE ─── */
+    /* ─── ESTILOS: EFECTOS DE ETIQUETAS Y RESALTADO ─── */
     
     .badge-nueva {
       background: #00f0ff;
@@ -99,29 +99,6 @@
       font-weight: bold;
       text-shadow: 0 0 5px rgba(255, 0, 85, 0.8);
       margin-left: 5px;
-    }
-
-    /* ─── ANIMACIÓN DE BARRIDO ACTUALIZADA SIN PERDIDA DE BRILLO ─── */
-    .hacer-barrido {
-      animation: barridoUnico 5s linear forwards;
-    }
-
-    @keyframes barridoUnico {
-      0% { 
-        transform: translateY(0); 
-      }
-      80% { 
-        /* Termina de hacer scroll exactamente hasta la última canción */
-        transform: translateY(var(--distancia-barrido)); 
-      } 
-      99.9% { 
-        /* Se queda quieto mostrando la última canción, sin bajar el brillo ni cambiar opacidad */
-        transform: translateY(var(--distancia-barrido)); 
-      } 
-      100% { 
-        /* Regresa instantáneamente al inicio sin efectos raros */
-        transform: translateY(0); 
-      } 
     }
   </style>
 </head>
@@ -211,6 +188,7 @@
     // Variables para el control de la Cola y Barrido
     let totalCancionesAnterior = 0;
     let intervaloBarrido = null;
+    let timeoutReinicio = null; // Variable para controlar la pausa inteligente
     let tiempoDescanso = 30000; // 30 segundos de espera entre barridos
 
     const isEsclavo  = new URLSearchParams(window.location.search).has('esclavo');
@@ -426,27 +404,45 @@
       }
     }
 
-    // Funciones de control del barrido
+    // Funciones de control del barrido inteligente con JS
     function iniciarCicloBarrido(listEl, forzarInmediato) {
+      // Limpiamos intervalos y tiempos previos para que no colapsen
       clearInterval(intervaloBarrido); 
+      clearTimeout(timeoutReinicio);
 
       const ejecutarAnimacion = () => {
-        // CALCULAMOS CUÁNTO DEBE BAJAR EXACTAMENTE
         const contenedor = listEl.parentElement;
         const alturaVisible = contenedor.offsetHeight;
         const alturaTotal = listEl.scrollHeight;
         
-        // Solo animamos si la lista de canciones es más grande que el contenedor visual
+        // Solo animamos si la lista es más grande que el contenedor visual
         if (alturaTotal > alturaVisible) {
-          // Calculamos la distancia exacta hasta el final de la lista, más un margen de 20px
           const distanciaScroll = alturaTotal - alturaVisible + 20;
-          // Le inyectamos este valor a nuestro CSS
-          listEl.style.setProperty('--distancia-barrido', `-${distanciaScroll}px`);
+          
+          // 🧠 LÓGICA INTELIGENTE DE TIEMPO
+          const cantCanciones = listEl.children.length; // Número de items en pantalla
+          // Base de 5s. Si hay más de 10, suma 1s por cada canción adicional.
+          const tiempoBarrido = cantCanciones > 10 ? 5 + (cantCanciones - 10) : 5;
+          const tiempoPausa = 2; // 2 segundos exactos para leer la última canción
+          
+          // 1. Reseteo instantáneo y silencioso al inicio
+          listEl.style.transition = 'none';
+          listEl.style.transform = 'translateY(0)';
+          clearTimeout(timeoutReinicio); // Por si se disparó forzado
 
-          // Reiniciamos la animación CSS
-          listEl.classList.remove('hacer-barrido');
+          // 2. Forzamos al navegador a procesar el cambio (Reflow)
           void listEl.offsetWidth; 
-          listEl.classList.add('hacer-barrido');
+
+          // 3. Ejecutamos el barrido suave con el tiempo calculado
+          listEl.style.transition = `transform ${tiempoBarrido}s linear`;
+          listEl.style.transform = `translateY(-${distanciaScroll}px)`;
+
+          // 4. Programamos el regreso: Tiempo de bajada + los 2s de pausa abajo
+          timeoutReinicio = setTimeout(() => {
+            // Regresa arriba instantáneamente sin efectos raros
+            listEl.style.transition = 'none';
+            listEl.style.transform = 'translateY(0)';
+          }, (tiempoBarrido + tiempoPausa) * 1000);
         }
       };
 
@@ -454,12 +450,16 @@
         ejecutarAnimacion();
       }
 
+      // Sigue ejecutándose cada 30 segundos
       intervaloBarrido = setInterval(ejecutarAnimacion, tiempoDescanso);
     }
 
     function detenerCicloBarrido(listEl) {
+      // Matamos todos los procesos y regresamos todo a la normalidad
       clearInterval(intervaloBarrido);
-      listEl.classList.remove('hacer-barrido');
+      clearTimeout(timeoutReinicio);
+      listEl.style.transition = 'none';
+      listEl.style.transform = 'translateY(0)';
     }
 
     function mostrarNotificacion(cancion) {
