@@ -327,7 +327,7 @@ button { cursor: pointer; font-family: inherit; border: none; }
   font-family: var(--font-display);
   font-size: 1.8rem;
   font-weight: 700;
-  color: var(--neon-cyan); /* Color cian eléctrico */
+  color: var(--neon-cyan);
   text-shadow: var(--glow-cyan);
   border-bottom: 1px solid rgba(0, 229, 255, 0.3);
   letter-spacing: 0.1em;
@@ -352,7 +352,6 @@ button { cursor: pointer; font-family: inherit; border: none; }
   overflow: hidden;
 }
 
-/* El IFrame de YouTube se posiciona para llenar el contenedor */
 #youtube-player,
 #youtube-player iframe {
   position: absolute;
@@ -362,7 +361,7 @@ button { cursor: pointer; font-family: inherit; border: none; }
   border: none;
 }
 
-/* Pantalla idle (cuando no hay video) */
+/* Pantalla idle */
 .idle-screen {
   position: absolute;
   inset: 0;
@@ -409,9 +408,7 @@ button { cursor: pointer; font-family: inherit; border: none; }
   color: #ffffff !important;
 }
 
-.np-label {
-  display: none;
-}
+.np-label { display: none; }
 
 .np-title {
   font-family: var(--font-body);
@@ -447,7 +444,6 @@ button { cursor: pointer; font-family: inherit; border: none; }
   gap: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  /* Scrollbar personalizado */
   scrollbar-width: thin;
   scrollbar-color: var(--neon-pink) transparent;
 }
@@ -461,8 +457,8 @@ button { cursor: pointer; font-family: inherit; border: none; }
   padding: 8px 0 12px;
   flex-shrink: 0;
   display: flex;
-  flex-direction: column; /* Apila la imagen arriba y el texto abajo */
-  align-items: center;    /* Centra ambos elementos horizontalmente */
+  flex-direction: column;
+  align-items: center;
 }
 
 .bar-logo {
@@ -551,7 +547,7 @@ button { cursor: pointer; font-family: inherit; border: none; }
   color: var(--text-muted);
 }
 
-/* ─── Cola de canciones ─────────────────────────────────────── */
+/* ─── Cola de canciones (VERSIÓN COMPACTA EXTREMA) ──────────── */
 .queue-section {
   padding: 12px 0;
   flex: 1;
@@ -561,11 +557,10 @@ button { cursor: pointer; font-family: inherit; border: none; }
 .queue-list, #queue-list {
   display: flex;
   flex-direction: column;
-  gap: 4px; /* ✨ Reducimos la separación entre canciones para ahorrar espacio ✨ */
+  gap: 2px; /* Espacio casi inexistente entre canciones */
   transition: transform 0.5s ease;
 }
 
-/* Estado vacío */
 .queue-empty {
   text-align: center;
   padding: 20px 0;
@@ -582,12 +577,12 @@ button { cursor: pointer; font-family: inherit; border: none; }
   color: var(--text-dim);
 }
 
-/* Item de la cola */
+/* Elemento de la cola ultra compacto */
 .queue-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 10px !important; /* ✨ Hacemos el recuadro más delgado ✨ */
+  gap: 6px; /* Menos espacio entre la imagen y el texto */
+  padding: 2px 8px !important; /* Relleno mínimo absoluto */
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--border-dark);
   border-left: 2px solid var(--neon-pink);
@@ -608,50 +603,51 @@ button { cursor: pointer; font-family: inherit; border: none; }
 }
 
 .queue-thumb {
-  width: 38px;
-  height: 28px;
+  width: 28px; /* Miniatura más pequeña */
+  height: 20px;
   object-fit: cover;
-  border-radius: 3px;
+  border-radius: 2px;
   flex-shrink: 0;
 }
 
 .queue-thumb-placeholder {
-  width: 38px;
-  height: 28px;
+  width: 28px;
+  height: 20px;
   background: var(--bg-card);
-  border-radius: 3px;
+  border-radius: 2px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.9rem;
+  font-size: 0.7rem;
   flex-shrink: 0;
 }
 
 .queue-details {
   flex: 1;
   min-width: 0;
-  line-height: 1.1 !important; /* ✨ Juntamos más los textos internos ✨ */
+  line-height: 1 !important; /* Interlineado cero para matar el espacio muerto */
+  padding: 2px 0;
 }
 
 .queue-song-title {
-  font-size: 1.6rem;
+  font-size: 1.3rem; /* Ligeramente más pequeño para optimizar espacio */
   font-weight: bold;
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  line-height: 1.2;
-  margin-bottom: 4px;
+  line-height: 1.1;
+  margin-bottom: 0px !important; /* Eliminamos el margen inferior */
 }
 
 .queue-song-who {
-  font-size: 1.2rem;
+  font-size: 1rem; /* Más compacto */
   color: var(--neon-cyan);
-  text-shadow: 0 0 8px rgba(0, 229, 255, 0.4);
+  text-shadow: 0 0 6px rgba(0, 229, 255, 0.4);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  margin-top: 2px;
+  margin-top: 0px !important; /* Eliminamos el margen superior */
 }
 
 /* ─── Sección QR ────────────────────────────────────────────── */
@@ -660,19 +656,17 @@ button { cursor: pointer; font-family: inherit; border: none; }
   flex-shrink: 0;
 }
 
-/* ✨ AQUÍ ESTÁ EL TAMAÑO DEFINIDO PARA TU QR ✨ */
 .bar-qr-img {
   max-width: 100%;
-  max-height: 130px; /* Misma altura que definiste para .bar-logo-img */
+  max-height: 130px;
   object-fit: contain;
   border-radius: 8px;
-  border: 3px solid rgba(255, 0, 85, 0.5); /* Borde neón rosa */
+  border: 3px solid rgba(255, 0, 85, 0.5);
   padding: 4px;
-  background: white; /* Fondo blanco para que el QR se lea perfecto */
+  background: white;
   margin-top: 16px;
 }
 
-/* Textos debajo del QR */
 .qr-text strong {
   display: block;
   font-family: var(--font-display);
@@ -687,12 +681,13 @@ button { cursor: pointer; font-family: inherit; border: none; }
   font-size: 0.7rem;
   color: var(--text-muted);
 }
+
 /* ─── Notificación flotante animada ─────────────────────────── */
 .notification-banner {
   position: fixed;
   top: 0;
   left: 0;
-  right: 30%;        /* Ocupa solo el ancho del panel de video */
+  right: 30%;
   z-index: 1000;
   padding: 0 0;
   pointer-events: none;
@@ -713,11 +708,7 @@ button { cursor: pointer; font-family: inherit; border: none; }
   align-items: center;
   gap: 14px;
   padding: 14px 24px;
-  background: linear-gradient(
-    90deg,
-    rgba(255, 0, 85, 0.92),
-    rgba(139, 0, 255, 0.92)
-  );
+  background: linear-gradient(90deg, rgba(255, 0, 85, 0.92), rgba(139, 0, 255, 0.92));
   backdrop-filter: blur(12px);
   box-shadow: 0 4px 30px rgba(255, 0, 85, 0.5), 0 0 60px rgba(255, 0, 85, 0.2);
   border-bottom: 1px solid rgba(255, 255, 255, 0.15);
@@ -845,28 +836,13 @@ button { cursor: pointer; font-family: inherit; border: none; }
   border-radius: var(--radius-sm) 0 0 var(--radius-sm);
 }
 
-/* ─── Caja de búsqueda ──────────────────────────────────────── */
-.search-box {
-  display: flex;
-  gap: 8px;
-  align-items: stretch;
-}
-
-.search-box .campo-input {
-  flex: 1;
-  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
-}
-
 .btn-search {
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0 18px;
-  /* ✨ Fondo azul oscuro semitransparente ✨ */
   background: linear-gradient(135deg, rgba(0, 229, 255, 0.15), rgba(0, 229, 255, 0.05));
-  /* ✨ Ícono azul eléctrico ✨ */
   color: var(--neon-cyan);
-  /* ✨ Borde azul eléctrico ✨ */
   border: 1px solid var(--neon-cyan);
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
   box-shadow: 0 0 10px rgba(0, 229, 255, 0.2);
@@ -989,7 +965,6 @@ button { cursor: pointer; font-family: inherit; border: none; }
   font-weight: 600;
   color: var(--text-primary);
   line-height: 1.3;
-  /* Limitar a 2 líneas */
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -1159,20 +1134,17 @@ button { cursor: pointer; font-family: inherit; border: none; }
 
 /* ─── Media Queries ─────────────────────────────────────────── */
 
-/* Pantalla muy pequeña (< 360px) */
 @media (max-width: 360px) {
   .header-logo { font-size: 1.2rem; }
   .result-thumb { width: 90px; }
   .btn-add { font-size: 0.55rem; padding: 6px 8px; }
 }
 
-/* Tablet horizontal / pantalla grande (bar.html) */
 @media (min-width: 1200px) {
   .notification-banner { right: 30%; }
   .notif-song { font-size: 1.1rem; }
 }
 
-/* Ajuste de cola para pantallas pequeñas del bar */
 @media (max-height: 600px) {
   .promo-section { display: none; }
 }
