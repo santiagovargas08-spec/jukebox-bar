@@ -66,7 +66,7 @@
 
     /* ─── NUEVOS ESTILOS: EFECTOS Y BARRIDO INTELIGENTE ─── */
     
-    /* Etiqueta de Canción Nueva */
+    /* Etiqueta de Canción Nueva (Ahora ubicada junto al nombre) */
     .badge-nueva {
       background: #00f0ff;
       color: #000;
@@ -74,9 +74,11 @@
       font-weight: 900;
       padding: 2px 6px;
       border-radius: 4px;
-      margin-left: 10px;
+      margin-left: 8px;
       text-transform: uppercase;
       animation: parpadeo 1s infinite alternate;
+      display: inline-block;
+      vertical-align: middle;
     }
 
     @keyframes parpadeo { 
@@ -84,9 +86,9 @@
       to { opacity: 0.4; box-shadow: none; } 
     }
 
-    /* Resaltar la fila de la canción recién agregada */
+    /* Resaltar la fila de la canción recién agregada (Duración aumentada a 8s) */
     .resaltar-nueva {
-      animation: flashBg 4s ease-out forwards;
+      animation: flashBg 8s ease-out forwards;
     }
 
     @keyframes flashBg {
@@ -102,18 +104,17 @@
       margin-left: 5px;
     }
 
-    /* Animación de barrido controlada por JS */
+    /* Animación de barrido controlada por JS (Aumentada a 25s para ser más lenta) */
     .hacer-barrido {
-      /* Dura 15 segundos en subir, bajar oculto y volver a su lugar */
-      animation: barridoUnico 15s linear forwards;
+      animation: barridoUnico 25s linear forwards;
     }
 
     @keyframes barridoUnico {
       0% { transform: translateY(0); }
-      45% { transform: translateY(-100%); } /* Termina de subir */
-      45.1% { transform: translateY(100%); opacity: 0; } /* Se va abajo invisible */
+      45% { transform: translateY(-100%); } /* Sube más despacio */
+      45.1% { transform: translateY(100%); opacity: 0; } /* Baja invisible */
       46% { opacity: 1; }
-      100% { transform: translateY(0); } /* Vuelve a su lugar suavemente */
+      100% { transform: translateY(0); } /* Vuelve a su lugar */
     }
   </style>
 </head>
@@ -203,7 +204,7 @@
     // Variables para el control de la Cola y Barrido
     let totalCancionesAnterior = 0;
     let intervaloBarrido = null;
-    let tiempoDescanso = 20000; // 20 segundos de espera entre barridos
+    let tiempoDescanso = 50000; // Aumentado a 30 segundos de espera entre barridos
 
     const isEsclavo  = new URLSearchParams(window.location.search).has('esclavo');
     let pendingAutoDJ = false;
@@ -394,25 +395,28 @@
           ? `<span class="badge-multiplicador">(x${cancion.cantidad})</span>` 
           : '';
 
-        // Letrero NUEVA si corresponde
+        // Letrero NUEVA si corresponde (ahora se renderizará junto al nombre)
         const nuevaHtml = (hayCancionNueva && index === colaAgrupada.length - 1)
           ? `<span class="badge-nueva">¡Nueva!</span>`
           : '';
 
+        // SE ELIMINÓ EL TIMESTAMP Y SE MOVIÓ nuevaHtml AL DIV DE QUIÉN LO PIDIÓ
         item.innerHTML = `
           <div class="queue-num">${index + 1}</div>
           ${thumbHtml}
           <div class="queue-details">
             <div class="queue-song-title">
-              ${escapeHtml(cancion.titulo)} ${multiplicadorHtml} ${nuevaHtml}
+              ${escapeHtml(cancion.titulo)} ${multiplicadorHtml}
             </div>
-            <div class="queue-song-who">${escapeHtml(cancion.nombre)} · ${escapeHtml(cancion.timestamp)}</div>
+            <div class="queue-song-who">
+              Pedido por: ${escapeHtml(cancion.nombre)} ${nuevaHtml}
+            </div>
           </div>
         `;
         listEl.appendChild(item);
       });
 
-      // 4. LÓGICA DE BARRIDO CADA 20 SEGUNDOS (Solo si hay 8 o más en total)
+      // 4. LÓGICA DE BARRIDO CADA 30 SEGUNDOS (Solo si hay 8 o más en total)
       if (cola.length >= 8) {
         iniciarCicloBarrido(listEl, hayCancionNueva);
       } else {
@@ -436,7 +440,7 @@
         ejecutarAnimacion();
       }
 
-      // Se repite cada 20 segundos
+      // Se repite cada 30 segundos
       intervaloBarrido = setInterval(ejecutarAnimacion, tiempoDescanso);
     }
 
