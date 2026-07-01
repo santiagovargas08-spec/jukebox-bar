@@ -142,6 +142,10 @@
     let lastVideoId  = null;   
     let isAutoDJ     = false;  
 
+    // 👇 Variables para controlar el barrido automático 👇
+    let scrollInterval = null;
+    let scrollTimeout  = null;
+
     // Detectar si este TV es esclavo mirando la URL (?esclavo=true)
     const isEsclavo  = new URLSearchParams(window.location.search).has('esclavo');
 
@@ -150,7 +154,6 @@
 
     // 👇 Lista Maestra de Canciones para abrir el bar (Variado Colombiano) 👇
     const semillasMix = [
-      // 🥃 MÚSICA POPULAR Y DESPECHO
       'nJ7rBzClyCg', // Jessi Uribe - Dulce Pecado
       'Qk7rhW-SB1g', // Yeison Jimenez - Aventurero
       'D14H7qE1Tq0', // Alzate - Maldita Traición
@@ -158,23 +161,17 @@
       'c8mP91kZ9C8', // Darío Gómez - Nadie es Eterno
       'Wj6HkY10Y9U', // Pipe Bueno - Recostada en la Cama
       'z_a9OvhN168', // Arelys Henao - Señor Prohibido
-
-      // 🪗 VALLENATO (Clásico y Nueva Ola)
       '5R-7E5u2t8U', // Diomedes Díaz - La Plata
       'wDeZiEZGS3Q', // Binomio de Oro - Me Ilusioné
       'W0Wc3eQ0Y5k', // Silvestre Dangond - Niégame Tres Veces
       'lM0D-l3w-X0', // Los Inquietos - Volver
       'R5j71wB27cE', // Patricia Teherán - Tarde lo Conocí
       'a-H_h2v4O0I', // Kaleth Morales - Vivo en el Limbo
-
-      // 🔥 REGUETÓN Y URBANO
       'ca48oMV59LU', // Karol G - PROVENZA
       'TapXs54Ah3E', // J Balvin - Ay Vamos
       '2aD2hYg1_n8', // Feid - Normal
       'eHhLzHofkE8', // Ryan Castro - Mujeriego
       'I_mQv7-QIfs', // Blessd - Medallo
-
-      // 🎺 SALSA Y TROPICAL (Para prender el ambiente)
       'eM6A7gJ_U2Y', // Grupo Niche - Cali Pachanguero
       'G8v7gBWe3c4'  // Joe Arroyo - La Rebelión
     ];
@@ -187,7 +184,6 @@
     // ─────────────────────────────────────────────────────────
     const socket = io({ reconnectionDelay: 1000 });
 
-    // ── Recibir estado inicial (conexión o reconexión) ────────
     socket.on('estado_inicial', ({ cola, reproduciendo }) => {
       console.log('[Socket] Estado inicial → cola:', cola.length, '| reproduciendo:', reproduciendo?.titulo ?? 'nada');
       actualizarCola(cola);
@@ -195,7 +191,6 @@
       if (reproduciendo) {
         cargarVideo(reproduciendo);
       } else {
-        // Si no hay música, el Maestro enciende el Auto-DJ de fondo
         if (!isEsclavo) {
           lastVideoId = cancionSemilla; 
           if (playerReady) {
@@ -204,13 +199,11 @@
             pendingAutoDJ = true; 
           }
         } else {
-          // El esclavo solo muestra la pantalla de inicio y espera en silencio
           mostrarIdleScreen(true);
         }
       }
     });
 
-    // ── Cola actualizada ──────────────────────────────────────
     socket.on('cola_actualizada', ({ cola, reproduciendo }) => {
       actualizarCola(cola);
 
@@ -218,7 +211,6 @@
         actualizarNowPlayingBar(reproduciendo);
       }
 
-      // MAGIA AUTO-DJ: Si no hay canción reproduciendo (fila vacía)
       if (!reproduciendo) {
         if (lastVideoId && !isAutoDJ) {
           if (!isEsclavo) iniciarAutoDJ();
@@ -229,7 +221,6 @@
       }
     });
 
-    // ── Comenzar a reproducir una canción nueva ───────────────
     socket.on('nueva_reproduccion', (cancion) => {
       console.log('[Socket] Nueva reproducción:', cancion?.titulo);
       isAutoDJ = false;
@@ -237,7 +228,6 @@
       mostrarNotificacion(cancion);
     });
 
-    // ── Reconexión: pedir estado actualizado ──────────────────
     socket.on('reconnect', () => {
       console.log('[Socket] Reconectado — solicitando estado');
       socket.emit('solicitar_estado');
@@ -277,7 +267,6 @@
         cargarVideo(pendingVideo);
         pendingVideo = null;
       } 
-      // Si había un Auto-DJ pendiente por iniciar al cargar la página
       else if (pendingAutoDJ && !isEsclavo) {
         iniciarAutoDJ();
         pendingAutoDJ = false;
@@ -287,7 +276,6 @@
     function onPlayerStateChange(event) {
       switch (event.data) {
         case YT.PlayerState.ENDED:
-          // Solo el maestro pide la siguiente canción
           if (!isAutoDJ && !isEsclavo) {
             console.log('[YT] Video de cliente terminado → siguiente_cancion');
             socket.emit('siguiente_cancion');
@@ -315,7 +303,6 @@
 
     function onPlayerError(event) {
       console.error('[YT] Error del player, código:', event.data);
-      // Solo el maestro se salta el video si hay error
       if (!isEsclavo) {
         setTimeout(() => socket.emit('siguiente_cancion'), 2000);
       }
@@ -324,7 +311,6 @@
     // ─────────────────────────────────────────────────────────
     //  FUNCIONES DE REPRODUCCIÓN
     // ─────────────────────────────────────────────────────────
-
     function cargarVideo(cancion) {
       if (!cancion) return;
 
@@ -334,7 +320,6 @@
       }
 
       lastVideoId = cancion.videoId;
-
       console.log('[YT] Cargando video:', cancion.videoId, '—', cancion.titulo);
       player.loadVideoById({ videoId: cancion.videoId });
       actualizarNowPlayingBar(cancion);
@@ -364,9 +349,6 @@
       if (el) el.style.display = visible ? 'flex' : 'none';
     }
 
-    // ─────────────────────────────────────────────────────────
-    //  ACTUALIZAR BARRA "REPRODUCIENDO"
-    // ─────────────────────────────────────────────────────────
     function actualizarNowPlayingBar(cancion) {
       const tituloEl = document.getElementById('np-titulo');
       const nombreEl = document.getElementById('np-nombre');
@@ -384,11 +366,17 @@
     }
 
     // ─────────────────────────────────────────────────────────
-    //  ACTUALIZAR LISTA DE LA COLA (máx. 4 canciones)
+    //  ACTUALIZAR LISTA DE LA COLA (Sin límites y con Auto-Scroll)
     // ─────────────────────────────────────────────────────────
     function actualizarCola(cola) {
       const listEl  = document.getElementById('queue-list');
       const emptyEl = document.getElementById('queue-empty');
+
+      // 1. Detenemos cualquier barrido anterior
+      clearInterval(scrollInterval);
+      clearTimeout(scrollTimeout);
+      listEl.style.scrollBehavior = 'auto';
+      listEl.scrollTop = 0; // Volvemos al inicio de la lista
 
       listEl.querySelectorAll('.queue-item').forEach(el => el.remove());
 
@@ -399,10 +387,10 @@
 
       emptyEl.style.display = 'none';
 
-      cola.slice(0, 4).forEach((cancion, index) => {
+      // 2. Quitamos el límite. Dibujamos TODAS las canciones
+      cola.forEach((cancion, index) => {
         const item = document.createElement('div');
         item.className = 'queue-item';
-        item.style.animationDelay = `${index * 0.08}s`;
 
         const thumbHtml = cancion.thumbnail
           ? `<img class="queue-thumb" src="${escapeHtml(cancion.thumbnail)}" alt="" loading="lazy" onerror="this.style.display='none'">`
@@ -413,11 +401,48 @@
           ${thumbHtml}
           <div class="queue-details">
             <div class="queue-song-title">${escapeHtml(cancion.titulo)}</div>
-            <div class="queue-song-who">${escapeHtml(cancion.nombre)} · ${escapeHtml(cancion.timestamp)}</div>
+            <div class="queue-song-who">${escapeHtml(cancion.nombre)}</div>
           </div>
         `;
         listEl.appendChild(item);
       });
+
+      // 3. Le damos 1 segundo al sistema para dibujar todo antes de medir e iniciar el scroll
+      setTimeout(() => iniciarBarridoAutomatico(listEl), 1000);
+    }
+
+    // ─────────────────────────────────────────────────────────
+    //  MOTOR DE BARRIDO (SCROLL) AUTOMÁTICO
+    // ─────────────────────────────────────────────────────────
+    function iniciarBarridoAutomatico(listEl) {
+      // Calculamos cuánto sobra de la lista que no se alcanza a ver
+      const maxScroll = listEl.scrollHeight - listEl.clientHeight;
+      
+      // Si todo cabe perfectamente en pantalla, no hacemos nada
+      if (maxScroll <= 0) return;
+
+      let pos = 0;
+      
+      // Configuramos la velocidad del barrido (baja 1 pixel cada 45 milisegundos)
+      scrollInterval = setInterval(() => {
+        pos += 1; 
+        listEl.scrollTop = pos;
+
+        // Si llegamos al final de la lista
+        if (pos >= maxScroll + 10) { 
+          clearInterval(scrollInterval); // Pausamos el motor
+          
+          // Esperamos 3 segundos en el fondo para que lean el último, y reiniciamos
+          scrollTimeout = setTimeout(() => {
+            listEl.scrollTop = 0; // Salto instantáneo al inicio
+            
+            // Volvemos a arrancar el barrido
+            setTimeout(() => {
+               iniciarBarridoAutomatico(listEl);
+            }, 1000);
+          }, 3000);
+        }
+      }, 45); 
     }
 
     // ─────────────────────────────────────────────────────────
