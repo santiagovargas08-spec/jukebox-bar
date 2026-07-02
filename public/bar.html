@@ -57,6 +57,7 @@
       display: flex;
       flex-direction: column;
       gap: 10px;
+      padding-bottom: 50px; /* Espacio extra al final para que la última canción no choque abajo */
       /* La transición y el transform ahora los controla dinámicamente JavaScript */
     }
 
@@ -188,7 +189,7 @@
     // Variables para el control de la Cola y Barrido
     let totalCancionesAnterior = 0;
     let intervaloBarrido = null;
-    let timeoutReinicio = null; // Variable para controlar la pausa inteligente
+    let timeoutReinicio = null; 
     let tiempoDescanso = 30000; // 30 segundos de espera entre barridos
 
     const isEsclavo  = new URLSearchParams(window.location.search).has('esclavo');
@@ -396,8 +397,6 @@
 
       // LÓGICA DE BARRIDO ACTUALIZADA (Solo si hay 8 o más)
       if (cola.length >= 8) {
-        // Le damos un pequeño tiempo (50ms) para que el navegador dibuje las canciones
-        // y podamos medir correctamente la altura antes de animar.
         setTimeout(() => iniciarCicloBarrido(listEl, hayCancionNueva), 50);
       } else {
         detenerCicloBarrido(listEl);
@@ -406,7 +405,6 @@
 
     // Funciones de control del barrido inteligente con JS
     function iniciarCicloBarrido(listEl, forzarInmediato) {
-      // Limpiamos intervalos y tiempos previos para que no colapsen
       clearInterval(intervaloBarrido); 
       clearTimeout(timeoutReinicio);
 
@@ -415,31 +413,29 @@
         const alturaVisible = contenedor.offsetHeight;
         const alturaTotal = listEl.scrollHeight;
         
-        // Solo animamos si la lista es más grande que el contenedor visual
         if (alturaTotal > alturaVisible) {
           const distanciaScroll = alturaTotal - alturaVisible + 20;
           
-          // 🧠 LÓGICA INTELIGENTE DE TIEMPO
-          const cantCanciones = listEl.children.length; // Número de items en pantalla
-          // Base de 5s. Si hay más de 10, suma 1s por cada canción adicional.
-          const tiempoBarrido = cantCanciones > 10 ? 5 + (cantCanciones - 10) : 5;
-          const tiempoPausa = 2; // 2 segundos exactos para leer la última canción
+          // 🧠 LÓGICA INTELIGENTE DE TIEMPO AJUSTADA
+          const cantCanciones = listEl.children.length; 
+          // Base de 5s. Si hay más de 10 canciones, suma medio segundo (0.5) por cada una adicional.
+          const tiempoBarrido = cantCanciones > 10 ? 5 + ((cantCanciones - 10) * 0.5) : 5;
+          const tiempoPausa = 2; // 2 segundos exactos detenida abajo para poder leerla perfectamente
           
-          // 1. Reseteo instantáneo y silencioso al inicio
+          // 1. Reseteo instantáneo al inicio
           listEl.style.transition = 'none';
           listEl.style.transform = 'translateY(0)';
-          clearTimeout(timeoutReinicio); // Por si se disparó forzado
+          clearTimeout(timeoutReinicio);
 
-          // 2. Forzamos al navegador a procesar el cambio (Reflow)
+          // 2. Forzamos Reflow
           void listEl.offsetWidth; 
 
-          // 3. Ejecutamos el barrido suave con el tiempo calculado
+          // 3. Ejecutamos el barrido con el tiempo inteligente calculado
           listEl.style.transition = `transform ${tiempoBarrido}s linear`;
           listEl.style.transform = `translateY(-${distanciaScroll}px)`;
 
-          // 4. Programamos el regreso: Tiempo de bajada + los 2s de pausa abajo
+          // 4. Programamos el regreso contemplando el tiempo de bajada + la pausa de 2s
           timeoutReinicio = setTimeout(() => {
-            // Regresa arriba instantáneamente sin efectos raros
             listEl.style.transition = 'none';
             listEl.style.transform = 'translateY(0)';
           }, (tiempoBarrido + tiempoPausa) * 1000);
@@ -450,12 +446,10 @@
         ejecutarAnimacion();
       }
 
-      // Sigue ejecutándose cada 30 segundos
       intervaloBarrido = setInterval(ejecutarAnimacion, tiempoDescanso);
     }
 
     function detenerCicloBarrido(listEl) {
-      // Matamos todos los procesos y regresamos todo a la normalidad
       clearInterval(intervaloBarrido);
       clearTimeout(timeoutReinicio);
       listEl.style.transition = 'none';
