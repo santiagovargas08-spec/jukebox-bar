@@ -13,6 +13,28 @@
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="style.css">
+
+  <style>
+    /* ─── Scroll Personalizado para la Lista en Vivo ─── */
+    #live-queue-list {
+      max-height: 250px; /* Altura máxima antes de que aparezca el scroll */
+      overflow-y: auto;
+      padding-right: 8px; /* Espacio para que la barra no tape el texto */
+    }
+
+    /* Estilizando la barra de scroll para que se vea cyberpunk/neón */
+    #live-queue-list::-webkit-scrollbar {
+      width: 6px;
+    }
+    #live-queue-list::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 4px;
+    }
+    #live-queue-list::-webkit-scrollbar-thumb {
+      background: #00f0ff; /* Color cyan neón */
+      border-radius: 4px;
+    }
+  </style>
 </head>
 <body class="cliente-body">
 
@@ -158,7 +180,6 @@
 
     // Recibir resultados del servidor
     socket.on('resultados_busqueda', ({ items, query }) => {
-      // Guardamos el resultado en la memoria caché para futuras búsquedas
       cacheBusquedas[query.toLowerCase()] = items; 
       
       mostrarLoading(false);
@@ -271,7 +292,6 @@
         return;
       }
 
-      // 🧠 MAGIA LOCALSTORAGE: Guardar/Actualizar el nombre en el celular
       localStorage.setItem('genesis_cliente_nombre', nombre);
 
       const cancion = {
@@ -305,7 +325,7 @@
     });
 
     // ─────────────────────────────────────────────────────────
-    //  COLA EN VIVO (vista resumida)
+    //  COLA EN VIVO (Muestra TODAS las canciones con scroll)
     // ─────────────────────────────────────────────────────────
     function actualizarColaEnVivo(cola) {
       if (!cola || cola.length === 0) {
@@ -314,7 +334,9 @@
       }
 
       liveQueueSection.style.display = 'block';
-      liveQueueList.innerHTML = cola.slice(0, 4).map((c, i) => `
+      
+      // Renderiza toda la lista sin cortarla
+      liveQueueList.innerHTML = cola.map((c, i) => `
         <div class="live-queue-item" role="listitem">
           <span class="lq-num" aria-hidden="true">${i + 1}</span>
           <div class="lq-info">
@@ -364,7 +386,6 @@
     // ─────────────────────────────────────────────────────────
     let timerBusqueda = null;
 
-    // Buscar automáticamente mientras el usuario escribe
     inputBuscar.addEventListener('input', (e) => {
       clearTimeout(timerBusqueda);
       const query = e.target.value.trim();
@@ -377,7 +398,7 @@
       if (query.length >= 3) {
         timerBusqueda = setTimeout(() => {
           buscarVideos(query);
-        }, 700); // 700ms de espera antes de autocompletar la búsqueda
+        }, 700); 
       }
     });
 
