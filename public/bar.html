@@ -25,7 +25,11 @@
     .video-wrapper > div,
     #youtube-player {
       position: absolute !important;
-      inset: 0 !important;
+      /* REEMPLAZO DE INSET PARA TVs ANTIGUAS */
+      top: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      bottom: 0 !important;
       width: 100% !important;
       height: 100% !important;
       filter: none !important;
@@ -56,8 +60,11 @@
     #queue-list {
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      /* Reemplazo de gap por margin para TVs más viejas */
       padding-bottom: 50px; 
+    }
+    .queue-item {
+      margin-bottom: 10px;
     }
 
     .qr-oculto {
@@ -101,6 +108,16 @@
       margin-left: 5px;
     }
   </style>
+
+  <script>
+    window.onerror = function(msg, url, lineNo, columnNo, error) {
+      var errDiv = document.createElement('div');
+      errDiv.style.cssText = 'position:fixed; top:0; left:0; width:100%; padding:20px; background:red; color:white; z-index:9999999; font-size:18px; font-weight:bold;';
+      errDiv.innerHTML = '⚠️ ERROR EN TV: ' + msg + '<br>Línea: ' + lineNo;
+      document.body.appendChild(errDiv);
+      return false;
+    };
+  </script>
 </head>
 <body class="bar-body">
 
@@ -148,9 +165,9 @@
       </div>
 
       <div class="qr-section" id="seccion-qr">
-        <div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; padding: 10px 0;">
+        <div style="display: flex; flex-direction: column; align-items: center; text-align: center; padding: 10px 0;">
           <img src="qr-genesis.png" alt="QR del Bar" class="bar-qr-img">
-          <div class="qr-text" style="font-size: 1rem; color: #00f0ff; text-shadow: 0 0 10px rgba(0, 240, 255, 0.8); font-weight: bold; line-height: 1.4;">
+          <div class="qr-text" style="font-size: 1rem; color: #00f0ff; text-shadow: 0 0 10px rgba(0, 240, 255, 0.8); font-weight: bold; line-height: 1.4; margin-top:12px;">
             PIDE TU CANCIÓN<br>DESDE TU CELULAR
           </div>
         </div>
@@ -158,7 +175,7 @@
     </div>
   </div>
 
-  <div class="notification-banner" id="notification-banner" aria-live="polite">
+  <div class="notification-banner" id="notification-banner">
     <div class="notif-content">
       <span class="notif-icon">🎵</span>
       <div class="notif-text">
@@ -173,10 +190,8 @@
   <script src="/socket.io/socket.io.js"></script>
 
   <script>
-    'use strict';
-
     // ─────────────────────────────────────────────────────────
-    //  ESTADO LOCAL (Reescrito a ES5 para compatibilidad de TV)
+    //  ESTADO LOCAL (Modo máxima compatibilidad)
     // ─────────────────────────────────────────────────────────
     var player       = null;  
     var playerReady  = false;  
@@ -185,17 +200,14 @@
     var lastVideoId  = null;   
     var isAutoDJ     = false;  
 
-    // Variables para el control de la Cola y Barrido
     var totalCancionesAnterior = 0;
     var intervaloBarrido = null;
     var timeoutReinicio = null; 
     var tiempoDescanso = 30000; 
 
-    // Reemplazo de URLSearchParams para navegadores antiguos
     var isEsclavo = window.location.search.indexOf('esclavo') !== -1;
     var pendingAutoDJ = false;
 
-    // Semillas AutoDJ
     var semillasMix = [
       'nJ7rBzClyCg', 'Qk7rhW-SB1g', 'D14H7qE1Tq0', 'y9Q30K7xLko', 
       'c8mP91kZ9C8', 'Wj6HkY10Y9U', 'z_a9OvhN168', '5R-7E5u2t8U', 
@@ -361,7 +373,7 @@
 
       emptyEl.style.display = 'none';
 
-      // Agrupar canciones (Reemplazo del .find para máxima compatibilidad)
+      // REEMPLAZO TOTAL DE Object.assign para copiar datos de forma segura
       var colaAgrupada = [];
       for (var j = 0; j < cola.length; j++) {
         var cancion = cola[j];
@@ -376,47 +388,52 @@
         if (existente) {
           existente.cantidad = (existente.cantidad || 1) + 1;
         } else {
-          // Reemplazo del operador spread (...)
-          var nuevaCancion = Object.assign({}, cancion);
+          var nuevaCancion = {};
+          for (var key in cancion) {
+            if (cancion.hasOwnProperty(key)) {
+              nuevaCancion[key] = cancion[key];
+            }
+          }
           nuevaCancion.cantidad = 1;
           colaAgrupada.push(nuevaCancion);
         }
       }
 
-      colaAgrupada.forEach(function(cancion, index) {
+      for (var idx = 0; idx < colaAgrupada.length; idx++) {
+        var c = colaAgrupada[idx];
         var item = document.createElement('div');
         item.className = 'queue-item';
         
-        if (hayCancionNueva && index === colaAgrupada.length - 1) {
-          item.classList.add('resaltar-nueva');
+        if (hayCancionNueva && idx === colaAgrupada.length - 1) {
+          item.className += ' resaltar-nueva';
         }
 
-        var thumbHtml = cancion.thumbnail
-          ? '<img class="queue-thumb" src="' + escapeHtml(cancion.thumbnail) + '" alt="" loading="lazy" onerror="this.style.display=\'none\'">'
+        var thumbHtml = c.thumbnail
+          ? '<img class="queue-thumb" src="' + escapeHtml(c.thumbnail) + '" alt="" loading="lazy" onerror="this.style.display=\'none\'">'
           : '<div class="queue-thumb-placeholder">🎵</div>';
 
-        var multiplicadorHtml = cancion.cantidad > 1 
-          ? '<span class="badge-multiplicador">(x' + cancion.cantidad + ')</span>' 
+        var multiplicadorHtml = c.cantidad > 1 
+          ? '<span class="badge-multiplicador">(x' + c.cantidad + ')</span>' 
           : '';
 
-        var nuevaHtml = (hayCancionNueva && index === colaAgrupada.length - 1)
+        var nuevaHtml = (hayCancionNueva && idx === colaAgrupada.length - 1)
           ? '<span class="badge-nueva">¡Nueva!</span>'
           : '';
 
         item.innerHTML = 
-          '<div class="queue-num">' + (index + 1) + '</div>' +
+          '<div class="queue-num">' + (idx + 1) + '</div>' +
           thumbHtml +
           '<div class="queue-details">' +
             '<div class="queue-song-title">' +
-              escapeHtml(cancion.titulo) + ' ' + multiplicadorHtml +
+              escapeHtml(c.titulo) + ' ' + multiplicadorHtml +
             '</div>' +
             '<div class="queue-song-who">' +
-              'Pedido por: ' + escapeHtml(cancion.nombre) + ' ' + nuevaHtml +
+              'Pedido por: ' + escapeHtml(c.nombre) + ' ' + nuevaHtml +
             '</div>' +
           '</div>';
         
         listEl.appendChild(item);
-      });
+      }
 
       if (cola.length >= 8) {
         setTimeout(function() {
@@ -481,14 +498,15 @@
       songName.textContent = cancion.titulo;
       quien.textContent    = cancion.nombre;
 
-      banner.classList.remove('notif-show', 'notif-hide');
+      banner.classList.remove('notif-show');
+      banner.classList.remove('notif-hide');
       void banner.offsetWidth;
-      banner.classList.add('notif-show');
+      banner.className += ' notif-show';
 
       clearTimeout(notifTimer);
       notifTimer = setTimeout(function() {
         banner.classList.remove('notif-show');
-        banner.classList.add('notif-hide');
+        banner.className += ' notif-hide';
       }, 5000);
     }
 
@@ -497,16 +515,23 @@
       return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
 
+    // MANEJO SEGURO DE PANTALLA COMPLETA (Para que no explote en la TV)
     var logoSection = document.getElementById('btn-fullscreen');
     if (logoSection) {
       logoSection.style.cursor = 'pointer'; 
       logoSection.addEventListener('click', function() {
-        if (!document.fullscreenElement) {
-          document.documentElement.requestFullscreen().catch(function(err) {
-            console.error(err);
-          });
-        } else {
-          document.exitFullscreen();
+        var doc = document.documentElement;
+        var req = doc.requestFullscreen || doc.webkitRequestFullscreen || doc.mozRequestFullScreen || doc.msRequestFullscreen;
+        
+        if (!document.fullscreenElement && req) {
+          try {
+            var promise = req.call(doc);
+            if (promise && promise.catch) {
+              promise.catch(function(){}); // Atrapa el error en silencio
+            }
+          } catch(e) {}
+        } else if (document.exitFullscreen) {
+          try { document.exitFullscreen(); } catch(e){}
         }
       });
     }
