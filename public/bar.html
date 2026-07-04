@@ -25,7 +25,6 @@
     .video-wrapper > div,
     #youtube-player {
       position: absolute !important;
-      /* REEMPLAZO DE INSET PARA TVs ANTIGUAS */
       top: 0 !important;
       left: 0 !important;
       right: 0 !important;
@@ -60,9 +59,9 @@
     #queue-list {
       display: flex;
       flex-direction: column;
-      /* Reemplazo de gap por margin para TVs más viejas */
-      padding-bottom: 50px; 
+      padding-bottom: 10px; 
     }
+    
     .queue-item {
       margin-bottom: 10px;
     }
@@ -72,7 +71,6 @@
     }
 
     /* ─── ESTILOS: EFECTOS DE ETIQUETAS Y RESALTADO ─── */
-    
     .badge-nueva {
       background: #00f0ff;
       color: #000;
@@ -82,23 +80,8 @@
       border-radius: 4px;
       margin-left: 8px;
       text-transform: uppercase;
-      animation: parpadeo 1s infinite alternate;
       display: inline-block;
       vertical-align: middle;
-    }
-
-    @keyframes parpadeo { 
-      from { opacity: 1; box-shadow: 0 0 8px #00f0ff; } 
-      to { opacity: 0.4; box-shadow: none; } 
-    }
-
-    .resaltar-nueva {
-      animation: flashBg 8s ease-out forwards;
-    }
-
-    @keyframes flashBg {
-      0% { background-color: rgba(0, 240, 255, 0.5); transform: scale(1.03); border: 1px solid #00f0ff; }
-      100% { background-color: transparent; transform: scale(1); border: 1px solid transparent; }
     }
 
     .badge-multiplicador {
@@ -191,7 +174,7 @@
 
   <script>
     // ─────────────────────────────────────────────────────────
-    //  ESTADO LOCAL (Modo máxima compatibilidad)
+    //  ESTADO LOCAL (Sin animaciones complejas ni barrido)
     // ─────────────────────────────────────────────────────────
     var player       = null;  
     var playerReady  = false;  
@@ -199,11 +182,7 @@
     var notifTimer   = null;   
     var lastVideoId  = null;   
     var isAutoDJ     = false;  
-
     var totalCancionesAnterior = 0;
-    var intervaloBarrido = null;
-    var timeoutReinicio = null; 
-    var tiempoDescanso = 30000; 
 
     var isEsclavo = window.location.search.indexOf('esclavo') !== -1;
     var pendingAutoDJ = false;
@@ -360,20 +339,18 @@
       }
 
       if (cola && cola.length >= 4) {
-        if (qrSection) qrSection.classList.add('qr-oculto');
+        if (qrSection) qrSection.className += ' qr-oculto';
       } else {
-        if (qrSection) qrSection.classList.remove('qr-oculto');
+        if (qrSection) qrSection.className = qrSection.className.replace(' qr-oculto', '');
       }
 
       if (!cola || cola.length === 0) {
         emptyEl.style.display = 'block';
-        detenerCicloBarrido(listEl);
         return;
       }
 
       emptyEl.style.display = 'none';
 
-      // REEMPLAZO TOTAL DE Object.assign para copiar datos de forma segura
       var colaAgrupada = [];
       for (var j = 0; j < cola.length; j++) {
         var cancion = cola[j];
@@ -403,10 +380,6 @@
         var c = colaAgrupada[idx];
         var item = document.createElement('div');
         item.className = 'queue-item';
-        
-        if (hayCancionNueva && idx === colaAgrupada.length - 1) {
-          item.className += ' resaltar-nueva';
-        }
 
         var thumbHtml = c.thumbnail
           ? '<img class="queue-thumb" src="' + escapeHtml(c.thumbnail) + '" alt="" loading="lazy" onerror="this.style.display=\'none\'">'
@@ -434,59 +407,6 @@
         
         listEl.appendChild(item);
       }
-
-      if (cola.length >= 8) {
-        setTimeout(function() {
-          iniciarCicloBarrido(listEl, hayCancionNueva);
-        }, 50);
-      } else {
-        detenerCicloBarrido(listEl);
-      }
-    }
-
-    function iniciarCicloBarrido(listEl, forzarInmediato) {
-      clearInterval(intervaloBarrido); 
-      clearTimeout(timeoutReinicio);
-
-      var ejecutarAnimacion = function() {
-        var contenedor = listEl.parentElement;
-        var alturaVisible = contenedor.offsetHeight;
-        var alturaTotal = listEl.scrollHeight;
-        
-        if (alturaTotal > alturaVisible) {
-          var distanciaScroll = alturaTotal - alturaVisible + 20;
-          var cantCanciones = listEl.children.length; 
-          var tiempoBarrido = cantCanciones > 10 ? 5 + ((cantCanciones - 10) * 0.5) : 5;
-          var tiempoPausa = 2; 
-          
-          listEl.style.transition = 'none';
-          listEl.style.transform = 'translateY(0)';
-          clearTimeout(timeoutReinicio);
-
-          void listEl.offsetWidth; 
-
-          listEl.style.transition = 'transform ' + tiempoBarrido + 's linear';
-          listEl.style.transform = 'translateY(-' + distanciaScroll + 'px)';
-
-          timeoutReinicio = setTimeout(function() {
-            listEl.style.transition = 'none';
-            listEl.style.transform = 'translateY(0)';
-          }, (tiempoBarrido + tiempoPausa) * 1000);
-        }
-      };
-
-      if (forzarInmediato) {
-        ejecutarAnimacion();
-      }
-
-      intervaloBarrido = setInterval(ejecutarAnimacion, tiempoDescanso);
-    }
-
-    function detenerCicloBarrido(listEl) {
-      clearInterval(intervaloBarrido);
-      clearTimeout(timeoutReinicio);
-      listEl.style.transition = 'none';
-      listEl.style.transform = 'translateY(0)';
     }
 
     function mostrarNotificacion(cancion) {
@@ -498,14 +418,13 @@
       songName.textContent = cancion.titulo;
       quien.textContent    = cancion.nombre;
 
-      banner.classList.remove('notif-show');
-      banner.classList.remove('notif-hide');
+      banner.className = banner.className.replace(' notif-show', '').replace(' notif-hide', '');
       void banner.offsetWidth;
       banner.className += ' notif-show';
 
       clearTimeout(notifTimer);
       notifTimer = setTimeout(function() {
-        banner.classList.remove('notif-show');
+        banner.className = banner.className.replace(' notif-show', '');
         banner.className += ' notif-hide';
       }, 5000);
     }
@@ -515,7 +434,6 @@
       return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
 
-    // MANEJO SEGURO DE PANTALLA COMPLETA (Para que no explote en la TV)
     var logoSection = document.getElementById('btn-fullscreen');
     if (logoSection) {
       logoSection.style.cursor = 'pointer'; 
@@ -527,7 +445,7 @@
           try {
             var promise = req.call(doc);
             if (promise && promise.catch) {
-              promise.catch(function(){}); // Atrapa el error en silencio
+              promise.catch(function(){}); 
             }
           } catch(e) {}
         } else if (document.exitFullscreen) {
