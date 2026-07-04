@@ -2,8 +2,11 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>🎵 GENESIS 2.0</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0a0a0f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>🎵 GENESIS 2.0 Pide tu cancion</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,450 +15,412 @@
   <link rel="stylesheet" href="style.css">
 
   <style>
-    /* ─── Estilos de Video y Base ─────────── */
-    .video-wrapper {
-      position: relative;
-      z-index: 999999 !important; 
-      box-shadow: none !important; 
-      border-radius: 8px;
-      overflow: hidden;
-      background: #000;
+    /* ─── Scroll Personalizado para la Lista en Vivo ─── */
+    #live-queue-list {
+      max-height: 250px; /* Altura máxima antes de que aparezca el scroll */
+      overflow-y: auto;
+      padding-right: 8px; /* Espacio para que la barra no tape el texto */
     }
 
-    .video-wrapper > div,
-    #youtube-player {
-      position: absolute !important;
-      top: 0 !important;
-      left: 0 !important;
-      right: 0 !important;
-      bottom: 0 !important;
-      width: 100% !important;
-      height: 100% !important;
-      filter: none !important;
-      mix-blend-mode: normal !important;
-      opacity: 1 !important;
-      z-index: 999999 !important; 
+    /* Estilizando la barra de scroll para que se vea cyberpunk/neón */
+    #live-queue-list::-webkit-scrollbar {
+      width: 6px;
     }
-
-    #youtube-player iframe {
-      width: 100% !important;
-      height: 100% !important;
-      border: none !important;
-      filter: none !important; 
-    }
-
-    #np-titulo {
-      font-size: 1.2rem !important; 
-    }
-
-    .queue-section {
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      flex: 1; 
-      position: relative;
-    }
-
-    #queue-list {
-      display: flex;
-      flex-direction: column;
-      padding-bottom: 10px; 
-    }
-    
-    .queue-item {
-      margin-bottom: 10px;
-    }
-
-    .qr-oculto {
-      display: none !important;
-    }
-
-    /* ─── ESTILOS: EFECTOS DE ETIQUETAS Y RESALTADO ─── */
-    .badge-nueva {
-      background: #00f0ff;
-      color: #000;
-      font-size: 0.75rem;
-      font-weight: 900;
-      padding: 2px 6px;
+    #live-queue-list::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.05);
       border-radius: 4px;
-      margin-left: 8px;
-      text-transform: uppercase;
-      display: inline-block;
-      vertical-align: middle;
     }
-
-    .badge-multiplicador {
-      color: #ff0055;
-      font-weight: bold;
-      text-shadow: 0 0 5px rgba(255, 0, 85, 0.8);
-      margin-left: 5px;
+    #live-queue-list::-webkit-scrollbar-thumb {
+      background: #00f0ff; /* Color cyan neón */
+      border-radius: 4px;
     }
   </style>
-
-  <script>
-    window.onerror = function(msg, url, lineNo, columnNo, error) {
-      var errDiv = document.createElement('div');
-      errDiv.style.cssText = 'position:fixed; top:0; left:0; width:100%; padding:20px; background:red; color:white; z-index:9999999; font-size:18px; font-weight:bold;';
-      errDiv.innerHTML = '⚠️ ERROR EN TV: ' + msg + '<br>Línea: ' + lineNo;
-      document.body.appendChild(errDiv);
-      return false;
-    };
-  </script>
 </head>
-<body class="bar-body">
+<body class="cliente-body">
 
-  <div class="bar-layout">
-    <div class="panel-video">
-      <div class="top-instruction-bar">
-        Elige la canción desde tu celular
-      </div>
-      <div class="video-wrapper">
-        <div class="idle-screen" id="idle-screen">
-          <div class="idle-icon">🎵</div>
-          <div class="idle-text">Jukebox Digital</div>
-          <div class="idle-sub">Escanea el QR y pide tu canción</div>
-        </div>
-        <div id="youtube-player"></div>
-      </div>
-      <div class="now-playing-bar">
-        <span class="np-label">▶ REPRODUCIENDO</span>
-        <span class="np-title" id="np-titulo">— Esperando canciones —</span>
-        <span class="np-separator" id="np-sep" style="display:none">|</span>
-        <span class="np-mesa"  id="np-nombre"></span>
+  <header class="cliente-header" role="banner" style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+    <img src="GENESIS 2.0.png" alt="Logo Genesis 2.0" style="width: 90px; height: auto; object-fit: contain; filter: drop-shadow(0 0 8px var(--neon-cyan));">
+    
+    <div class="header-logo" style="margin-top: 0;">GENESIS<span>2.0</span></div>
+    <div class="header-tagline">Pide tu canción</div>
+  </header>
+
+  <main class="cliente-main" role="main">
+
+    <div class="identity-card card">
+      <label class="campo-label" for="input-nombre" style="color: #ffffff; text-shadow: 0 0 8px rgba(255, 255, 255, 0.4);">
+        Tu nombre o número de mesa
+      </label>
+      <input
+        type="text"
+        id="input-nombre"
+        class="campo-input"
+        placeholder="Ej: Mesa 5 · Ana García"
+        maxlength="30"
+        autocomplete="off"
+        autocorrect="off"
+        autocapitalize="words"
+        spellcheck="false"
+      >
+    </div>
+
+    <div class="search-card card">
+      <label class="campo-label" for="input-buscar" style="color: #ffffff; text-shadow: 0 0 8px rgba(255, 255, 255, 0.4);">
+        ¿Qué quieres escuchar?
+      </label>
+      <div class="search-box">
+        <input
+          type="search"
+          id="input-buscar"
+          class="campo-input"
+          placeholder="Artista, canción, género..."
+          maxlength="100"
+          autocomplete="off"
+          autocorrect="off"
+          spellcheck="false"
+          enterkeyhint="search"
+        >
+        <button class="btn-search" id="btn-buscar" aria-label="Buscar en YouTube">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+               fill="none" stroke="currentColor"
+               stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+               width="20" height="20" aria-hidden="true">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+        </button>
       </div>
     </div>
 
-    <div class="panel-info">
-      <div class="bar-logo-section" id="btn-fullscreen">
-        <img src="GENESIS 2.0.png" alt="Logo del bar Genesis" class="bar-logo-img" style="filter: drop-shadow(0 0 15px #00f0ff);">
-        <div class="logo-text" style="margin-top: 10px;">
-          GENESIS<span style="color: #00f0ff; text-shadow: 0 0 10px #00f0ff;">2.0</span>
-        </div>
-      </div>
-
-      <div class="neon-divider"></div>
-
-      <div class="queue-section">
-        <h3 class="section-title">
-          <span class="neon-dot">◆</span> PRÓXIMAS EN FILA
-        </h3>
-        <div class="queue-list" id="queue-list">
-          <div class="queue-empty" id="queue-empty">
-            <p style="color: #00f0ff; text-shadow: 0 0 8px rgba(0, 240, 255, 0.6);">🎵 La fila está vacía</p>
-            <small style="color: #ffffff;">Escanea el QR para pedir</small>
-          </div>
-        </div>
-      </div>
-
-      <div class="qr-section" id="seccion-qr">
-        <div style="display: flex; flex-direction: column; align-items: center; text-align: center; padding: 10px 0;">
-          <img src="qr-genesis.png" alt="QR del Bar" class="bar-qr-img">
-          <div class="qr-text" style="font-size: 1rem; color: #00f0ff; text-shadow: 0 0 10px rgba(0, 240, 255, 0.8); font-weight: bold; line-height: 1.4; margin-top:12px;">
-            PIDE TU CANCIÓN<br>DESDE TU CELULAR
-          </div>
-        </div>
-      </div>
+    <div class="loading-state" id="loading-state" style="display:none;" role="status" aria-live="polite">
+      <div class="loading-spinner" aria-hidden="true"></div>
+      <span>Buscando sin límites...</span>
     </div>
-  </div>
 
-  <div class="notification-banner" id="notification-banner">
-    <div class="notif-content">
-      <span class="notif-icon">🎵</span>
-      <div class="notif-text">
-        <div class="notif-song" id="notif-song-name">Nombre del tema</div>
-        <div class="notif-who">
-          Pedido por: <span id="notif-quien">—</span>
-        </div>
+    <div class="error-state card" id="error-state" style="display:none;" role="alert">
+      <span id="error-message">Error al buscar.</span>
+    </div>
+
+    <section class="results-section" id="results-section" style="display:none;" aria-label="Resultados de búsqueda">
+      <div class="results-title">
+        Resultados para: <span id="results-query"></span>
       </div>
+      <div class="results-list" id="results-list" role="list">
+        </div>
+    </section>
+
+    <div class="live-queue-card card" id="live-queue-section" style="display:none;">
+      <h3 class="section-title-sm" style="color: #ffffff; text-shadow: 0 0 8px rgba(255, 255, 255, 0.4);">
+        <span class="neon-dot">◆</span> EN LA FILA AHORA
+      </h3>
+      <div id="live-queue-list" role="list">
+        </div>
+    </div>
+
+  </main>
+
+  <div class="success-overlay" id="success-overlay" role="dialog" aria-modal="true" aria-label="Canción añadida">
+    <div class="success-card">
+      <div class="success-icon" aria-hidden="true">🎵</div>
+      <div class="success-title">¡CANCIÓN AÑADIDA!</div>
+      <div class="success-song" id="success-song-name"></div>
+      <div class="success-sub">
+        Tu canción está en la fila.<br>
+        ¡Disfruta la noche en GENESIS<span style="color:var(--neon-cyan); text-shadow: 0 0 5px var(--neon-cyan);">2.0</span>! 🎉
+      </div>
+      <button class="btn-primary" id="btn-success-close">
+        ➕ Pedir otra canción
+      </button>
     </div>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
 
   <script>
+    'use strict';
+
     // ─────────────────────────────────────────────────────────
-    //  ESTADO LOCAL (Sin animaciones complejas ni barrido)
+    //  REFERENCIAS AL DOM
     // ─────────────────────────────────────────────────────────
-    var player       = null;  
-    var playerReady  = false;  
-    var pendingVideo = null;   
-    var notifTimer   = null;   
-    var lastVideoId  = null;   
-    var isAutoDJ     = false;  
-    var totalCancionesAnterior = 0;
+    const inputNombre      = document.getElementById('input-nombre');
+    const inputBuscar      = document.getElementById('input-buscar');
+    const btnBuscar        = document.getElementById('btn-buscar');
+    const loadingState     = document.getElementById('loading-state');
+    const errorState       = document.getElementById('error-state');
+    const errorMessage     = document.getElementById('error-message');
+    const resultsSection   = document.getElementById('results-section');
+    const resultsQuery     = document.getElementById('results-query');
+    const resultsList      = document.getElementById('results-list');
+    const successOverlay   = document.getElementById('success-overlay');
+    const successSongName  = document.getElementById('success-song-name');
+    const btnSuccessClose  = document.getElementById('btn-success-close');
+    const liveQueueSection = document.getElementById('live-queue-section');
+    const liveQueueList    = document.getElementById('live-queue-list');
 
-    var isEsclavo = window.location.search.indexOf('esclavo') !== -1;
-    var pendingAutoDJ = false;
+    // ✨ Memoria caché para resultados instantáneos
+    const cacheBusquedas = {};
 
-    var semillasMix = [
-      'nJ7rBzClyCg', 'Qk7rhW-SB1g', 'D14H7qE1Tq0', 'y9Q30K7xLko', 
-      'c8mP91kZ9C8', 'Wj6HkY10Y9U', 'z_a9OvhN168', '5R-7E5u2t8U', 
-      'wDeZiEZGS3Q', 'W0Wc3eQ0Y5k', 'lM0D-l3w-X0', 'R5j71wB27cE', 
-      'a-H_h2v4O0I', 'ca48oMV59LU', 'TapXs54Ah3E', '2aD2hYg1_n8', 
-      'eHhLzHofkE8', 'I_mQv7-QIfs', 'eM6A7gJ_U2Y', 'G8v7gBWe3c4'
-    ];
-    var cancionSemilla = semillasMix[Math.floor(Math.random() * semillasMix.length)];
+    // ─────────────────────────────────────────────────────────
+    //  SOCKET.IO — Tiempo real con el servidor
+    // ─────────────────────────────────────────────────────────
+    const socket = io({ reconnectionDelay: 1000 });
 
-    var socket = io({ reconnectionDelay: 1000 });
+    // 🧠 MAGIA LOCALSTORAGE: Recuperar nombre apenas carga la página
+    window.addEventListener('DOMContentLoaded', () => {
+      const nombreGuardado = localStorage.getItem('genesis_cliente_nombre');
+      if (nombreGuardado) {
+        inputNombre.value = nombreGuardado;
+      }
+    });
 
-    socket.on('estado_inicial', function (data) {
-      actualizarCola(data.cola);
-      if (data.reproduciendo) {
-        cargarVideo(data.reproduciendo);
-      } else {
-        if (!isEsclavo) {
-          lastVideoId = cancionSemilla; 
-          if (playerReady) {
-            iniciarAutoDJ();
-          } else {
-            pendingAutoDJ = true; 
+    socket.on('estado_inicial', ({ cola }) => actualizarColaEnVivo(cola));
+    socket.on('cola_actualizada', ({ cola }) => actualizarColaEnVivo(cola));
+    socket.on('cancion_confirmada', ({ titulo }) => mostrarExito(titulo));
+    socket.on('error_cancion', ({ mensaje }) => mostrarError(mensaje));
+
+    // Recibir resultados del servidor
+    socket.on('resultados_busqueda', ({ items, query }) => {
+      cacheBusquedas[query.toLowerCase()] = items; 
+      
+      mostrarLoading(false);
+      renderizarResultados(items, query);
+    });
+
+    // Recibir errores de búsqueda del servidor
+    socket.on('error_busqueda', ({ mensaje }) => {
+      mostrarLoading(false);
+      mostrarError(mensaje);
+    });
+
+    // ─────────────────────────────────────────────────────────
+    //  BÚSQUEDA VÍA SOCKET (CON CACHÉ Y AUTO-BÚSQUEDA)
+    // ─────────────────────────────────────────────────────────
+    function buscarVideos(query) {
+      query = query.trim();
+      if (!query) {
+        ocultarResultados();
+        return;
+      }
+
+      const queryLower = query.toLowerCase();
+
+      // Magia de velocidad: Si ya buscamos esto antes, lo cargamos al instante
+      if (cacheBusquedas[queryLower]) {
+        console.log("Cargando desde caché al instante ⚡");
+        ocultarError();
+        mostrarLoading(false);
+        renderizarResultados(cacheBusquedas[queryLower], query);
+        return;
+      }
+
+      // Si es una búsqueda nueva, mostramos carga y consultamos al servidor
+      ocultarResultados();
+      ocultarError();
+      mostrarLoading(true);
+
+      socket.emit('buscar_canciones', query);
+    }
+
+    // ─────────────────────────────────────────────────────────
+    //  RENDERIZAR TARJETAS DE RESULTADOS
+    // ─────────────────────────────────────────────────────────
+    function renderizarResultados(items, query) {
+      resultsList.innerHTML = '';
+
+      if (!items || items.length === 0) {
+        resultsList.innerHTML = '<p class="no-results">Sin resultados. Prueba con otra búsqueda.</p>';
+        resultsSection.style.display = 'block';
+        return;
+      }
+
+      resultsQuery.textContent = `"${query}"`;
+
+      items.forEach((item, index) => {
+        const videoId = item.videoId;
+        if (!videoId) return;
+
+        const titulo = item.title       || 'Sin título';
+        const canal  = item.author?.name || 'Canal desconocido';
+        const thumb  = item.thumbnail   || '';
+
+        const card = document.createElement('div');
+        card.className = 'result-card card';
+        card.setAttribute('role', 'listitem');
+        card.style.animationDelay = `${index * 0.05}s`;
+
+        card.innerHTML = `
+          ${thumb
+            ? `<img class="result-thumb" src="${escapeHtml(thumb)}" alt="${escapeHtml(titulo)}" loading="lazy" onerror="this.style.display='none'">`
+            : `<div class="result-thumb" style="background:var(--bg-card);display:flex;align-items:center;justify-content:center;font-size:2rem;">🎵</div>`
           }
-        } else {
-          mostrarIdleScreen(true);
-        }
-      }
-    });
-
-    socket.on('cola_actualizada', function (data) {
-      actualizarCola(data.cola);
-      if (data.reproduciendo) {
-        actualizarNowPlayingBar(data.reproduciendo);
-      }
-
-      if (!data.reproduciendo) {
-        if (lastVideoId && !isAutoDJ) {
-          if (!isEsclavo) iniciarAutoDJ();
-        } else if (!lastVideoId && !isAutoDJ) {
-          actualizarNowPlayingBar(null);
-          mostrarIdleScreen(true);
-        }
-      }
-    });
-
-    socket.on('nueva_reproduccion', function (cancion) {
-      isAutoDJ = false;
-      cargarVideo(cancion);
-      mostrarNotificacion(cancion);
-    });
-
-    socket.on('reconnect', function () {
-      socket.emit('solicitar_estado');
-    });
-
-    window.onYouTubeIframeAPIReady = function () {
-      player = new YT.Player('youtube-player', {
-        height: '100%', width: '100%',
-        playerVars: { autoplay: 1, controls: 1, rel: 0, modestbranding: 1, iv_load_policy: 3, fs: 0, playsinline: 1, enablejsapi: 1 },
-        events: { onReady: onPlayerReady, onStateChange: onPlayerStateChange, onError: onPlayerError }
+          <div class="result-info">
+            <div class="result-title" title="${escapeHtml(titulo)}">${escapeHtml(titulo)}</div>
+            <div class="result-channel">${escapeHtml(canal)}</div>
+            <button
+              class="btn-add"
+              data-video-id="${escapeHtml(videoId)}"
+              data-titulo="${escapeHtml(titulo)}"
+              data-thumb="${escapeHtml(thumb)}"
+              aria-label="Añadir ${escapeHtml(titulo)} a la fila"
+            >
+              ➕ Añadir a la Fila
+            </button>
+          </div>
+        `;
+        resultsList.appendChild(card);
       });
-    };
 
-    function onPlayerReady(event) {
-      playerReady = true;
-      if (pendingVideo) {
-        cargarVideo(pendingVideo);
-        pendingVideo = null;
-      } else if (pendingAutoDJ && !isEsclavo) {
-        iniciarAutoDJ();
-        pendingAutoDJ = false;
-      }
+      resultsSection.style.display = 'block';
+
+      resultsList.querySelectorAll('.btn-add').forEach(btn => {
+        btn.addEventListener('click', () => manejarAgregarCancion(btn));
+      });
     }
 
-    function onPlayerStateChange(event) {
-      if (event.data === YT.PlayerState.ENDED) {
-        if (!isAutoDJ && !isEsclavo) {
-          socket.emit('siguiente_cancion');
-        }
-      } else if (event.data === YT.PlayerState.PLAYING) {
-        mostrarIdleScreen(false);
-        if (isAutoDJ && player.getVideoData) {
-          var videoData = player.getVideoData();
-          if (videoData && videoData.title) {
-            actualizarNowPlayingBar({ titulo: videoData.title, nombre: '🔥 Auto-DJ (YouTube Mix)' });
-          }
-        }
-      }
-    }
+    // ─────────────────────────────────────────────────────────
+    //  MANEJAR CLIC EN "AÑADIR A LA FILA"
+    // ─────────────────────────────────────────────────────────
+    function manejarAgregarCancion(btn) {
+      const nombre = inputNombre.value.trim();
 
-    function onPlayerError(event) {
-      if (!isEsclavo) {
-        setTimeout(function () {
-          socket.emit('siguiente_cancion');
-        }, 2000);
-      }
-    }
-
-    function cargarVideo(cancion) {
-      if (!cancion) return;
-      if (!playerReady || !player || typeof player.loadVideoById !== 'function') {
-        pendingVideo = cancion; return;
-      }
-      lastVideoId = cancion.videoId;
-      player.loadVideoById({ videoId: cancion.videoId });
-      actualizarNowPlayingBar(cancion);
-      mostrarIdleScreen(false);
-    }
-
-    function iniciarAutoDJ() {
-      if (!playerReady || !player) return;
-      isAutoDJ = true;
-      mostrarIdleScreen(false);
-      player.loadPlaylist({ list: 'RD' + lastVideoId, listType: 'playlist' });
-      actualizarNowPlayingBar({ titulo: 'Cargando selección musical...', nombre: '🔥 Auto-DJ' });
-    }
-
-    function mostrarIdleScreen(visible) {
-      var el = document.getElementById('idle-screen');
-      if (el) el.style.display = visible ? 'flex' : 'none';
-    }
-
-    function actualizarNowPlayingBar(cancion) {
-      var tituloEl = document.getElementById('np-titulo');
-      var nombreEl = document.getElementById('np-nombre');
-      var sepEl    = document.getElementById('np-sep');
-
-      if (!cancion) {
-        tituloEl.textContent  = '— Esperando canciones —';
-        nombreEl.textContent  = '';
-        sepEl.style.display   = 'none';
+      if (!nombre) {
+        inputNombre.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        inputNombre.focus();
+        inputNombre.classList.add('input-shake');
+        setTimeout(() => inputNombre.classList.remove('input-shake'), 500);
+        mostrarError('⚠️ Escribe tu nombre o número de mesa primero.');
         return;
       }
-      tituloEl.textContent = cancion.titulo;
-      nombreEl.textContent = cancion.nombre;
-      sepEl.style.display  = 'inline';
+
+      localStorage.setItem('genesis_cliente_nombre', nombre);
+
+      const cancion = {
+        videoId:   btn.dataset.videoId,
+        titulo:    btn.dataset.titulo,
+        nombre:    nombre,
+        thumbnail: btn.dataset.thumb
+      };
+
+      btn.disabled        = true;
+      btn.textContent     = '⏳ Añadiendo...';
+      btn.style.opacity   = '0.7';
+
+      socket.emit('agregar_cancion', cancion);
     }
 
-    function actualizarCola(cola) {
-      var listEl  = document.getElementById('queue-list');
-      var emptyEl = document.getElementById('queue-empty');
-      var qrSection = document.getElementById('seccion-qr'); 
+    // ─────────────────────────────────────────────────────────
+    //  OVERLAY DE ÉXITO
+    // ─────────────────────────────────────────────────────────
+    function mostrarExito(titulo) {
+      successSongName.textContent = titulo;
+      ocultarResultados();
+      successOverlay.classList.add('overlay-visible');
+      setTimeout(() => btnSuccessClose.focus(), 400);
+    }
 
-      var hayCancionNueva = cola.length > totalCancionesAnterior;
-      totalCancionesAnterior = cola.length;
+    btnSuccessClose.addEventListener('click', () => {
+      successOverlay.classList.remove('overlay-visible');
+      inputBuscar.value = '';
+      inputBuscar.focus();
+    });
 
-      var itemsActuales = listEl.querySelectorAll('.queue-item');
-      for (var i = 0; i < itemsActuales.length; i++) {
-        itemsActuales[i].parentNode.removeChild(itemsActuales[i]);
-      }
-
-      if (cola && cola.length >= 4) {
-        if (qrSection) qrSection.className += ' qr-oculto';
-      } else {
-        if (qrSection) qrSection.className = qrSection.className.replace(' qr-oculto', '');
-      }
-
+    // ─────────────────────────────────────────────────────────
+    //  COLA EN VIVO (Muestra TODAS las canciones con scroll)
+    // ─────────────────────────────────────────────────────────
+    function actualizarColaEnVivo(cola) {
       if (!cola || cola.length === 0) {
-        emptyEl.style.display = 'block';
+        liveQueueSection.style.display = 'none';
         return;
       }
 
-      emptyEl.style.display = 'none';
-
-      var colaAgrupada = [];
-      for (var j = 0; j < cola.length; j++) {
-        var cancion = cola[j];
-        var existente = null;
-        for (var k = 0; k < colaAgrupada.length; k++) {
-          if (colaAgrupada[k].videoId === cancion.videoId) {
-            existente = colaAgrupada[k];
-            break;
-          }
-        }
-        
-        if (existente) {
-          existente.cantidad = (existente.cantidad || 1) + 1;
-        } else {
-          var nuevaCancion = {};
-          for (var key in cancion) {
-            if (cancion.hasOwnProperty(key)) {
-              nuevaCancion[key] = cancion[key];
-            }
-          }
-          nuevaCancion.cantidad = 1;
-          colaAgrupada.push(nuevaCancion);
-        }
-      }
-
-      for (var idx = 0; idx < colaAgrupada.length; idx++) {
-        var c = colaAgrupada[idx];
-        var item = document.createElement('div');
-        item.className = 'queue-item';
-
-        var thumbHtml = c.thumbnail
-          ? '<img class="queue-thumb" src="' + escapeHtml(c.thumbnail) + '" alt="" loading="lazy" onerror="this.style.display=\'none\'">'
-          : '<div class="queue-thumb-placeholder">🎵</div>';
-
-        var multiplicadorHtml = c.cantidad > 1 
-          ? '<span class="badge-multiplicador">(x' + c.cantidad + ')</span>' 
-          : '';
-
-        var nuevaHtml = (hayCancionNueva && idx === colaAgrupada.length - 1)
-          ? '<span class="badge-nueva">¡Nueva!</span>'
-          : '';
-
-        item.innerHTML = 
-          '<div class="queue-num">' + (idx + 1) + '</div>' +
-          thumbHtml +
-          '<div class="queue-details">' +
-            '<div class="queue-song-title">' +
-              escapeHtml(c.titulo) + ' ' + multiplicadorHtml +
-            '</div>' +
-            '<div class="queue-song-who">' +
-              'Pedido por: ' + escapeHtml(c.nombre) + ' ' + nuevaHtml +
-            '</div>' +
-          '</div>';
-        
-        listEl.appendChild(item);
-      }
+      liveQueueSection.style.display = 'block';
+      
+      // Renderiza toda la lista sin cortarla
+      liveQueueList.innerHTML = cola.map((c, i) => `
+        <div class="live-queue-item" role="listitem">
+          <span class="lq-num" aria-hidden="true">${i + 1}</span>
+          <div class="lq-info">
+            <div class="lq-title">${escapeHtml(c.titulo)}</div>
+            <div class="lq-who">📍 ${escapeHtml(c.nombre)} · ${escapeHtml(c.timestamp)}</div>
+          </div>
+        </div>
+      `).join('');
     }
 
-    function mostrarNotificacion(cancion) {
-      if (!cancion) return;
-      var banner   = document.getElementById('notification-banner');
-      var songName = document.getElementById('notif-song-name');
-      var quien    = document.getElementById('notif-quien');
+    // ─────────────────────────────────────────────────────────
+    //  HELPERS DE UI
+    // ─────────────────────────────────────────────────────────
+    function mostrarLoading(visible) {
+      loadingState.style.display = visible ? 'flex' : 'none';
+    }
 
-      songName.textContent = cancion.titulo;
-      quien.textContent    = cancion.nombre;
+    function mostrarError(msg) {
+      errorMessage.textContent = msg;
+      errorState.style.display = 'block';
+      errorState.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      clearTimeout(mostrarError._timer);
+      mostrarError._timer = setTimeout(ocultarError, 5000);
+    }
 
-      banner.className = banner.className.replace(' notif-show', '').replace(' notif-hide', '');
-      void banner.offsetWidth;
-      banner.className += ' notif-show';
+    function ocultarError() {
+      errorState.style.display = 'none';
+    }
 
-      clearTimeout(notifTimer);
-      notifTimer = setTimeout(function() {
-        banner.className = banner.className.replace(' notif-show', '');
-        banner.className += ' notif-hide';
-      }, 5000);
+    function ocultarResultados() {
+      resultsSection.style.display = 'none';
+      resultsList.innerHTML = '';
     }
 
     function escapeHtml(str) {
       if (!str) return '';
-      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
     }
 
-    var logoSection = document.getElementById('btn-fullscreen');
-    if (logoSection) {
-      logoSection.style.cursor = 'pointer'; 
-      logoSection.addEventListener('click', function() {
-        var doc = document.documentElement;
-        var req = doc.requestFullscreen || doc.webkitRequestFullscreen || doc.mozRequestFullScreen || doc.msRequestFullscreen;
-        
-        if (!document.fullscreenElement && req) {
-          try {
-            var promise = req.call(doc);
-            if (promise && promise.catch) {
-              promise.catch(function(){}); 
-            }
-          } catch(e) {}
-        } else if (document.exitFullscreen) {
-          try { document.exitFullscreen(); } catch(e){}
-        }
-      });
-    }
+    // ─────────────────────────────────────────────────────────
+    //  EVENT LISTENERS DE BÚSQUEDA (SÚPER ÁGIL)
+    // ─────────────────────────────────────────────────────────
+    let timerBusqueda = null;
 
+    inputBuscar.addEventListener('input', (e) => {
+      clearTimeout(timerBusqueda);
+      const query = e.target.value.trim();
+
+      if (query.length === 0) {
+        ocultarResultados();
+        return;
+      }
+
+      if (query.length >= 3) {
+        timerBusqueda = setTimeout(() => {
+          buscarVideos(query);
+        }, 700); 
+      }
+    });
+
+    btnBuscar.addEventListener('click', () => {
+      clearTimeout(timerBusqueda);
+      buscarVideos(inputBuscar.value);
+    });
+
+    inputBuscar.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        clearTimeout(timerBusqueda);
+        buscarVideos(inputBuscar.value);
+      }
+    });
+
+    inputNombre.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        inputBuscar.focus();
+      }
+    });
   </script>
-
-  <script src="https://www.youtube.com/iframe_api" async></script>
 </body>
 </html>
