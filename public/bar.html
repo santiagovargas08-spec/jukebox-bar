@@ -191,7 +191,8 @@
     let playerReady  = false;  
     let pendingVideo = null;   
     let notifTimer   = null;   
-    let lastVideoId  = null;   
+    let lastVideoId  = null;
+    let historialReproducidas = []; // 🔥 NUEVO: Historial local para Auto-DJ
     let isAutoDJ     = false;  
 
     // Variables para el control de la Cola y Barrido
@@ -203,7 +204,7 @@
     const isEsclavo  = new URLSearchParams(window.location.search).has('esclavo');
     let pendingAutoDJ = false;
 
-    // Semillas AutoDJ
+    // Semillas AutoDJ (fallback si historial vacío)
     const semillasMix = [
       'nJ7rBzClyCg', 'Qk7rhW-SB1g', 'D14H7qE1Tq0', 'y9Q30K7xLko', 
       'c8mP91kZ9C8', 'Wj6HkY10Y9U', 'z_a9OvhN168', '5R-7E5u2t8U', 
@@ -211,17 +212,19 @@
       'a-H_h2v4O0I', 'ca48oMV59LU', 'TapXs54Ah3E', '2aD2hYg1_n8', 
       'eHhLzHofkE8', 'I_mQv7-QIfs', 'eM6A7gJ_U2Y', 'G8v7gBWe3c4'
     ];
-    const cancionSemilla = semillasMix[Math.floor(Math.random() * semillasMix.length)];
 
     const socket = io({ reconnectionDelay: 1000 });
 
-    socket.on('estado_inicial', ({ cola, reproduciendo }) => {
+    socket.on('estado_inicial', ({ cola, reproduciendo, historialReproducidas: hist }) => {
+      if (hist && hist.length > 0) {
+        historialReproducidas = hist;
+      }
       actualizarCola(cola);
       if (reproduciendo) {
         cargarVideo(reproduciendo);
       } else {
         if (!isEsclavo) {
-          lastVideoId = cancionSemilla; 
+          lastVideoId = obtenerSemillaDelHistorial();
           if (playerReady) iniciarAutoDJ();
           else pendingAutoDJ = true; 
         } else {
@@ -250,6 +253,14 @@
       mostrarNotificacion(cancion);
     });
 
+    // 🔥 NUEVO: Escuchar actualizaciones del historial
+    socket.on('historial_actualizado', ({ historialReproducidas: hist }) => {
+      if (hist && hist.length > 0) {
+        historialReproducidas = hist;
+        console.log('📜 Historial actualizado:', hist.length, 'canciones');
+      }
+    });
+
     socket.on('reconnect', () => {
       socket.emit('solicitar_estado');
     });
@@ -275,13 +286,24 @@
 
     function onPlayerStateChange(event) {
       if (event.data === YT.PlayerState.ENDED) {
+        // 🔥 NUEVO: Registrar la canción que terminó de reproducirse
+        if (player.getVideoData && player.getVideoData()) {
+          const videoData = player.getVideoData();
+          if (videoData.video_id && !isAutoDJ) {
+            socket.emit('cancion_terminada', { 
+              videoId: videoData.video_id,
+              titulo: videoData.title || 'Desconocida',
+              nombre: '(Registrada)' 
+            });
+          }
+        }
         if (!isAutoDJ && !isEsclavo) socket.emit('siguiente_cancion');
       } else if (event.data === YT.PlayerState.PLAYING) {
         mostrarIdleScreen(false);
         if (isAutoDJ && player.getVideoData) {
           const videoData = player.getVideoData();
           if (videoData && videoData.title) {
-            actualizarNowPlayingBar({ titulo: videoData.title, nombre: '🔥 Auto-DJ (YouTube Mix)' });
+            actualizarNowPlayingBar({ titulo: videoData.title, nombre: '🔥 Auto-DJ (Mix personalizado)' });
           }
         }
       }
@@ -302,12 +324,26 @@
       mostrarIdleScreen(false);
     }
 
+    // 🔥 NUEVA FUNCIÓN: Obtener semilla del historial
+    function obtenerSemillaDelHistorial() {
+      if (historialReproducidas && historialReproducidas.length > 0) {
+        // Seleccionar una canción aleatoria del historial para mayor variedad
+        const semilla = historialReproducidas[Math.floor(Math.random() * historialReproducidas.length)];
+        console.log(`🎲 Semilla Auto-DJ del historial: "${semilla.titulo}"`);
+        return semilla.videoId;
+      }
+      // Fallback: semillas predefinidas
+      const seed = semillasMix[Math.floor(Math.random() * semillasMix.length)];
+      console.log('🎲 Usando semilla fallback (historial vacío)');
+      return seed;
+    }
+
     function iniciarAutoDJ() {
       if (!playerReady || !player) return;
       isAutoDJ = true;
       mostrarIdleScreen(false);
       player.loadPlaylist({ list: 'RD' + lastVideoId, listType: 'playlist' });
-      actualizarNowPlayingBar({ titulo: 'Cargando selección musical...', nombre: '🔥 Auto-DJ' });
+      actualizarNowPlayingBar({ titulo: 'Cargando mix personalizado...', nombre: '🔥 Auto-DJ' });
     }
 
     function mostrarIdleScreen(visible) {
