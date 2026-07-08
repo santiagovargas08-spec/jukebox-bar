@@ -349,9 +349,24 @@
     }
 
     // ─────────────────────────────────────────────────────────
-    //  BUSCADOR DEL DJ
+    //  BUSCADOR DEL DJ (CON DEBOUNCE OPTIMIZADO: 300ms)
     // ─────────────────────────────────────────────────────────
+    let timerBusquedaAdmin = null;
+
+    inputBuscarAdmin.addEventListener('input', (e) => {
+      clearTimeout(timerBusquedaAdmin);
+      const q = e.target.value.trim();
+      
+      if (q.length >= 3) {
+        adminResults.innerHTML = '<div class="empty-msg">Buscando en YouTube... ⏳</div>';
+        timerBusquedaAdmin = setTimeout(() => {
+          socket.emit('buscar_canciones', q);
+        }, 300); // ⚡ DEBOUNCE: 300ms para evitar spam de búsquedas
+      }
+    });
+
     btnBuscarAdmin.addEventListener('click', () => {
+      clearTimeout(timerBusquedaAdmin);
       const q = inputBuscarAdmin.value.trim();
       if (q) {
         adminResults.innerHTML = '<div class="empty-msg">Buscando en YouTube... ⏳</div>';
@@ -360,7 +375,15 @@
     });
 
     inputBuscarAdmin.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') btnBuscarAdmin.click();
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        clearTimeout(timerBusquedaAdmin);
+        const q = inputBuscarAdmin.value.trim();
+        if (q) {
+          adminResults.innerHTML = '<div class="empty-msg">Buscando en YouTube... ⏳</div>';
+          socket.emit('buscar_canciones', q);
+        }
+      }
     });
 
     // Recibir resultados del buscador
