@@ -129,9 +129,26 @@ io.on('connection', (socket) => {
       return;
     }
 
+    // 🔥 VALIDACIÓN: Evitar que el mismo usuario pida la misma canción más de una vez
+    const videoIdNormalizado = String(cancion.videoId).trim();
+    const nombreNormalizado = String(cancion.nombre).trim().toLowerCase();
+    
+    const yaEnCola = cola.some(c => 
+      c.videoId === videoIdNormalizado && 
+      c.nombre.toLowerCase() === nombreNormalizado
+    );
+
+    if (yaEnCola) {
+      console.log(`[⚠️  DUPLICADO] ${cancion.nombre} intentó pedir "${cancion.titulo}" pero ya está en la fila.`);
+      socket.emit('error_cancion', { 
+        mensaje: `🚫 Ya pediste "${cancion.titulo}". Dale oportunidad a otras canciones 🎵` 
+      });
+      return;
+    }
+
     const nueva = {
       id:        Date.now(), // ID único basado en tiempo para poder borrarla específicamente
-      videoId:   String(cancion.videoId).trim(),
+      videoId:   videoIdNormalizado,
       titulo:    String(cancion.titulo).trim().slice(0, 100),
       nombre:    String(cancion.nombre).trim().slice(0, 30),
       thumbnail: cancion.thumbnail ? String(cancion.thumbnail) : '',
