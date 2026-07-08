@@ -22,11 +22,15 @@ const io = new Server(server, {
 
 // ESTADO EN MEMORIA
 let cola          = [];   
-let reproduciendo = null; 
+let reproduciendo = null;
+let historialReproducidas = []; // 🔥 NUEVO: Historial de últimas canciones reproducidas
 
 // 🔥 CACHÉ DE BÚSQUEDAS PARA VELOCIDAD
 const cacheSearches = {};
 const CACHE_TTL = 3600000; // 1 hora en milisegundos
+
+// 🔥 CONSTANTES DE HISTORIAL
+const HISTORIAL_MAX = 10; // Mantener las últimas 10 canciones reproducidas
 
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -41,13 +45,49 @@ function intentarReproducir() {
   return false;
 }
 
+// 🔥 NUEVA FUNCIÓN: Agregar a historial
+function agregarAlHistorial(cancion) {
+  if (cancion && cancion.videoId) {
+    // Evitar duplicados consecutivos
+    if (historialReproducidas.length === 0 || 
+        historialReproducidas[0].videoId !== cancion.videoId) {
+      historialReproducidas.unshift(cancion);
+      // Mantener solo las últimas HISTORIAL_MAX canciones
+      if (historialReproducidas.length > HISTORIAL_MAX) {
+        historialReproducidas.pop();
+      }
+      console.log(`[📜] Historial actualizado (${historialReproducidas.length} canciones)`);
+    }
+  }
+}
+
+// 🔥 NUEVA FUNCIÓN: Obtener una canción semilla del historial (preferiblemente la más antigua del mix)
+function obtenerSemillaDelHistorial() {
+  // Retornar la canción más antigua del historial (la última en la cola)
+  // Esto asegura variedad en el Auto-DJ
+  if (historialReproducidas.length > 0) {
+    const semilla = historialReproducidas[Math.floor(Math.random() * historialReproducidas.length)];
+    console.log(`[🎲] Semilla Auto-DJ seleccionada del historial: "${semilla.titulo}"`);
+    return semilla.videoId;
+  }
+  // Fallback: semillas predefinidas si el historial está vacío
+  const semillasMix = [
+    'nJ7rBzClyCg', 'Qk7rhW-SB1g', 'D14H7qE1Tq0', 'y9Q30K7xLko', 
+    'c8mP91kZ9C8', 'Wj6HkY10Y9U', 'z_a9OvhN168', '5R-7E5u2t8U', 
+    'wDeZiEZGS3Q', 'W0Wc3eQ0Y5k', 'lM0D-l3w-X0', 'R5j71wB27cE', 
+    'a-H_h2v4O0I', 'ca48oMV59LU', 'TapXs54Ah3E', '2aD2hYg1_n8', 
+    'eHhLzHofkE8', 'I_mQv7-QIfs', 'eM6A7gJ_U2Y', 'G8v7gBWe3c4'
+  ];
+  return semillasMix[Math.floor(Math.random() * semillasMix.length)];
+}
+
 // SOCKET.IO — TIEMPO REAL
 io.on('connection', (socket) => {
   const clienteId = socket.id.slice(0, 8);
   console.log(`[+] Conectado [${clienteId}] · Total: ${io.engine.clientsCount} cliente(s)`);
 
-  // Enviar estado inicial
-  socket.emit('estado_inicial', { cola, reproduciendo });
+  // Enviar estado inicial incluyendo historial
+  socket.emit('estado_inicial', { cola, reproduciendo, historialReproducidas });
 
   // BUSCADOR EN VIVO DESDE EL CELULAR Y ADMIN (CON CACHÉ)
   socket.on('buscar_canciones', async (query) => {
@@ -154,6 +194,15 @@ io.on('connection', (socket) => {
     io.emit('cola_actualizada', { cola, reproduciendo });
   });
 
+  // 🔥 NUEVO: Evento para registrar cuando se termina de reproducir una canción
+  socket.on('cancion_terminada', (cancion) => {
+    if (cancion && cancion.videoId) {
+      agregarAlHistorial(cancion);
+      // Emitir historial actualizado a todos los clientes
+      io.emit('historial_actualizado', { historialReproducidas });
+    }
+  });
+
   // Función interna para avanzar la lista
   function avanzarCola() {
     if (cola.length > 0) {
@@ -168,7 +217,7 @@ io.on('connection', (socket) => {
   }
 
   socket.on('solicitar_estado', () => {
-    socket.emit('estado_inicial', { cola, reproduciendo });
+    socket.emit('estado_inicial', { cola, reproduciendo, historialReproducidas });
   });
 
   socket.on('disconnect', (reason) => {
