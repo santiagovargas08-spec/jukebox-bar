@@ -106,7 +106,7 @@
         Resultados para: <span id="results-query"></span>
       </div>
       <div class="results-list" id="results-list" role="list">
-        </div>
+         </div>
     </section>
 
     <div class="live-queue-card card" id="live-queue-section" style="display:none;">
@@ -114,7 +114,7 @@
         <span class="neon-dot">◆</span> EN LA FILA AHORA
       </h3>
       <div id="live-queue-list" role="list">
-        </div>
+         </div>
     </div>
 
   </main>
@@ -382,7 +382,7 @@
     }
 
     // ─────────────────────────────────────────────────────────
-    //  EVENT LISTENERS DE BÚSQUEDA (SÚPER ÁGIL)
+    //  EVENT LISTENERS DE BÚSQUEDA (OPTIMIZADO: 300ms EN LUGAR DE 700ms)
     // ─────────────────────────────────────────────────────────
     let timerBusqueda = null;
 
@@ -398,7 +398,7 @@
       if (query.length >= 3) {
         timerBusqueda = setTimeout(() => {
           buscarVideos(query);
-        }, 700); 
+        }, 300); // ⚡ OPTIMIZADO: 700ms → 300ms = 2.3x MÁS RÁPIDO
       }
     });
 
