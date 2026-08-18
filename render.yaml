@@ -1,0 +1,34 @@
+services:
+  - type: web
+    name: jukebox-bar
+    runtime: node
+    plan: starter
+    nodeVersion: 20
+    buildCommand: npm install && npm run build
+    startCommand: npx prisma migrate deploy && npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: jukebox-db
+          property: connectionString
+      - key: DATABASE_SSL
+        value: "true"
+      - key: DATABASE_SSL_REJECT_UNAUTHORIZED
+        value: "false"
+      - key: ADMIN_API_KEY
+        generateValue: true
+      - key: OPERATOR_TOKEN_SECRET
+        generateValue: true
+      - key: APP_URL
+        sync: false
+      - key: PORT
+        value: "3000"
+
+databases:
+  - name: jukebox-db
+    plan: basic-256mb
+    databaseName: jukebox
+    user: jukebox

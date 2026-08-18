@@ -1,0 +1,1150 @@
+/* ═══════════════════════════════════════════════════════════════
+   JUKEBOX DIGITAL — Hoja de Estilos Global
+   Estética: Cyberpunk · Neon Noir · Underground Club
+   Fuentes: Orbitron (display) + Rajdhani (body)
+═══════════════════════════════════════════════════════════════ */
+
+/* ─── Variables CSS — Sistema de color y espaciado ─────────── */
+:root {
+  /* Paleta principal */
+  --bg-deep:       #050508;       /* Negro profundo con tono frío */
+  --bg-dark:       #0a0a0f;       /* Fondo principal */
+  --bg-card:       #111118;       /* Tarjetas base */
+  --bg-card-hover: #181824;       /* Tarjeta hover */
+  --bg-panel:      #0d0d16;       /* Panel lateral */
+
+  /* Acentos neón */
+  --neon-pink:     #ff0055;       /* Rosa neón — acento primario */
+  --neon-cyan:     #00e5ff;       /* Cian eléctrico — acento secundario */
+  --neon-green:    #00ffcc;       /* Verde cyber */
+  --neon-purple:   #8b00ff;       /* Púrpura neón */
+  --neon-yellow:   #ffe600;       /* Amarillo neón */
+
+  /* Texto */
+  --text-primary:  #f0f0f8;       /* Blanco cálido */
+  --text-muted:    #7070a0;       /* Texto atenuado */
+  --text-dim:      #404060;       /* Texto muy atenuado */
+
+  /* Bordes */
+  --border-dark:   rgba(255,255,255,0.06);
+  --border-neon:   rgba(255, 0, 85, 0.4);
+  --border-cyan:   rgba(0, 229, 255, 0.35);
+
+  /* Sombras neón */
+  --glow-pink:    0 0 8px rgba(255, 0, 85, 0.6),
+                  0 0 20px rgba(255, 0, 85, 0.3),
+                  0 0 40px rgba(255, 0, 85, 0.15);
+  --glow-cyan:    0 0 8px rgba(0, 229, 255, 0.6),
+                  0 0 20px rgba(0, 229, 255, 0.3),
+                  0 0 40px rgba(0, 229, 255, 0.15);
+  --glow-green:   0 0 8px rgba(0, 255, 204, 0.6),
+                  0 0 20px rgba(0, 255, 204, 0.3);
+
+  /* Tipografía */
+  --font-display: 'Orbitron', 'Courier New', monospace;
+  --font-body:    'Rajdhani', 'Trebuchet MS', sans-serif;
+
+  /* Radios */
+  --radius-sm:    6px;
+  --radius-md:    12px;
+  --radius-lg:    18px;
+
+  /* Transiciones */
+  --transition:   all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ─── Reset y base ──────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  height: 100%;
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  height: 100%;
+  background-color: var(--bg-dark);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-weight: 400;
+  line-height: 1.5;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+img { display: block; max-width: 100%; }
+button { cursor: pointer; font-family: inherit; border: none; }
+
+/* ─── Efecto Scanlines (overlay CRT) ────────────────────────── */
+.scanlines {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 3px,
+    rgba(0, 0, 0, 0.18) 3px,
+    rgba(0, 0, 0, 0.18) 4px
+  );
+  animation: scanline-drift 8s linear infinite;
+}
+
+@keyframes scanline-drift {
+  0%   { background-position: 0 0; }
+  100% { background-position: 0 400px; }
+}
+
+/* ─── Divisor neón ──────────────────────────────────────────── */
+.neon-divider {
+  height: 1px;
+  margin: 12px 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--neon-pink),
+    var(--neon-cyan),
+    transparent
+  );
+  box-shadow: var(--glow-pink);
+  opacity: 0.7;
+}
+
+/* ─── Punto neón decorativo ─────────────────────────────────── */
+.neon-dot {
+  color: var(--neon-pink);
+  text-shadow: var(--glow-pink);
+  margin-right: 6px;
+}
+
+/* ─── Títulos de sección ────────────────────────────────────── */
+.section-title {
+  font-family: var(--font-display);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.section-title-sm {
+  font-family: var(--font-display);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+/* ─── Tarjeta base ──────────────────────────────────────────── */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-dark);
+  border-radius: var(--radius-md);
+  position: relative;
+  overflow: hidden;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.025) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+/* ─── Inputs ────────────────────────────────────────────────── */
+.campo-label {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.campo-input {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--border-dark);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  font-weight: 400;
+  padding: 12px 14px;
+  outline: none;
+  transition: var(--transition);
+}
+
+.campo-input::placeholder { color: var(--text-dim); }
+
+.campo-input:focus {
+  border-color: var(--neon-cyan);
+  box-shadow: 0 0 0 3px rgba(0, 229, 255, 0.12), var(--glow-cyan);
+  background: rgba(0, 229, 255, 0.04);
+}
+
+/* Animación de sacudida para input vacío */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%       { transform: translateX(-8px); }
+  40%       { transform: translateX(8px); }
+  60%       { transform: translateX(-5px); }
+  80%       { transform: translateX(5px); }
+}
+
+.input-shake {
+  animation: shake 0.45s ease-in-out;
+  border-color: var(--neon-pink) !important;
+  box-shadow: var(--glow-pink) !important;
+}
+
+/* ─── Botón primario (general) ──────────────────────────────── */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 13px 28px;
+  background: linear-gradient(135deg, var(--neon-pink), #cc0044);
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border-radius: var(--radius-sm);
+  border: none;
+  box-shadow: var(--glow-pink);
+  transition: var(--transition);
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 0 12px rgba(255,0,85,0.8), 0 0 30px rgba(255,0,85,0.4), 0 8px 20px rgba(0,0,0,0.4);
+}
+
+.btn-primary:active { transform: translateY(0) scale(0.98); }
+
+/* ─── Animaciones de entrada ────────────────────────────────── */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideOutUp {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-100%);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes neonPulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.65; }
+}
+
+@keyframes borderGlow {
+  0%, 100% { border-color: rgba(255,0,85,0.4); }
+  50%       { border-color: rgba(0,229,255,0.4); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PANTALLA DEL BAR (bar.html)
+═══════════════════════════════════════════════════════════════ */
+
+/* ─── Layout principal split-screen ─────────────────────────── */
+.bar-body {
+  overflow: hidden;
+  height: 100vh;
+  background: var(--bg-deep);
+}
+
+.bar-layout {
+  display: grid;
+  grid-template-columns: 70% 30%;
+  height: 100vh;
+  width: 100vw;
+}
+
+/* ─── Panel izquierdo: Video ────────────────────────────────── */
+/* ─── Barra superior de instrucciones ───────────────────────── */
+.top-instruction-bar {
+  background: rgba(0, 0, 0, 0.85);
+  padding: 15px 20px;
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--neon-cyan);
+  text-shadow: var(--glow-cyan);
+  border-bottom: 1px solid rgba(0, 229, 255, 0.3);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  z-index: 10;
+  flex-shrink: 0;
+}
+
+.panel-video {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: #000;
+  border-right: 1px solid var(--border-dark);
+  overflow: hidden;
+}
+
+.video-wrapper {
+  flex: 1;
+  position: relative;
+  background: #000;
+  overflow: hidden;
+}
+
+#youtube-player,
+#youtube-player iframe {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  border: none;
+}
+
+/* Pantalla idle */
+.idle-screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background: radial-gradient(ellipse at center, #0d0d1a 0%, #050508 70%);
+}
+
+.idle-icon {
+  font-size: 5rem;
+  animation: neonPulse 2.5s ease-in-out infinite;
+}
+
+.idle-text {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  letter-spacing: 0.2em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.idle-sub {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  letter-spacing: 0.08em;
+}
+
+/* ─── Barra "Reproduciendo ahora" ───────────────────────────── */
+.now-playing-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 18px;
+  background: rgba(0, 0, 0, 0.85);
+  border-top: 1px solid rgba(255,0,85,0.3);
+  backdrop-filter: blur(10px);
+  flex-shrink: 0;
+  overflow: hidden;
+  font-size: 2.5rem !important;
+  font-weight: bold !important;
+  color: #ffffff !important;
+}
+
+.np-label { display: none; }
+
+.np-title {
+  font-family: var(--font-body);
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+
+.np-separator {
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+
+.np-mesa {
+  font-family: var(--font-display);
+  font-size: 0.65rem;
+  color: var(--neon-cyan);
+  text-shadow: var(--glow-cyan);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ─── Panel derecho: Info ───────────────────────────────────── */
+.panel-info {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-panel);
+  padding: 16px 14px;
+  gap: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--neon-pink) transparent;
+}
+
+.panel-info::-webkit-scrollbar { width: 3px; }
+.panel-info::-webkit-scrollbar-track { background: transparent; }
+.panel-info::-webkit-scrollbar-thumb { background: var(--neon-pink); border-radius: 2px; }
+
+/* ─── Logo del bar ──────────────────────────────────────────── */
+.bar-logo-section {
+  padding: 8px 0 12px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.bar-logo {
+  display: flex;
+  justify-content: center;
+}
+
+.bar-logo-img {
+  max-width: 100%;
+  max-height: 120px;
+  object-fit: contain;
+}
+
+.logo-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.logo-icon {
+  font-size: 2.4rem;
+  animation: neonPulse 2s ease-in-out infinite;
+}
+
+.logo-text {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 900;
+  letter-spacing: 0.15em;
+  color: var(--text-primary);
+  text-shadow: var(--glow-cyan);
+  line-height: 1;
+}
+
+.logo-text span {
+  color: var(--neon-pink);
+  text-shadow: var(--glow-pink);
+}
+
+.logo-tagline {
+  font-family: var(--font-body);
+  font-size: 0.65rem;
+  letter-spacing: 0.25em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+/* ─── Sección de promociones ────────────────────────────────── */
+.promo-section { padding: 12px 0; flex-shrink: 0; }
+
+.promo-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.promo-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-dark);
+  border-radius: var(--radius-sm);
+  transition: var(--transition);
+  animation: borderGlow 4s ease-in-out infinite;
+  animation-delay: var(--promo-delay, 0s);
+}
+
+.promo-item:nth-child(2) { --promo-delay: 1.3s; }
+.promo-item:nth-child(3) { --promo-delay: 2.6s; }
+
+.promo-icon { font-size: 1.2rem; flex-shrink: 0; }
+
+.promo-text strong {
+  display: block;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.promo-text small {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+/* ─── Cola de canciones (VERSIÓN COMPACTA EXTREMA) ──────────── */
+.queue-section {
+  padding: 12px 0;
+  flex: 1;
+  min-height: 0;
+}
+
+.queue-list, #queue-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px; /* Espacio casi inexistente entre canciones */
+  transition: transform 0.5s ease;
+}
+
+.queue-empty {
+  text-align: center;
+  padding: 20px 0;
+}
+
+.queue-empty p {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.queue-empty small {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+}
+
+/* Elemento de la cola ultra compacto */
+.queue-item {
+  display: flex;
+  align-items: center;
+  gap: 6px; /* Menos espacio entre la imagen y el texto */
+  padding: 2px 8px !important; /* Relleno mínimo absoluto */
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-dark);
+  border-left: 2px solid var(--neon-pink);
+  border-radius: var(--radius-sm);
+  animation: fadeInUp 0.4s ease-out both;
+  overflow: hidden;
+}
+
+.queue-num {
+  font-family: var(--font-display);
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--neon-pink);
+  text-shadow: var(--glow-pink);
+  width: 14px;
+  flex-shrink: 0;
+  text-align: center;
+}
+
+.queue-thumb {
+  width: 28px; /* Miniatura más pequeña */
+  height: 20px;
+  object-fit: cover;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.queue-thumb-placeholder {
+  width: 28px;
+  height: 20px;
+  background: var(--bg-card);
+  border-radius: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  flex-shrink: 0;
+}
+
+.queue-details {
+  flex: 1;
+  min-width: 0;
+  line-height: 1 !important; /* Interlineado cero para matar el espacio muerto */
+  padding: 2px 0;
+}
+
+.queue-song-title {
+  font-size: 1.3rem; /* Ligeramente más pequeño para optimizar espacio */
+  font-weight: bold;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.1;
+  margin-bottom: 0px !important; /* Eliminamos el margen inferior */
+}
+
+.queue-song-who {
+  font-size: 1rem; /* Más compacto */
+  color: var(--neon-cyan);
+  text-shadow: 0 0 6px rgba(0, 229, 255, 0.4);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 0px !important; /* Eliminamos el margen superior */
+}
+
+/* ─── Sección QR ────────────────────────────────────────────── */
+.qr-section {
+  padding: 12px 0 4px;
+  flex-shrink: 0;
+}
+
+.bar-qr-img {
+  max-width: 100%;
+  max-height: 130px;
+  object-fit: contain;
+  border-radius: 8px;
+  border: 3px solid rgba(255, 0, 85, 0.5);
+  padding: 4px;
+  background: white;
+  margin-top: 16px;
+}
+
+.qr-text strong {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  color: var(--neon-pink);
+  text-shadow: var(--glow-pink);
+  margin-bottom: 6px;
+}
+
+.qr-text small {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+/* ─── Notificación flotante animada ─────────────────────────── */
+.notification-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 30%;
+  z-index: 1000;
+  padding: 0 0;
+  pointer-events: none;
+  transform: translateY(-110%);
+  opacity: 0;
+}
+
+.notification-banner.notif-show {
+  animation: slideInDown 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.notification-banner.notif-hide {
+  animation: slideOutUp 0.4s ease-in forwards;
+}
+
+.notif-content {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 24px;
+  background: linear-gradient(90deg, rgba(255, 0, 85, 0.92), rgba(139, 0, 255, 0.92));
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 30px rgba(255, 0, 85, 0.5), 0 0 60px rgba(255, 0, 85, 0.2);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.notif-icon {
+  font-size: 1.8rem;
+  animation: neonPulse 1s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.notif-text { flex: 1; min-width: 0; }
+
+.notif-song {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.notif-who {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.8);
+  margin-top: 2px;
+}
+
+.notif-who span {
+  font-weight: 600;
+  color: #fff;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   INTERFAZ DEL CLIENTE (cliente.html) — Mobile First
+═══════════════════════════════════════════════════════════════ */
+
+/* ─── Body del cliente ──────────────────────────────────────── */
+.cliente-body {
+  min-height: 100vh;
+  background: var(--bg-dark);
+  background-image:
+    radial-gradient(ellipse at 80% 10%, rgba(255, 0, 85, 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 20% 80%, rgba(0, 229, 255, 0.04) 0%, transparent 50%);
+  padding-bottom: 40px;
+}
+
+/* ─── Header del cliente ────────────────────────────────────── */
+.cliente-header {
+  padding: 20px 20px 16px;
+  text-align: center;
+  border-bottom: 1px solid var(--border-dark);
+  position: relative;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(10px);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.cliente-header::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--neon-pink), var(--neon-cyan), transparent);
+  opacity: 0.6;
+}
+
+.header-logo {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 900;
+  letter-spacing: 0.15em;
+  color: var(--text-primary);
+  text-shadow: var(--glow-cyan);
+}
+
+.header-logo span {
+  color: var(--neon-cyan);
+  text-shadow: var(--glow-cyan);
+}
+
+.header-tagline {
+  font-size: 0.65rem;
+  letter-spacing: 0.25em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-top: 3px;
+}
+
+/* ─── Contenido principal del cliente ──────────────────────── */
+.cliente-main {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 16px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ─── Cards del formulario ──────────────────────────────────── */
+.identity-card,
+.search-card {
+  padding: 16px;
+  animation: fadeInUp 0.5s ease-out both;
+}
+
+.identity-card { animation-delay: 0.05s; }
+.search-card   { animation-delay: 0.1s; }
+
+/* ─── Caja de búsqueda ──────────────────────────────────────── */
+.search-box {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.search-box .campo-input {
+  flex: 1;
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+}
+
+.btn-search {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 18px;
+  background: linear-gradient(135deg, rgba(0, 229, 255, 0.15), rgba(0, 229, 255, 0.05));
+  color: var(--neon-cyan);
+  border: 1px solid var(--neon-cyan);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.2);
+  transition: var(--transition);
+  flex-shrink: 0;
+}
+
+.btn-search:hover {
+  transform: scale(1.05);
+  background: linear-gradient(135deg, rgba(0, 229, 255, 0.25), rgba(0, 229, 255, 0.15));
+  box-shadow: 0 0 16px rgba(0, 229, 255, 0.6), 0 0 30px rgba(0, 229, 255, 0.3);
+}
+
+.btn-search:active { 
+  transform: scale(0.97); 
+}
+
+/* ─── Estado de carga ───────────────────────────────────────── */
+.loading-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 20px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  letter-spacing: 0.05em;
+  animation: fadeIn 0.3s ease;
+}
+
+.loading-spinner {
+  width: 22px;
+  height: 22px;
+  border: 2px solid rgba(255, 0, 85, 0.2);
+  border-top-color: var(--neon-pink);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  box-shadow: var(--glow-pink);
+  flex-shrink: 0;
+}
+
+/* ─── Estado de error ───────────────────────────────────────── */
+.error-state {
+  padding: 12px 16px;
+  border-color: rgba(255, 0, 85, 0.4);
+  background: rgba(255, 0, 85, 0.06);
+  color: var(--neon-pink);
+  font-size: 0.85rem;
+  text-align: center;
+  animation: fadeInUp 0.3s ease;
+}
+
+/* ─── Sección de resultados ─────────────────────────────────── */
+.results-section { animation: fadeIn 0.3s ease; }
+
+.results-title {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+  margin-bottom: 10px;
+  padding: 0 2px;
+}
+
+.results-title span {
+  color: var(--neon-cyan);
+  font-weight: 600;
+}
+
+.results-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.no-results {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  padding: 20px;
+}
+
+/* ─── Tarjeta de resultado de búsqueda ──────────────────────── */
+.result-card {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  overflow: hidden;
+  padding: 0;
+  border-radius: var(--radius-md);
+  animation: fadeInUp 0.4s ease-out both;
+  transition: var(--transition);
+}
+
+.result-card:hover {
+  border-color: rgba(0, 229, 255, 0.25);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), 0 0 20px rgba(0, 229, 255, 0.08);
+}
+
+.result-thumb {
+  width: 110px;
+  min-height: 80px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.result-info {
+  flex: 1;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 5px;
+  min-width: 0;
+}
+
+.result-title {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.result-channel {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Botón "Añadir a la Fila" */
+.btn-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 12px;
+  background: linear-gradient(135deg, rgba(0, 229, 255, 0.15), rgba(0, 229, 255, 0.08));
+  border: 1px solid rgba(0, 229, 255, 0.35);
+  border-radius: var(--radius-sm);
+  color: var(--neon-cyan);
+  font-family: var(--font-display);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: var(--transition);
+  width: 100%;
+  justify-content: center;
+  text-shadow: 0 0 8px rgba(0, 229, 255, 0.5);
+}
+
+.btn-add:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(0, 229, 255, 0.25), rgba(0, 229, 255, 0.15));
+  box-shadow: var(--glow-cyan);
+  transform: scale(1.02);
+}
+
+.btn-add:active:not(:disabled) { transform: scale(0.98); }
+
+.btn-add:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: grayscale(0.5);
+}
+
+/* ─── Cola en vivo (cliente) ────────────────────────────────── */
+.live-queue-card {
+  padding: 14px;
+  animation: fadeInUp 0.4s ease-out both;
+  border-color: rgba(255, 0, 85, 0.2);
+}
+
+.live-queue-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 4px;
+  border-bottom: 1px solid var(--border-dark);
+}
+
+.live-queue-item:last-child { border-bottom: none; }
+
+.lq-num {
+  font-family: var(--font-display);
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--neon-pink);
+  text-shadow: var(--glow-pink);
+  width: 14px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.lq-info { flex: 1; min-width: 0; }
+
+.lq-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lq-who {
+  font-size: 0.68rem;
+  color: var(--neon-cyan);
+  margin-top: 2px;
+}
+
+/* ─── Overlay de éxito ──────────────────────────────────────── */
+.success-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  background: rgba(5, 5, 8, 0.88);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.success-overlay.overlay-visible {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.success-card {
+  background: var(--bg-card);
+  border: 1px solid rgba(0, 255, 204, 0.3);
+  border-radius: var(--radius-lg);
+  padding: 32px 28px;
+  text-align: center;
+  max-width: 340px;
+  width: 100%;
+  box-shadow:
+    0 0 40px rgba(0, 255, 204, 0.15),
+    0 20px 60px rgba(0, 0, 0, 0.6);
+  animation: scaleIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.success-overlay:not(.overlay-visible) .success-card {
+  animation: none;
+}
+
+.success-icon {
+  font-size: 3.5rem;
+  margin-bottom: 12px;
+  animation: neonPulse 1.5s ease-in-out infinite;
+}
+
+.success-title {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  color: var(--neon-green);
+  text-shadow: var(--glow-green);
+  margin-bottom: 10px;
+}
+
+.success-song {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 10px;
+  padding: 8px 12px;
+  background: rgba(0, 255, 204, 0.07);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(0, 255, 204, 0.15);
+}
+
+.success-sub {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin-bottom: 22px;
+}
+
+/* ─── Media Queries ─────────────────────────────────────────── */
+
+@media (max-width: 360px) {
+  .header-logo { font-size: 1.2rem; }
+  .result-thumb { width: 90px; }
+  .btn-add { font-size: 0.55rem; padding: 6px 8px; }
+}
+
+@media (min-width: 1200px) {
+  .notification-banner { right: 30%; }
+  .notif-song { font-size: 1.1rem; }
+}
+
+@media (max-height: 600px) {
+  .promo-section { display: none; }
+}

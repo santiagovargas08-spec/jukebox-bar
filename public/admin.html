@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>⚡ GENESIS 2.0 — Panel de Control</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="style.css">
+
+  <script src="https://bernardo-castilho.github.io/DragDropTouch/DragDropTouch.js"></script>
+  
+  <style>
+    /* 🎨 Tema Cyberpunk Cian para el Administrador */
+    :root {
+      --neon-admin: #00f0ff; /* Neón Cian Principal */
+      --neon-admin-glow: rgba(0, 240, 255, 0.5);
+      --neon-danger: #ff0055; /* Rojo para acciones destructivas */
+    }
+    body.admin-body {
+      background-color: #050508;
+      font-family: 'Rajdhani', sans-serif;
+      color: #fff;
+      padding: 20px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .admin-header {
+      text-align: center;
+      margin-bottom: 30px;
+      border-bottom: 2px dashed var(--neon-admin);
+      padding-bottom: 15px;
+    }
+    .admin-title {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 2rem;
+      color: #fff;
+      text-shadow: 0 0 10px var(--neon-admin-glow);
+      letter-spacing: 2px;
+    }
+    .admin-title span { color: var(--neon-admin); }
+    
+    .panel-section {
+      background: rgba(15, 15, 25, 0.8);
+      border: 1px solid rgba(0, 240, 255, 0.2);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    }
+    .section-title {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.2rem;
+      margin-top: 0;
+      margin-bottom: 15px;
+      color: var(--neon-admin);
+      text-transform: uppercase;
+    }
+    
+    /* Canción sonando */
+    .now-playing-box {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      background: rgba(0, 240, 255, 0.05);
+      padding: 15px;
+      border-radius: 8px;
+      border-left: 4px solid var(--neon-admin);
+    }
+    .admin-thumb {
+      width: 70px;
+      height: 50px;
+      object-fit: cover;
+      border-radius: 4px;
+    }
+    .track-details { flex: 1; }
+    .track-title { font-size: 1.2rem; font-weight: bold; color: #fff; }
+    .track-author { color: #8a8a9e; font-size: 0.9rem; }
+    
+    /* Botones y Buscador */
+    .btn-admin {
+      background: transparent;
+      border: 1px solid var(--neon-admin);
+      color: #fff;
+      padding: 10px 15px;
+      border-radius: 6px;
+      font-family: 'Orbitron', sans-serif;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all 0.2s ease;
+      text-transform: uppercase;
+    }
+    .btn-admin:hover {
+      background: var(--neon-admin);
+      color: #000;
+      box-shadow: 0 0 12px var(--neon-admin-glow);
+    }
+    
+    /* Botones Peligrosos (Rojos) */
+    .btn-danger-zone {
+      background: rgba(255, 0, 85, 0.1);
+      border: 1px solid var(--neon-danger);
+      color: var(--neon-danger);
+      width: 100%;
+    }
+    .btn-danger-zone:hover {
+      background: var(--neon-danger);
+      color: #fff;
+      box-shadow: 0 0 12px rgba(255, 0, 85, 0.5);
+    }
+    .btn-delete-item {
+      background: #3a0d1a;
+      border: 1px solid var(--neon-danger);
+      color: #ff99bb;
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.8rem;
+    }
+    .btn-delete-item:hover {
+      background: var(--neon-danger);
+      color: #fff;
+    }
+
+    /* Buscador Admin */
+    .admin-search-box {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    .admin-input {
+      flex: 1;
+      padding: 10px 15px;
+      background: #0a0a0f;
+      border: 1px solid var(--neon-admin);
+      color: #fff;
+      border-radius: 6px;
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 1rem;
+      outline: none;
+    }
+    .admin-input:focus {
+      box-shadow: 0 0 8px var(--neon-admin-glow);
+    }
+    
+    /* Listas y Drag & Drop */
+    .admin-queue-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .admin-queue-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #11111e;
+      padding: 12px;
+      border-radius: 6px;
+      border: 1px solid rgba(0, 240, 255, 0.1);
+      transition: background 0.2s ease;
+    }
+    
+    /* ✨ Clases para Drag and Drop */
+    .drag-handle {
+      cursor: grab;
+      font-size: 1.5rem;
+      color: rgba(0, 240, 255, 0.4);
+      margin-right: 15px;
+      padding: 0 5px;
+      user-select: none;
+      touch-action: none; /* 🔥 AÑADIDO: Evita el scroll en iPhone al arrastrar */
+    }
+    .drag-handle:active {
+      cursor: grabbing;
+      color: var(--neon-admin);
+    }
+    .admin-queue-item.dragging {
+      opacity: 0.5;
+      border: 1px dashed var(--neon-admin);
+      background: rgba(0, 240, 255, 0.05);
+    }
+    
+    .empty-msg { color: #666; text-align: center; padding: 20px; }
+  </style>
+</head>
+
+<body class="admin-body" id="body-panel">
+
+  <header class="admin-header">
+    <h1 class="admin-title">GENESIS 2.0<span>CONTROL PANEL</span></h1>
+  </header>
+
+  <section class="panel-section">
+    <h2 class="section-title">🔊 En Pantalla Ahora</h2>
+    <div id="box-reproduciendo">
+      </div>
+  </section>
+
+  <section class="panel-section">
+    <h2 class="section-title">💿 Agregar Canción (DJ)</h2>
+    <div class="admin-search-box">
+      <input type="text" id="input-buscar-admin" class="admin-input" placeholder="Buscar artista, canción...">
+      <button class="btn-admin" id="btn-buscar-admin">🔍 Buscar</button>
+    </div>
+    <div class="admin-queue-list" id="admin-results">
+      </div>
+  </section>
+
+  <section class="panel-section">
+    <h2 class="section-title">📋 Lista de Espera (<span id="count-cola">0</span>)</h2>
+    <div class="admin-queue-list" id="lista-cola">
+      </div>
+  </section>
+
+  <section class="panel-section">
+    <h2 class="section-title" style="color: var(--neon-danger);">🚨 Zona de Peligro</h2>
+    <button class="btn-danger-zone" id="btn-vaciar">
+      💥 Vaciar toda la fila de canciones
+    </button>
+  </section>
+
+  <script src="/js/dom-safe.js"></script>
+  <script src="/js/bar-loader.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    'use strict';
+
+    let barId = null;
+    let barActual = null;
+
+    const socket = io({ autoConnect: false });
+
+    async function iniciarSesionOperador(slug) {
+      const storageKey = `jukebox_operator_${slug}`;
+      let token = sessionStorage.getItem(storageKey);
+
+      if (!token) {
+        const email = window.prompt('Correo del administrador del bar:');
+        const password = window.prompt('Contraseña del administrador:');
+        if (!email || !password) throw new Error('Necesitas iniciar sesión para abrir el panel.');
+
+        const response = await fetch(`/api/public/bars/${encodeURIComponent(slug)}/operator/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const result = await response.json();
+        if (!response.ok || !result.ok) throw new Error(result.error || 'No se pudo iniciar sesión.');
+        token = result.data.token;
+        sessionStorage.setItem(storageKey, token);
+      }
+
+      socket.auth = { operatorToken: token };
+      socket.connect();
+    }
+
+    // ELEMENTOS DEL DOM
+    const boxReproduciendo = document.getElementById('box-reproduciendo');
+    const listaCola        = document.getElementById('lista-cola');
+    const countCola        = document.getElementById('count-cola');
+    const btnVaciar        = document.getElementById('btn-vaciar');
+    
+    const inputBuscarAdmin = document.getElementById('input-buscar-admin');
+    const btnBuscarAdmin   = document.getElementById('btn-buscar-admin');
+    const adminResults     = document.getElementById('admin-results');
+
+    // ─────────────────────────────────────────────────────────
+    //  ESCUCHAR ESTADOS DEL SERVIDOR
+    // ─────────────────────────────────────────────────────────
+    socket.on('estado_inicial', (data) => actualizarPanel(data));
+    socket.on('cola_actualizada', (data) => actualizarPanel(data));
+
+    function actualizarPanel({ cola, reproduciendo }) {
+      // 1. Renderizar canción actual
+      if (reproduciendo) {
+        const thumbSrc = DomSafe.safeThumbnailAttr(reproduciendo.thumbnail);
+        const thumbHtml = thumbSrc
+          ? `<img class="admin-thumb" src="${thumbSrc}" alt="" loading="lazy" onerror="this.style.display='none'">`
+          : `<div class="admin-thumb" style="display:flex;align-items:center;justify-content:center;font-size:2rem;">🎵</div>`;
+
+        boxReproduciendo.innerHTML = `
+          <div class="now-playing-box">
+            ${thumbHtml}
+            <div class="track-details">
+              <div class="track-title">${escapeHtml(reproduciendo.titulo)}</div>
+              <div class="track-author">Pedida por: <strong style="color:var(--neon-admin);">${escapeHtml(reproduciendo.nombre)}</strong> · Fila: ${escapeHtml(reproduciendo.timestamp)}</div>
+            </div>
+            <button class="btn-admin" id="btn-saltar">⏭️ Saltar</button>
+          </div>
+        `;
+        document.getElementById('btn-saltar').addEventListener('click', () => {
+          socket.emit('admin_saltar', { barId });
+        });
+      } else {
+        boxReproduciendo.innerHTML = `<div class="empty-msg">No hay ninguna canción reproduciéndose en este momento.</div>`;
+      }
+
+      // 2. Renderizar fila de espera
+      countCola.textContent = cola.length;
+      if (cola.length === 0) {
+        listaCola.innerHTML = `<div class="empty-msg">La fila de espera está vacía.</div>`;
+        return;
+      }
+
+      // ✨ Añadido draggable y drag-handle para reordenar
+      listaCola.innerHTML = cola.map((c, index) => `
+        <div class="admin-queue-item" draggable="true" data-id="${c.id}">
+          <div class="drag-handle" title="Arrastrar para mover">☰</div>
+          <div style="flex:1; padding-right:10px;">
+            <div style="font-weight:bold; font-size:1rem;">${index + 1}. ${escapeHtml(c.title || c.titulo)}</div>
+            <div style="color:#666; font-size:0.85rem;">📍 Mesa/Nombre: <span style="${c.name === '👑 DJ / Admin' || c.nombre === '👑 DJ / Admin' ? 'color:var(--neon-admin);' : ''}">${escapeHtml(c.name || c.nombre)}</span></div>
+          </div>
+          <button class="btn-delete-item" data-id="${c.id}">❌</button>
+        </div>
+      `).join('');
+
+      // Eventos para borrar canciones
+      listaCola.querySelectorAll('.btn-delete-item').forEach(btn => {
+        btn.addEventListener('click', () => {
+          socket.emit('admin_eliminar_cancion', {
+            barId,
+            id: Number(btn.dataset.id)
+          });
+        });
+      });
+
+      // 🔥 Inicializamos los eventos de Drag & Drop
+      configurarDragAndDrop();
+    }
+
+    // ─────────────────────────────────────────────────────────
+    //  MAGIA DRAG & DROP
+    // ─────────────────────────────────────────────────────────
+    let elementoArrastrado = null;
+
+    function configurarDragAndDrop() {
+      const items = document.querySelectorAll('#lista-cola .admin-queue-item');
+
+      items.forEach(item => {
+        item.addEventListener('dragstart', (e) => {
+          elementoArrastrado = item;
+          item.classList.add('dragging');
+          e.dataTransfer.effectAllowed = 'move';
+        });
+
+        item.addEventListener('dragend', () => {
+          item.classList.remove('dragging');
+          elementoArrastrado = null;
+          
+          // Al soltar, enviamos el nuevo orden al servidor
+          enviarNuevoOrdenAlServidor();
+        });
+
+        item.addEventListener('dragover', (e) => {
+          e.preventDefault(); // Necesario para permitir soltar (drop)
+          const elementoActivo = document.querySelector('.dragging');
+          if (!elementoActivo || elementoActivo === item) return;
+
+          // Determinar si soltamos arriba o abajo del elemento
+          const rect = item.getBoundingClientRect();
+          const offset = e.clientY - rect.top - (rect.height / 2);
+          
+          if (offset > 0) {
+            item.parentNode.insertBefore(elementoActivo, item.nextSibling);
+          } else {
+            item.parentNode.insertBefore(elementoActivo, item);
+          }
+        });
+      });
+    }
+
+    function enviarNuevoOrdenAlServidor() {
+      // Obtenemos todos los IDs (c.id) de las tarjetas en su nuevo orden visual
+      const nuevoOrdenIds = Array.from(document.querySelectorAll('#lista-cola .admin-queue-item'))
+                                 .map(item => item.dataset.id);
+      
+      // Emitimos el evento. NOTA: Tu backend en Node.js debe escuchar 'reordenar_cola'
+      // y organizar su array interno según este nuevo orden de IDs.
+      socket.emit('reordenar_cola', {
+        barId,
+        orderedIds: nuevoOrdenIds.map(Number)
+      });
+    }
+
+    // ─────────────────────────────────────────────────────────
+    //  BUSCADOR DEL DJ (CON DEBOUNCE OPTIMIZADO: 300ms)
+    // ─────────────────────────────────────────────────────────
+    let timerBusquedaAdmin = null;
+
+    inputBuscarAdmin.addEventListener('input', (e) => {
+      clearTimeout(timerBusquedaAdmin);
+      const q = e.target.value.trim();
+      
+      if (q.length >= 3) {
+        adminResults.innerHTML = '<div class="empty-msg">Buscando en YouTube... ⏳</div>';
+        timerBusquedaAdmin = setTimeout(() => {
+          socket.emit('buscar_canciones', q);
+        }, 300); // ⚡ DEBOUNCE: 300ms para evitar spam de búsquedas
+      }
+    });
+
+    btnBuscarAdmin.addEventListener('click', () => {
+      clearTimeout(timerBusquedaAdmin);
+      const q = inputBuscarAdmin.value.trim();
+      if (q) {
+        adminResults.innerHTML = '<div class="empty-msg">Buscando en YouTube... ⏳</div>';
+        socket.emit('buscar_canciones', q);
+      }
+    });
+
+    inputBuscarAdmin.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        clearTimeout(timerBusquedaAdmin);
+        const q = inputBuscarAdmin.value.trim();
+        if (q) {
+          adminResults.innerHTML = '<div class="empty-msg">Buscando en YouTube... ⏳</div>';
+          socket.emit('buscar_canciones', q);
+        }
+      }
+    });
+
+    // Recibir resultados del buscador
+    socket.on('resultados_busqueda', ({ items }) => {
+      if (document.activeElement === inputBuscarAdmin || inputBuscarAdmin.value !== '') {
+        if (!items || items.length === 0) {
+          adminResults.innerHTML = '<div class="empty-msg">Sin resultados.</div>';
+          return;
+        }
+
+        adminResults.innerHTML = items.slice(0, 5).map((item) => {
+          const thumbSrc = DomSafe.safeThumbnailAttr(item.thumbnail);
+          const thumbHtml = thumbSrc
+            ? `<img class="admin-thumb" src="${thumbSrc}" alt="" loading="lazy" onerror="this.style.display='none'">`
+            : `<div class="admin-thumb" style="display:flex;align-items:center;justify-content:center;">🎵</div>`;
+
+          return `
+          <div class="admin-queue-item">
+            ${thumbHtml}
+            <div style="flex:1; padding-right:10px;">
+              <div style="font-weight:bold; font-size:0.9rem;">${escapeHtml(item.title)}</div>
+            </div>
+            <button class="btn-admin btn-add-dj" 
+              data-id="${escapeHtml(item.videoId)}" 
+              data-title="${escapeHtml(item.title)}" 
+              data-thumb="${escapeHtml(DomSafe.sanitizeThumbnailUrl(item.thumbnail) || '')}">
+              ➕ Añadir
+            </button>
+          </div>
+        `;
+        }).join('');
+
+        // Eventos para añadir la canción como DJ
+        adminResults.querySelectorAll('.btn-add-dj').forEach(btn => {
+          btn.addEventListener('click', () => {
+            socket.emit('agregar_cancion', {
+              barId,
+              cancion: {
+                videoId: btn.dataset.id,
+                title: btn.dataset.title,
+                name: '👑 DJ / Admin',
+                thumbnail: btn.dataset.thumb
+              }
+            });
+            
+            adminResults.innerHTML = `<div class="empty-msg" style="color:var(--neon-admin);">¡Canción añadida a la fila con éxito! 🎵</div>`;
+            inputBuscarAdmin.value = '';
+          });
+        });
+      }
+    });
+
+    socket.on('error_busqueda', () => {
+      if (inputBuscarAdmin.value !== '') {
+        adminResults.innerHTML = '<div class="empty-msg" style="color:var(--neon-danger);">Error en la búsqueda.</div>';
+      }
+    });
+
+    // ─────────────────────────────────────────────────────────
+    //  VACIAR COLA COMPLETA
+    // ─────────────────────────────────────────────────────────
+    btnVaciar.addEventListener('click', () => {
+      if (confirm("¿Estás seguro de que quieres borrar TODAS las canciones de la lista de espera?")) {
+        socket.emit('admin_vaciar_cola', { barId });
+      }
+    });
+
+    async function inicializarAdmin() {
+      barActual = await BarLoader.inicializarBar({
+        titulo: 'GENESIS 2.0 — Admin',
+        mensajeSinSlug: 'Abre el panel con la URL del bar, por ejemplo: /admin.html?bar=mi-bar'
+      });
+
+      if (!barActual) {
+        return;
+      }
+
+      barId = barActual.id;
+
+      try {
+        await iniciarSesionOperador(barActual.slug);
+      } catch (error) {
+        BarLoader.mostrarErrorPantalla(error.message, 'Acceso de operador');
+        return;
+      }
+
+      const titulo = document.querySelector('.admin-title');
+
+      if (titulo) {
+        titulo.innerHTML = `GENESIS 2.0 <span>${BarLoader.escapeHtml(barActual.name)}</span>`;
+      }
+
+      BarLoader.conectarSocketBar(socket, barId);
+    }
+
+    inicializarAdmin();
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+  </script>
+</body>
+</html>

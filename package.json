@@ -1,0 +1,37 @@
+{
+  "name": "jukebox-digital-bar",
+  "version": "1.0.0",
+  "description": "Jukebox Digital para bar con YouTube IFrame API, Socket.io y Node.js",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "build": "prisma generate",
+    "postinstall": "prisma generate",
+    "test": "node -e \"if(!process.env.TEST_DATABASE_URL){console.error('TEST_DATABASE_URL is required for tests.\\nTests will not use DATABASE_URL.');process.exit(1)}\" && node --test tests/**/*.test.js",
+    "test:db": "node test-db.js",
+    "test:migrate": "prisma migrate deploy",
+    "db:migrate": "prisma migrate deploy",
+    "db:migrate:dev": "prisma migrate dev",
+    "db:studio": "prisma studio"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.9.1",
+    "@prisma/client": "^7.9.1",
+    "dotenv": "^17.4.2",
+    "express": "^4.18.2",
+    "pg": "^8.23.0",
+    "qrcode": "^1.5.4",
+    "socket.io": "^4.7.2",
+    "yt-search": "^2.10.4"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1",
+    "prisma": "^7.9.1"
+  },
+  "engines": {
+    "node": "20.x"
+  },
+  "author": "Tu Bar",
+  "license": "ISC"
+}

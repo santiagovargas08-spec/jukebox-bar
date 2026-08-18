@@ -1,0 +1,178 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Bar {
+  id            Int            @id @default(autoincrement())
+  name          String
+  slug          String         @unique
+  active        Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  settings      BarSettings?
+  license       License?
+  payments      Payment[]
+  queue         QueueItem[]
+  history       SongHistory[]
+  users         User[]
+  admins        AdminUser[]
+  playbackState PlaybackState?
+
+  @@index([active])
+}
+
+model License {
+  id             Int           @id @default(autoincrement())
+  barId          Int           @unique
+  status         LicenseStatus @default(TRIAL)
+  plan           PlanType?
+  trialStartedAt DateTime?
+  trialEndsAt    DateTime?
+  startedAt      DateTime?
+  expiresAt      DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  bar            Bar           @relation(fields: [barId], references: [id], onDelete: Cascade)
+  payments       Payment[]
+
+  @@index([status])
+  @@index([expiresAt])
+}
+
+model BarSettings {
+  id             Int      @id @default(autoincrement())
+  barId          Int      @unique
+  displayName    String?
+  logoUrl        String?
+  primaryColor   String?
+  secondaryColor String?
+  welcomeMessage String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  bar            Bar      @relation(fields: [barId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  barId     Int
+  name      String
+  createdAt DateTime @default(now())
+  bar       Bar      @relation(fields: [barId], references: [id], onDelete: Cascade)
+
+  @@index([barId])
+}
+
+model AdminUser {
+  id           Int       @id @default(autoincrement())
+  barId        Int
+  email        String
+  displayName  String
+  passwordHash String
+  active       Boolean   @default(true)
+  role         AdminRole @default(OPERATOR)
+  tokenVersion Int       @default(0)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  bar          Bar       @relation(fields: [barId], references: [id], onDelete: Cascade)
+
+  @@unique([barId, email])
+  @@index([barId, active])
+}
+
+model QueueItem {
+  id        Int      @id @default(autoincrement())
+  barId     Int
+  videoId   String
+  title     String
+  name      String
+  thumbnail String?
+  createdAt DateTime @default(now())
+  bar       Bar      @relation(fields: [barId], references: [id], onDelete: Cascade)
+
+  @@index([barId])
+  @@index([videoId])
+  @@unique([barId, videoId])
+}
+
+model SongHistory {
+  id        Int      @id @default(autoincrement())
+  barId     Int
+  videoId   String
+  title     String
+  name      String
+  thumbnail String?
+  playedAt  DateTime @default(now())
+  bar       Bar      @relation(fields: [barId], references: [id], onDelete: Cascade)
+
+  @@index([barId])
+  @@index([playedAt])
+}
+
+model Payment {
+  id        Int           @id @default(autoincrement())
+  barId     Int
+  licenseId Int
+  amount    Decimal       @db.Decimal(10, 2)
+  currency  String        @default("USD")
+  plan      PlanType
+  method    PaymentMethod
+  reference String?
+  createdBy String?
+  paidAt    DateTime      @default(now())
+  notes     String?
+  createdAt DateTime      @default(now())
+  bar       Bar           @relation(fields: [barId], references: [id], onDelete: Cascade)
+  license   License       @relation(fields: [licenseId], references: [id], onDelete: Cascade)
+
+  @@index([barId])
+  @@index([licenseId])
+  @@index([paidAt])
+  @@index([reference])
+}
+
+model PlaybackState {
+  id          Int            @id @default(autoincrement())
+  barId       Int            @unique
+  queueItemId Int?
+  videoId     String?
+  title       String?
+  name        String?
+  thumbnail   String?
+  startedAt   DateTime?
+  status      PlaybackStatus @default(IDLE)
+  updatedAt   DateTime       @updatedAt
+  bar         Bar            @relation(fields: [barId], references: [id], onDelete: Cascade)
+}
+
+enum LicenseStatus {
+  TRIAL
+  ACTIVE
+  EXPIRED
+  SUSPENDED
+}
+
+enum PlanType {
+  MONTHLY
+  QUARTERLY
+}
+
+enum PaymentMethod {
+  CASH
+  TRANSFER
+}
+
+enum AdminRole {
+  SUPER_ADMIN
+  BAR_ADMIN
+  DJ
+  OPERATOR
+}
+
+enum PlaybackStatus {
+  IDLE
+  PLAYING
+}

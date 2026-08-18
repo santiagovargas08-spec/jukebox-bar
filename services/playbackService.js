@@ -1,0 +1,95 @@
+'use strict';
+
+const { prisma } = require('../db.js');
+const { sanitizeThumbnailUrl } = require('../lib/urlValidation.js');
+
+function normalizarBarId(barId) {
+  const id = Number(barId);
+
+  if (!Number.isInteger(id) || id <= 0) {
+    throw new Error('barId inválido');
+  }
+
+  return id;
+}
+
+function toPlaybackPayload(state) {
+  if (!state || state.status !== 'PLAYING' || !state.videoId) {
+    return null;
+  }
+
+  return {
+    id: state.queueItemId,
+    videoId: state.videoId,
+    titulo: state.title,
+    nombre: state.name,
+    thumbnail: state.thumbnail,
+    startedAt: state.startedAt
+  };
+}
+
+async function getPlaybackState(barId) {
+  const id = normalizarBarId(barId);
+
+  const state = await prisma.playbackState.findUnique({
+    where: { barId: id }
+  });
+
+  return toPlaybackPayload(state);
+}
+
+async function setNowPlaying(barId, song) {
+  const id = normalizarBarId(barId);
+  const now = new Date();
+
+  const data = {
+    queueItemId: song.id ?? null,
+    videoId: String(song.videoId).trim(),
+    title: String(song.title || song.titulo || '').trim().slice(0, 100),
+    name: String(song.name || song.nombre || '').trim().slice(0, 30),
+    thumbnail: sanitizeThumbnailUrl(song.thumbnail),
+    startedAt: now,
+    status: 'PLAYING'
+  };
+
+  const state = await prisma.playbackState.upsert({
+    where: { barId: id },
+    create: {
+      barId: id,
+      ...data
+    },
+    update: data
+  });
+
+  return toPlaybackPayload(state);
+}
+
+async function clearPlaybackState(barId) {
+  const id = normalizarBarId(barId);
+
+  await prisma.playbackState.upsert({
+    where: { barId: id },
+    create: {
+      barId: id,
+      status: 'IDLE'
+    },
+    update: {
+      queueItemId: null,
+      videoId: null,
+      title: null,
+      name: null,
+      thumbnail: null,
+      startedAt: null,
+      status: 'IDLE'
+    }
+  });
+
+  return null;
+}
+
+module.exports = {
+  getPlaybackState,
+  setNowPlaying,
+  clearPlaybackState,
+  toPlaybackPayload
+};

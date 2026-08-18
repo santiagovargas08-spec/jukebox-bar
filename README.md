@@ -1,0 +1,155 @@
+# Jukebox Bar
+
+Plataforma multi-tenant para bares: cola de canciones, búsqueda YouTube, reproducción en tiempo real, operadores, licencias y pagos.
+
+## Arquitectura
+
+```text
+CLIENT (Vanilla JS / HTML / CSS)
+        ↓
+     Socket.IO
+        ↓
+      Express
+        ↓
+     Services
+        ↓
+      Prisma
+        ↓
+   PostgreSQL
+```
+
+```text
+BAR
+├── LICENSE
+├── USERS
+├── QUEUE
+├── HISTORY
+├── PLAYBACK
+└── PAYMENTS
+```
+
+## Requisitos
+
+- Node.js 20.x (Render: `nodeVersion: 20`)
+- PostgreSQL 14+
+
+## Instalación
+
+```bash
+npm install
+cp .env.example .env
+# Edita .env con tus valores
+```
+
+## Variables de entorno
+
+Ver `.env.example`:
+
+| Variable | Descripción |
+|----------|-------------|
+| `DATABASE_URL` | Conexión PostgreSQL |
+| `DATABASE_SSL` | `true` en Render/producción |
+| `ADMIN_API_KEY` | Clave para `/api/commercial` |
+| `OPERATOR_TOKEN_SECRET` | Secreto HMAC tokens operador (≥32 chars) |
+| `APP_URL` | URL pública (CORS, QR, links) |
+| `PORT` | Puerto HTTP (Render lo asigna) |
+| `TEST_DATABASE_URL` | Base de datos separada para tests |
+
+## Prisma
+
+```bash
+npx prisma generate
+npx prisma migrate dev    # desarrollo
+npx prisma migrate deploy # producción
+npx prisma validate
+```
+
+**No uses `prisma db push` en producción.** Las migraciones viven en `prisma/migrations/`.
+
+### Base de datos existente (creada con `db push`)
+
+Si la base ya tiene tablas y `migrate deploy` devuelve P3005:
+
+```bash
+npx prisma db execute --file prisma/migrations/20250817180100_existing_db_upgrade/migration.sql
+npx prisma migrate resolve --applied 20250817180000_initial
+npx prisma migrate resolve --applied 20250817180100_existing_db_upgrade
+```
+
+En bases nuevas, `npx prisma migrate deploy` aplica ambas migraciones en orden.
+
+## Desarrollo
+
+```bash
+npm run dev
+```
+
+## Producción
+
+```bash
+npm run build
+npx prisma migrate deploy
+npm start
+```
+
+## Tests
+
+Configura `TEST_DATABASE_URL` apuntando a una base **distinta** de producción (ej. `jukebox_test`):
+
+```bash
+# Crear base de test (opcional, si no existe)
+node scripts/ensure-test-db.js
+
+# Aplicar migraciones en la base de test
+node --env-file=.env.test npx prisma migrate deploy
+
+# Ejecutar tests (requiere TEST_DATABASE_URL en el entorno)
+export TEST_DATABASE_URL=postgresql://user:pass@localhost:5432/jukebox_test
+npm test
+```
+
+Sin `TEST_DATABASE_URL`, `npm test` falla inmediatamente y **no** usa `DATABASE_URL`.
+
+```bash
+npm run test:db
+```
+
+## Render
+
+| Configuración | Valor |
+|---------------|-------|
+| Node | 20 |
+| Build | `npm install && npm run build` |
+| Start | `npx prisma migrate deploy && npm start` |
+| Health check | `/health` |
+| Database | PostgreSQL (plan pagado recomendado para comercialización) |
+
+Variables en Render: `DATABASE_URL`, `ADMIN_API_KEY`, `OPERATOR_TOKEN_SECRET`, `APP_URL`, `PORT`, `DATABASE_SSL=true`.
+
+## Endpoints principales
+
+- `GET /health` — health check
+- `GET /api/public/bars/:slug` — info pública del bar
+- `POST /api/public/bars/:slug/operator/login` — login operador
+- `GET /api/commercial/*` — administración (requiere `ADMIN_API_KEY`)
+
+## Socket.IO (eventos)
+
+- `seleccionar_bar`, `solicitar_estado`, `buscar_canciones`, `agregar_cancion`
+- `siguiente_cancion`, `admin_saltar`, `admin_eliminar_cancion`, `reordenar_cola`
+- `cancion_terminada`
+
+Los operadores autenticados quedan vinculados a `token.barId`; no pueden acceder a otro tenant.
+
+## Producción comercial
+
+Para comercializar el servicio:
+
+- Usa PostgreSQL con backups y almacenamiento adecuado (no el tier free).
+- Configura monitoreo y alertas.
+- Rota `ADMIN_API_KEY` y `OPERATOR_TOKEN_SECRET` si pudieron exponerse.
+- Define `APP_URL` con la URL real del despliegue.
+
+## Módulos
+
+El proyecto usa **CommonJS** (`require`/`module.exports`). Prisma Client se genera en `node_modules/@prisma/client` vía `prisma generate`.

@@ -1,0 +1,841 @@
+'use strict';
+
+const { prisma } = require('../db.js');
+
+
+// ============================================================
+// CONFIGURACIÓN
+// ============================================================
+
+const TRIAL_DAYS = 14;
+
+const PLAN_MONTHS = {
+  MONTHLY: 1,
+  QUARTERLY: 3
+};
+
+
+// ============================================================
+// UTILIDADES
+// ============================================================
+
+function calcularFinTrial(inicio) {
+  const fin = new Date(inicio);
+
+  fin.setDate(
+    fin.getDate() + TRIAL_DAYS
+  );
+
+  return fin;
+}
+
+
+function calcularFinSuscripcion(inicio, plan) {
+  const meses =
+    PLAN_MONTHS[plan];
+
+  if (!meses) {
+    throw new Error(
+      'Plan de suscripción inválido.'
+    );
+  }
+
+  const fin =
+    new Date(inicio);
+
+  fin.setMonth(
+    fin.getMonth() + meses
+  );
+
+  return fin;
+}
+
+
+function normalizarBarId(barId) {
+  const id =
+    Number(barId);
+
+  if (
+    !Number.isInteger(id) ||
+    id <= 0
+  ) {
+    return null;
+  }
+
+  return id;
+}
+
+
+function normalizarPlan(plan) {
+  if (
+    plan === 'MONTHLY' ||
+    plan === 'QUARTERLY'
+  ) {
+    return plan;
+  }
+
+  return null;
+}
+
+
+function normalizarMetodoPago(method) {
+  if (
+    method === 'CASH' ||
+    method === 'TRANSFER'
+  ) {
+    return method;
+  }
+
+  return null;
+}
+
+
+function normalizarMonto(amount) {
+  const numero =
+    Number(amount);
+
+  if (
+    !Number.isFinite(numero) ||
+    numero <= 0
+  ) {
+    return null;
+  }
+
+  return numero;
+}
+
+
+// ============================================================
+// OBTENER LICENCIA
+// ============================================================
+
+async function getLicenseByBarId(barId) {
+
+  const id =
+    normalizarBarId(barId);
+
+  if (!id) {
+    return null;
+  }
+
+  return prisma.license.findUnique({
+    where: {
+      barId: id
+    },
+
+    include: {
+      bar: {
+        include: {
+          settings: true
+        }
+      },
+
+      payments: {
+        orderBy: {
+          paidAt: 'desc'
+        }
+      }
+    }
+  });
+}
+
+
+// ============================================================
+// CREAR LICENCIA DE PRUEBA
+// ============================================================
+
+async function createTrialLicense(barId) {
+
+  const id =
+    normalizarBarId(barId);
+
+  if (!id) {
+    throw new Error(
+      'ID de bar inválido.'
+    );
+  }
+
+  const trialStartedAt =
+    new Date();
+
+  const trialEndsAt =
+    calcularFinTrial(
+      trialStartedAt
+    );
+
+  try {
+    return await prisma.license.create({
+      data: {
+        barId: id,
+
+        status: 'TRIAL',
+
+        trialStartedAt,
+
+        trialEndsAt
+      }
+    });
+  } catch (error) {
+    if (error.code === 'P2002') {
+      return prisma.license.findUnique({
+        where: {
+          barId: id
+        }
+      });
+    }
+
+    throw error;
+  }
+}
+
+
+// ============================================================
+// ACTUALIZAR ESTADO SEGÚN FECHAS
+// ============================================================
+
+async function refreshLicenseStatus(barId) {
+
+  const id =
+    normalizarBarId(barId);
+
+  if (!id) {
+    return null;
+  }
+
+  let license =
+    await prisma.license.findUnique({
+      where: {
+        barId: id
+      }
+    });
+
+  /*
+   * Si el bar todavía no tiene licencia,
+   * creamos automáticamente su periodo
+   * de prueba.
+   */
+
+  if (!license) {
+
+    license =
+      await createTrialLicense(
+        id
+      );
+  }
+
+
+  const ahora =
+    new Date();
+
+
+  /*
+   * LICENCIA ACTIVA
+   *
+   * Si está activa y ya pasó expiresAt,
+   * pasa automáticamente a EXPIRED.
+   */
+
+  if (
+    license.status === 'ACTIVE' &&
+    license.expiresAt &&
+    ahora >= license.expiresAt
+  ) {
+
+    license =
+      await prisma.license.update({
+        where: {
+          id: license.id
+        },
+
+        data: {
+          status: 'EXPIRED'
+        }
+      });
+  }
+
+
+  /*
+   * PERIODO DE PRUEBA
+   *
+   * Si el trial terminó, pasa automáticamente
+   * a EXPIRED.
+   */
+
+  else if (
+    license.status === 'TRIAL' &&
+    license.trialEndsAt &&
+    ahora >= license.trialEndsAt
+  ) {
+
+    license =
+      await prisma.license.update({
+        where: {
+          id: license.id
+        },
+
+        data: {
+          status: 'EXPIRED'
+        }
+      });
+  }
+
+
+  return license;
+}
+
+
+// ============================================================
+// COMPROBAR SI EL BAR PUEDE UTILIZAR EL SISTEMA
+// ============================================================
+
+async function isLicenseValid(barId) {
+
+  const license =
+    await refreshLicenseStatus(
+      barId
+    );
+
+  if (!license) {
+    return false;
+  }
+
+
+  /*
+   * TRIAL vigente
+   */
+
+  if (
+    license.status === 'TRIAL'
+  ) {
+
+    if (
+      !license.trialEndsAt
+    ) {
+      return false;
+    }
+
+    return (
+      new Date() <
+      license.trialEndsAt
+    );
+  }
+
+
+  /*
+   * SUSCRIPCIÓN ACTIVA
+   */
+
+  if (
+    license.status === 'ACTIVE'
+  ) {
+
+    if (
+      !license.expiresAt
+    ) {
+      return false;
+    }
+
+    return (
+      new Date() <
+      license.expiresAt
+    );
+  }
+
+
+  /*
+   * EXPIRED y SUSPENDED
+   * no pueden utilizar el sistema.
+   */
+
+  return false;
+}
+
+
+// ============================================================
+// OBTENER INFORMACIÓN COMPLETA DE LICENCIA
+// ============================================================
+
+async function getLicenseStatus(barId) {
+
+  const license =
+    await refreshLicenseStatus(
+      barId
+    );
+
+  if (!license) {
+    return null;
+  }
+
+
+  const ahora =
+    new Date();
+
+
+  let diasRestantes =
+    0;
+
+
+  let fechaFin =
+    null;
+
+
+  if (
+    license.status === 'TRIAL' &&
+    license.trialEndsAt
+  ) {
+
+    fechaFin =
+      license.trialEndsAt;
+
+  } else if (
+    license.status === 'ACTIVE' &&
+    license.expiresAt
+  ) {
+
+    fechaFin =
+      license.expiresAt;
+  }
+
+
+  if (fechaFin) {
+
+    const diferencia =
+      fechaFin.getTime() -
+      ahora.getTime();
+
+    diasRestantes =
+      Math.max(
+        0,
+        Math.ceil(
+          diferencia /
+          (1000 * 60 * 60 * 24)
+        )
+      );
+  }
+
+
+  return {
+    ...license,
+
+    puedeUsar:
+      await isLicenseValid(
+        barId
+      ),
+
+    diasRestantes,
+
+    fechaFin
+  };
+}
+
+
+// ============================================================
+// ACTIVAR SUSCRIPCIÓN
+// ============================================================
+
+async function activateSubscription({
+  barId,
+  plan,
+  amount,
+  method,
+  notes = null,
+  reference = null,
+  currency = 'USD',
+  createdBy = null
+}) {
+
+  const id =
+    normalizarBarId(barId);
+
+  if (!id) {
+    throw new Error(
+      'ID de bar inválido.'
+    );
+  }
+
+
+  const planNormalizado =
+    normalizarPlan(plan);
+
+  if (!planNormalizado) {
+    throw new Error(
+      'El plan debe ser MONTHLY o QUARTERLY.'
+    );
+  }
+
+
+  const metodoNormalizado =
+    normalizarMetodoPago(
+      method
+    );
+
+  if (!metodoNormalizado) {
+    throw new Error(
+      'El método de pago debe ser CASH o TRANSFER.'
+    );
+  }
+
+
+  const monto =
+    normalizarMonto(amount);
+
+  if (monto === null) {
+    throw new Error(
+      'El monto del pago debe ser mayor que cero.'
+    );
+  }
+
+
+  const bar =
+    await prisma.bar.findUnique({
+      where: {
+        id
+      },
+
+      include: {
+        license: true
+      }
+    });
+
+
+  if (!bar) {
+    throw new Error(
+      'Bar no encontrado.'
+    );
+  }
+
+
+  /*
+   * Si por alguna razón el bar no tiene licencia,
+   * creamos su licencia.
+   */
+
+  let license =
+    bar.license;
+
+
+  if (!license) {
+
+    license =
+      await createTrialLicense(
+        id
+      );
+  }
+
+
+  const ahora =
+    new Date();
+
+
+  /*
+   * Registramos licencia y pago
+   * dentro de una misma transacción.
+   */
+
+  const resultado =
+    await prisma.$transaction(
+      async (tx) => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(${id})`;
+
+        const licenseActual = await tx.license.findUnique({
+          where: { barId: id }
+        });
+
+        if (!licenseActual) {
+          throw new Error('El bar no tiene licencia.');
+        }
+
+        let inicioSuscripcionTx = ahora;
+
+        if (
+          licenseActual.status === 'ACTIVE' &&
+          licenseActual.expiresAt &&
+          licenseActual.expiresAt > ahora
+        ) {
+          inicioSuscripcionTx = new Date(licenseActual.expiresAt);
+        }
+
+        const expiresAtTx = calcularFinSuscripcion(
+          inicioSuscripcionTx,
+          planNormalizado
+        );
+
+        const licenciaActualizada =
+          await tx.license.update({
+            where: {
+              id: licenseActual.id
+            },
+
+            data: {
+
+              status:
+                'ACTIVE',
+
+              plan:
+                planNormalizado,
+
+              startedAt:
+                inicioSuscripcionTx,
+
+              expiresAt: expiresAtTx
+            }
+          });
+
+
+        const payment =
+          await tx.payment.create({
+            data: {
+
+              barId:
+                id,
+
+              licenseId:
+                licenciaActualizada.id,
+
+              amount:
+                monto,
+
+              currency:
+                typeof currency === 'string' && currency.trim()
+                  ? currency.trim().slice(0, 8).toUpperCase()
+                  : 'USD',
+
+              plan:
+                planNormalizado,
+
+              method:
+                metodoNormalizado,
+
+              reference:
+                reference && String(reference).trim()
+                  ? String(reference).trim().slice(0, 120)
+                  : null,
+
+              createdBy:
+                createdBy && String(createdBy).trim()
+                  ? String(createdBy).trim().slice(0, 120)
+                  : null,
+
+              paidAt:
+                ahora,
+
+              notes:
+                notes &&
+                String(notes).trim()
+                  ? String(notes).trim()
+                  : null
+            }
+          });
+
+
+        return {
+          license:
+            licenciaActualizada,
+
+          payment
+        };
+      }
+    );
+
+
+  console.log(
+    `[LICENCIA] Bar ${id} → ${planNormalizado} → activa hasta ${resultado.license.expiresAt.toISOString()}`
+  );
+
+
+  console.log(
+    `[PAGO] Bar ${id} → ${metodoNormalizado} → ${monto}`
+  );
+
+
+  return resultado;
+}
+
+
+// ============================================================
+// SUSPENDER LICENCIA
+// ============================================================
+
+async function suspendLicense(barId) {
+
+  const id =
+    normalizarBarId(barId);
+
+  if (!id) {
+    throw new Error(
+      'ID de bar inválido.'
+    );
+  }
+
+
+  const license =
+    await prisma.license.findUnique({
+      where: {
+        barId: id
+      }
+    });
+
+
+  if (!license) {
+    throw new Error(
+      'El bar no tiene licencia.'
+    );
+  }
+
+
+  return prisma.license.update({
+    where: {
+      id: license.id
+    },
+
+    data: {
+      status: 'SUSPENDED'
+    }
+  });
+}
+
+
+// ============================================================
+// REACTIVAR LICENCIA
+// ============================================================
+
+async function reactivateLicense(barId) {
+
+  const id =
+    normalizarBarId(barId);
+
+  if (!id) {
+    throw new Error(
+      'ID de bar inválido.'
+    );
+  }
+
+
+  const license =
+    await prisma.license.findUnique({
+      where: {
+        barId: id
+      }
+    });
+
+
+  if (!license) {
+    throw new Error(
+      'El bar no tiene licencia.'
+    );
+  }
+
+
+  if (
+    license.status !== 'SUSPENDED'
+  ) {
+
+    return license;
+  }
+
+
+  const ahora =
+    new Date();
+
+
+  /*
+   * Si la suscripción todavía tiene
+   * fecha de vencimiento futura,
+   * vuelve a ACTIVE.
+   *
+   * Si ya venció, pasa a EXPIRED.
+   */
+
+  if (
+    license.expiresAt &&
+    license.expiresAt > ahora
+  ) {
+
+    return prisma.license.update({
+      where: {
+        id: license.id
+      },
+
+      data: {
+        status: 'ACTIVE'
+      }
+    });
+  }
+
+
+  /*
+   * Una licencia suspendida que ya venció
+   * no debe volver a ACTIVE automáticamente.
+   */
+
+  return prisma.license.update({
+    where: {
+      id: license.id
+    },
+
+    data: {
+      status: 'EXPIRED'
+    }
+  });
+}
+
+
+// ============================================================
+// OBTENER HISTORIAL DE PAGOS
+// ============================================================
+
+async function getPaymentsByBarId(barId) {
+
+  const id =
+    normalizarBarId(barId);
+
+  if (!id) {
+    return [];
+  }
+
+
+  return prisma.payment.findMany({
+    where: {
+      barId: id
+    },
+
+    orderBy: {
+      paidAt: 'desc'
+    }
+  });
+}
+
+
+// ============================================================
+// EXPORTACIONES
+// ============================================================
+
+module.exports = {
+
+  TRIAL_DAYS,
+
+  PLAN_MONTHS,
+
+  calcularFinTrial,
+
+  calcularFinSuscripcion,
+
+  getLicenseByBarId,
+
+  createTrialLicense,
+
+  refreshLicenseStatus,
+
+  isLicenseValid,
+
+  getLicenseStatus,
+
+  activateSubscription,
+
+  suspendLicense,
+
+  reactivateLicense,
+
+  getPaymentsByBarId
+
+};
