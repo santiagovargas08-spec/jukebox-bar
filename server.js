@@ -75,6 +75,7 @@ const io = new Server(server, {
 });
 
 const PORT = process.env.PORT || 3000;
+const HOST = '0.0.0.0';
 
 io.use(async (socket, next) => {
   try {
@@ -2203,6 +2204,7 @@ process.on(
 if (require.main === module) {
   server.listen(
     PORT,
+    HOST,
     () => {
 
       console.log(`
