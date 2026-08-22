@@ -5,7 +5,7 @@ const QRCode = require('qrcode');
 
 const { getBarBySlug } = require('../services/barService.js');
 const { getLicenseStatus } = require('../services/licenseService.js');
-const { authenticateOperator } = require('../services/operatorAuthService.js');
+const { authenticateOperator, createAdminUser } = require('../services/operatorAuthService.js');
 const { authenticateMasterAdmin } = require('../services/masterAdminAuthService.js');
 const { requireMasterAdmin } = require('../middleware/masterAdminAuth.js');
 const { prisma } = require('../db.js');
@@ -16,8 +16,6 @@ const router = express.Router();
 
 // ============================================================
 // MASTER ADMIN / SUPER_ADMIN
-// Se mantiene dentro de este router para evitar tocar la arquitectura
-// de server.js mientras se integra de forma incremental.
 // ============================================================
 
 router.post('/master-admin/login', async (req, res) => {
@@ -79,14 +77,26 @@ router.get('/master-admin/bars/:id', async (req, res) => {
 router.post('/master-admin/bars', async (req, res) => {
   try {
     const { name, displayName, welcomeMessage, slug } = req.body || {};
-    if (typeof name !== 'string' || !name.trim()) {
-      return res.status(400).json({ ok: false, error: 'El nombre del bar es obligatorio.' });
-    }
+    if (typeof name !== 'string' || !name.trim()) return res.status(400).json({ ok: false, error: 'El nombre del bar es obligatorio.' });
     const bar = await createBar({ name, slug, displayName, welcomeMessage });
     res.status(201).json({ ok: true, data: { ...bar, urls: buildBarUrls(bar, req) } });
   } catch (error) {
     console.error('[MASTER_ADMIN] Error creando bar:', error);
     res.status(400).json({ ok: false, error: error.message || 'No se pudo crear el bar.' });
+  }
+});
+
+router.post('/master-admin/bars/:id/admins', async (req, res) => {
+  try {
+    const bar = await getBarById(req.params.id);
+    if (!bar) return res.status(404).json({ ok: false, error: 'Bar no encontrado.' });
+    const { email, displayName, password, role = 'BAR_ADMIN' } = req.body || {};
+    if (role !== 'BAR_ADMIN') return res.status(400).json({ ok: false, error: 'Desde Master Admin solo se crean administradores BAR_ADMIN.' });
+    const admin = await createAdminUser({ barId: bar.id, email, displayName, password, role });
+    res.status(201).json({ ok: true, data: admin });
+  } catch (error) {
+    console.error('[MASTER_ADMIN] Error creando administrador del bar:', error);
+    res.status(400).json({ ok: false, error: error.message || 'No se pudo crear el administrador.' });
   }
 });
 
@@ -148,30 +158,13 @@ router.post('/bars/:slug/operator/login', async (req, res) => {
   }
 });
 
-function obtenerBaseUrl(req) {
-  return getAppUrl(req);
-}
+function obtenerBaseUrl(req) { return getAppUrl(req); }
 
 router.get('/bars/:slug', async (req, res) => {
   try {
     const bar = await getBarBySlug(req.params.slug);
     if (!bar) return res.status(404).json({ ok: false, error: 'Bar no encontrado' });
-    res.json({
-      ok: true,
-      data: {
-        id: bar.id,
-        name: bar.name,
-        slug: bar.slug,
-        active: bar.active,
-        settings: bar.settings ? {
-          displayName: bar.settings.displayName,
-          welcomeMessage: bar.settings.welcomeMessage,
-          primaryColor: bar.settings.primaryColor,
-          secondaryColor: bar.settings.secondaryColor,
-          logoUrl: bar.settings.logoUrl
-        } : null
-      }
-    });
+    res.json({ ok: true, data: { id: bar.id, name: bar.name, slug: bar.slug, active: bar.active, settings: bar.settings ? { displayName: bar.settings.displayName, welcomeMessage: bar.settings.welcomeMessage, primaryColor: bar.settings.primaryColor, secondaryColor: bar.settings.secondaryColor, logoUrl: bar.settings.logoUrl } : null } });
   } catch (error) {
     console.error('[PUBLIC] Error obteniendo bar:', error);
     res.status(500).json({ ok: false, error: 'No se pudo obtener el bar' });
@@ -184,15 +177,7 @@ router.get('/bars/:slug/license/status', async (req, res) => {
     if (!bar) return res.status(404).json({ ok: false, error: 'Bar no encontrado' });
     const status = await getLicenseStatus(bar.id);
     if (!status) return res.status(404).json({ ok: false, error: 'No se pudo obtener el estado de la licencia' });
-    res.json({ ok: true, data: {
-      status: status.status,
-      plan: status.plan,
-      puedeUsar: status.puedeUsar,
-      diasRestantes: status.diasRestantes,
-      fechaFin: status.fechaFin,
-      trialEndsAt: status.trialEndsAt,
-      expiresAt: status.expiresAt
-    }});
+    res.json({ ok: true, data: { status: status.status, plan: status.plan, puedeUsar: status.puedeUsar, diasRestantes: status.diasRestantes, fechaFin: status.fechaFin, trialEndsAt: status.trialEndsAt, expiresAt: status.expiresAt } });
   } catch (error) {
     console.error('[PUBLIC] Error obteniendo licencia:', error);
     res.status(500).json({ ok: false, error: 'No se pudo obtener el estado de la licencia' });
@@ -204,12 +189,7 @@ router.get('/bars/:slug/qr', async (req, res) => {
     const bar = await getBarBySlug(req.params.slug);
     if (!bar) return res.status(404).json({ ok: false, error: 'Bar no encontrado' });
     const clienteUrl = buildBarUrls(bar, req).cliente;
-    const png = await QRCode.toBuffer(clienteUrl, {
-      type: 'png',
-      width: 400,
-      margin: 2,
-      color: { dark: '#00f0ff', light: '#0a0a0f' }
-    });
+    const png = await QRCode.toBuffer(clienteUrl, { type: 'png', width: 400, margin: 2, color: { dark: '#00f0ff', light: '#0a0a0f' } });
     res.set('Content-Type', 'image/png');
     res.set('Cache-Control', 'public, max-age=3600');
     res.send(png);
