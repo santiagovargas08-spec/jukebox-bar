@@ -22,6 +22,8 @@ services:
         generateValue: true
       - key: OPERATOR_TOKEN_SECRET
         generateValue: true
+      - key: MASTER_ADMIN_TOKEN_SECRET
+        generateValue: true
       - key: APP_URL
         sync: false
       - key: PORT
