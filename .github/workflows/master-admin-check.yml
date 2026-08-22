@@ -1,0 +1,27 @@
+name: Master Admin checks
+
+on:
+  push:
+    branches: [master-admin-integration]
+  pull_request:
+    branches: [comercializacion]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: npm
+      - run: npm ci
+      - run: npx prisma validate
+      - run: npx prisma generate
+      - run: node --check server.js
+      - run: node --check routes/public.js
+      - run: node --check routes/masterAdmin.js
+      - run: node --check services/barService.js
+      - run: node --check services/masterAdminAuthService.js
+      - run: node --check middleware/masterAdminAuth.js
+      - run: node --check create-master-admin.js
