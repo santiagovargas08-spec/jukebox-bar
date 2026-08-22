@@ -13,7 +13,8 @@
     "test:migrate": "prisma migrate deploy",
     "db:migrate": "prisma migrate deploy",
     "db:migrate:dev": "prisma migrate dev",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "master-admin:create": "node create-master-admin.js"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.9.1",
