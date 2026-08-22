@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Jukebox Digital — Master Admin</title>
+  <style>
+    :root{font-family:Arial,sans-serif;color:#f5f7fb;background:#080a10}*{box-sizing:border-box}body{margin:0;background:linear-gradient(135deg,#080a10,#10152a);min-height:100vh}.wrap{max-width:1250px;margin:auto;padding:24px}.card{background:#111726;border:1px solid #26314a;border-radius:14px;padding:20px;margin-bottom:18px;box-shadow:0 12px 35px #0005}h1,h2{margin-top:0}input,button{font:inherit;border-radius:8px;padding:11px 13px;border:1px solid #34415d}input{background:#0a0f1c;color:#fff;width:100%}button{background:#16d9ff;color:#041018;font-weight:700;cursor:pointer}button.secondary{background:#202b42;color:#fff}button.danger{background:#ff496c;color:#fff}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}.stat{padding:16px;background:#0b1220;border-radius:10px}.stat strong{display:block;font-size:28px;margin-top:5px}.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}.actions{display:flex;gap:8px;flex-wrap:wrap}.hidden{display:none}.muted{color:#9aa8c2}.error{color:#ff7d96}.ok{color:#66e3a4}.bar{border:1px solid #293651;border-radius:12px;padding:16px;margin-top:12px;background:#0c1322}.bar-head{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}.urls{display:grid;gap:6px;margin-top:10px}.urls a{color:#62ddff;word-break:break-all}.qr{width:150px;height:150px;background:#fff;padding:5px}.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.badge{padding:4px 8px;border-radius:99px;background:#23314a}.table-actions{display:flex;gap:6px;flex-wrap:wrap}@media(max-width:600px){.wrap{padding:12px}}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div id="login" class="card">
+    <h1>MASTER ADMIN</h1>
+    <p class="muted">Administración central de todos los bares.</p>
+    <form id="loginForm" class="form-grid">
+      <label>Correo<input id="email" type="email" autocomplete="username" required></label>
+      <label>Contraseña<input id="password" type="password" autocomplete="current-password" required></label>
+      <div class="actions" style="align-items:end"><button>Entrar</button></div>
+    </form>
+    <p id="loginError" class="error"></p>
+  </div>
+
+  <main id="app" class="hidden">
+    <div class="row" style="justify-content:space-between"><div><h1>MASTER ADMIN</h1><p id="who" class="muted"></p></div><button id="logout" class="secondary">Cerrar sesión</button></div>
+
+    <section class="card"><h2>Resumen</h2><div id="stats" class="grid"></div></section>
+
+    <section class="card">
+      <h2>Crear bar</h2>
+      <form id="createForm" class="form-grid">
+        <label>Nombre del bar *<input id="barName" required placeholder="La Esquina Bar"></label>
+        <label>Nombre mostrado<input id="displayName" placeholder="La Esquina"></label>
+        <label>Mensaje de bienvenida<input id="welcomeMessage" placeholder="Bienvenido"></label>
+        <div class="actions" style="align-items:end"><button>Crear bar</button></div>
+      </form>
+      <p id="createMessage"></p>
+    </section>
+
+    <section class="card"><h2>Bares</h2><div id="bars"></div></section>
+  </main>
+</div>
+<script>
+'use strict';
+const tokenKey='jukebox_master_admin_token';
+const $=id=>document.getElementById(id);
+const token=()=>sessionStorage.getItem(tokenKey);
+function setLoggedIn(value){$('login').classList.toggle('hidden',value);$('app').classList.toggle('hidden',!value)}
+async function api(path,options={}){
+  const headers={'Content-Type':'application/json',...(options.headers||{})};
+  if(token()) headers.Authorization=`Bearer ${token()}`;
+  const r=await fetch(`/api/public/master-admin${path}`,{...options,headers});
+  const data=await r.json().catch(()=>({ok:false,error:'Respuesta inválida'}));
+  if(!r.ok||!data.ok) throw new Error(data.error||'Error de servidor');
+  return data.data;
+}
+function escapeHtml(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));}
+function renderStats(s){$('stats').innerHTML=Object.entries({Total:s.total,Activos:s.active,Inactivos:s.inactive,'Pruebas':s.trial,'Licencias activas':s.activeLicense,Expiradas:s.expired,Suspendidas:s.suspended}).map(([k,v])=>`<div class="stat"><span class="muted">${k}</span><strong>${v}</strong></div>`).join('')}
+function renderBars(bars){
+  $('bars').innerHTML=bars.length?bars.map(b=>`<article class="bar"><div class="bar-head"><div><h3>${escapeHtml(b.name)}</h3><div class="muted">ID ${b.id} · ${escapeHtml(b.slug)}</div><span class="badge">${b.active?'ACTIVO':'INACTIVO'} · ${escapeHtml(b.license?.status||'SIN LICENCIA')}</span></div><div class="table-actions"><button class="secondary" data-toggle="${b.id}" data-active="${!b.active}">${b.active?'Desactivar':'Activar'}</button></div></div><div class="urls"><a href="${b.urls.cliente}" target="_blank">Cliente: ${escapeHtml(b.urls.cliente)}</a><a href="${b.urls.bar}" target="_blank">Bar: ${escapeHtml(b.urls.bar)}</a><a href="${b.urls.admin}" target="_blank">Admin: ${escapeHtml(b.urls.admin)}</a></div><div class="row" style="margin-top:12px"><img class="qr" src="${b.urls.qr}" alt="QR de ${escapeHtml(b.name)}"><div><p><strong>QR del cliente</strong></p><p class="muted">El QR apunta a la URL cliente real del bar.</p><a href="${b.urls.qr}" target="_blank">Abrir QR</a></div></div></article>`).join(''):'<p class="muted">Todavía no hay bares. Crea el primero desde este panel.</p>';
+  document.querySelectorAll('[data-toggle]').forEach(btn=>btn.onclick=async()=>{try{await api(`/bars/${btn.dataset.toggle}/active`,{method:'PATCH',body:JSON.stringify({active:btn.dataset.active==='true'})});await load()}catch(e){alert(e.message)}})
+}
+async function load(){const [s,bars,me]=await Promise.all([api('/dashboard'),api('/bars'),api('/me')]);renderStats(s);renderBars(bars);$('who').textContent=`Sesión: ${me.email} · SUPER_ADMIN`}
+$('loginForm').onsubmit=async e=>{e.preventDefault();$('loginError').textContent='';try{const d=await api('/login',{method:'POST',body:JSON.stringify({email:$('email').value,password:$('password').value})});sessionStorage.setItem(tokenKey,d.token);setLoggedIn(true);await load()}catch(err){$('loginError').textContent=err.message}};
+$('createForm').onsubmit=async e=>{e.preventDefault();$('createMessage').textContent='';try{const b=await api('/bars',{method:'POST',body:JSON.stringify({name:$('barName').value,displayName:$('displayName').value,welcomeMessage:$('welcomeMessage').value})});$('createMessage').className='ok';$('createMessage').textContent=`BAR CREADO · ID ${b.id} · slug ${b.slug}`;e.target.reset();await load()}catch(err){$('createMessage').className='error';$('createMessage').textContent=err.message}};
+$('logout').onclick=()=>{sessionStorage.removeItem(tokenKey);setLoggedIn(false)};
+(async()=>{if(!token())return;try{setLoggedIn(true);await load()}catch(e){sessionStorage.removeItem(tokenKey);setLoggedIn(false)}})();
+</script>
+</body>
+</html>
