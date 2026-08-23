@@ -4,7 +4,13 @@ const express = require('express');
 const QRCode = require('qrcode');
 
 const { getBarBySlug } = require('../services/barService.js');
-const { getLicenseStatus } = require('../services/licenseService.js');
+const {
+  getLicenseStatus,
+  activateSubscription,
+  suspendLicense,
+  reactivateLicense,
+  getPaymentsByBarId
+} = require('../services/licenseService.js');
 const { authenticateOperator, createAdminUser } = require('../services/operatorAuthService.js');
 const { authenticateMasterAdmin, revokeMasterAdminToken } = require('../services/masterAdminAuthService.js');
 const { requireMasterAdmin } = require('../middleware/masterAdminAuth.js');
@@ -139,6 +145,65 @@ router.get('/master-admin/bars/:id/license', async (req, res) => {
   } catch (error) {
     console.error('[MASTER_ADMIN] Error obteniendo licencia:', error);
     res.status(500).json({ ok: false, error: 'No se pudo obtener la licencia.' });
+  }
+});
+
+router.post('/master-admin/bars/:id/license/activate', async (req, res) => {
+  try {
+    const bar = await getBarById(req.params.id);
+    if (!bar) return res.status(404).json({ ok: false, error: 'Bar no encontrado.' });
+
+    const { plan, amount, method, notes, reference, currency } = req.body || {};
+    const result = await activateSubscription({
+      barId: bar.id,
+      plan,
+      amount,
+      method,
+      notes,
+      reference,
+      currency,
+      createdBy: req.masterAdmin.email
+    });
+
+    res.json({ ok: true, data: result });
+  } catch (error) {
+    console.error('[MASTER_ADMIN] Error activando suscripción:', error);
+    res.status(400).json({ ok: false, error: error.message || 'No se pudo activar la suscripción.' });
+  }
+});
+
+router.post('/master-admin/bars/:id/license/suspend', async (req, res) => {
+  try {
+    const bar = await getBarById(req.params.id);
+    if (!bar) return res.status(404).json({ ok: false, error: 'Bar no encontrado.' });
+    const license = await require('../services/licenseService.js').suspendLicense(bar.id);
+    res.json({ ok: true, data: license });
+  } catch (error) {
+    console.error('[MASTER_ADMIN] Error suspendiendo licencia:', error);
+    res.status(400).json({ ok: false, error: error.message || 'No se pudo suspender la licencia.' });
+  }
+});
+
+router.post('/master-admin/bars/:id/license/reactivate', async (req, res) => {
+  try {
+    const bar = await getBarById(req.params.id);
+    if (!bar) return res.status(404).json({ ok: false, error: 'Bar no encontrado.' });
+    const license = await require('../services/licenseService.js').reactivateLicense(bar.id);
+    res.json({ ok: true, data: license });
+  } catch (error) {
+    console.error('[MASTER_ADMIN] Error reactivando licencia:', error);
+    res.status(400).json({ ok: false, error: error.message || 'No se pudo reactivar la licencia.' });
+  }
+});
+
+router.get('/master-admin/bars/:id/payments', async (req, res) => {
+  try {
+    const bar = await getBarById(req.params.id);
+    if (!bar) return res.status(404).json({ ok: false, error: 'Bar no encontrado.' });
+    res.json({ ok: true, data: await getPaymentsByBarId(bar.id) });
+  } catch (error) {
+    console.error('[MASTER_ADMIN] Error obteniendo pagos:', error);
+    res.status(500).json({ ok: false, error: 'No se pudieron obtener los pagos.' });
   }
 });
 
