@@ -80,8 +80,6 @@ async function createBar({
         });
       });
     } catch (error) {
-      // Another request can win the same slug between the existence check and insert.
-      // Retry the complete transaction; PostgreSQL/Prisma still guarantees the unique constraint.
       if (error?.code === 'P2002' && attempt < 2) continue;
       throw error;
     }
@@ -135,10 +133,36 @@ async function updateBar(id, data) {
   if (typeof data.name === 'string' && data.name.trim()) barData.name = data.name.trim();
   if (typeof data.active === 'boolean') barData.active = data.active;
 
-  return prisma.bar.update({
-    where: { id: barId },
-    data: barData,
-    include: { settings: true, license: true }
+  const settingsData = {};
+  if (typeof data.displayName === 'string') settingsData.displayName = data.displayName.trim() || null;
+  if (typeof data.welcomeMessage === 'string') settingsData.welcomeMessage = data.welcomeMessage.trim() || null;
+
+  return prisma.$transaction(async (tx) => {
+    if (Object.keys(barData).length === 0 && Object.keys(settingsData).length === 0) {
+      return tx.bar.findUniqueOrThrow({
+        where: { id: barId },
+        include: { settings: true, license: true }
+      });
+    }
+
+    const bar = await tx.bar.update({
+      where: { id: barId },
+      data: barData,
+      include: { settings: true, license: true }
+    });
+
+    if (Object.keys(settingsData).length === 0) return bar;
+
+    await tx.barSettings.upsert({
+      where: { barId },
+      create: { barId, ...settingsData },
+      update: settingsData
+    });
+
+    return tx.bar.findUniqueOrThrow({
+      where: { id: barId },
+      include: { settings: true, license: true }
+    });
   });
 }
 
