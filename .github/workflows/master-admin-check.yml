@@ -2,7 +2,7 @@ name: Master Admin checks
 
 on:
   push:
-    branches: [master-admin-integration]
+    branches: [comercializacion]
   pull_request:
     branches: [comercializacion]
 
