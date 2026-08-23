@@ -78,6 +78,19 @@ describe('auth', () => {
     assert.equal(result, null);
   });
 
+  it('SUPER_ADMIN no puede crearse como AdminUser de bar', async () => {
+    await assert.rejects(
+      operatorAuthService.createAdminUser({
+        barId: bar.id,
+        email: 'super@test.local',
+        displayName: 'Super Admin',
+        password: 'password-test-12',
+        role: 'SUPER_ADMIN'
+      }),
+      /Rol inválido para un administrador de bar\./
+    );
+  });
+
   it('token expirado es rechazado', async () => {
     const secret = process.env.OPERATOR_TOKEN_SECRET;
     const login = await operatorAuthService.authenticateOperator({
