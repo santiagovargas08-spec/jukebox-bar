@@ -176,6 +176,7 @@ async function authenticateOperator({ slug, email, password }) {
     where: {
       email: normalizedEmail,
       active: true,
+      role: { in: ['BAR_ADMIN', 'DJ', 'OPERATOR'] },
       bar: {
         slug: String(slug || '').trim().toLowerCase(),
         active: true
@@ -231,6 +232,7 @@ async function getActiveAdminFromToken(token) {
       email: data.email,
       tokenVersion: data.tv,
       active: true,
+      role: { in: ['BAR_ADMIN', 'DJ', 'OPERATOR'] },
       bar: { active: true }
     },
     select: {
