@@ -176,7 +176,7 @@ router.post('/master-admin/bars/:id/license/suspend', async (req, res) => {
   try {
     const bar = await getBarById(req.params.id);
     if (!bar) return res.status(404).json({ ok: false, error: 'Bar no encontrado.' });
-    const license = await require('../services/licenseService.js').suspendLicense(bar.id);
+    const license = await suspendLicense(bar.id);
     res.json({ ok: true, data: license });
   } catch (error) {
     console.error('[MASTER_ADMIN] Error suspendiendo licencia:', error);
@@ -188,7 +188,7 @@ router.post('/master-admin/bars/:id/license/reactivate', async (req, res) => {
   try {
     const bar = await getBarById(req.params.id);
     if (!bar) return res.status(404).json({ ok: false, error: 'Bar no encontrado.' });
-    const license = await require('../services/licenseService.js').reactivateLicense(bar.id);
+    const license = await reactivateLicense(bar.id);
     res.json({ ok: true, data: license });
   } catch (error) {
     console.error('[MASTER_ADMIN] Error reactivando licencia:', error);
