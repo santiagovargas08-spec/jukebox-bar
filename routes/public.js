@@ -6,7 +6,7 @@ const QRCode = require('qrcode');
 const { getBarBySlug } = require('../services/barService.js');
 const { getLicenseStatus } = require('../services/licenseService.js');
 const { authenticateOperator, createAdminUser } = require('../services/operatorAuthService.js');
-const { authenticateMasterAdmin } = require('../services/masterAdminAuthService.js');
+const { authenticateMasterAdmin, revokeMasterAdminToken } = require('../services/masterAdminAuthService.js');
 const { requireMasterAdmin } = require('../middleware/masterAdminAuth.js');
 const { prisma } = require('../db.js');
 const { createBar, getBarById, listBars, updateBar } = require('../services/barService.js');
@@ -33,6 +33,16 @@ router.use('/master-admin', requireMasterAdmin);
 
 router.get('/master-admin/me', (req, res) => {
   res.json({ ok: true, data: { ...req.masterAdmin, role: 'SUPER_ADMIN' } });
+});
+
+router.post('/master-admin/logout', async (req, res) => {
+  try {
+    await revokeMasterAdminToken(req.masterAdmin.id);
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('[MASTER_ADMIN] Error cerrando sesión:', error);
+    res.status(500).json({ ok: false, error: 'No se pudo cerrar la sesión.' });
+  }
 });
 
 router.get('/master-admin/dashboard', async (req, res) => {
