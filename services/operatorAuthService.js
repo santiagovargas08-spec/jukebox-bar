@@ -54,7 +54,14 @@ function verifyPassword(password, storedHash) {
   }
 
   const actual = crypto.scryptSync(password, salt, 64).toString('base64url');
-  return crypto.timingSafeEqual(Buffer.from(actual), Buffer.from(expected));
+  const actualBuffer = Buffer.from(actual);
+  const expectedBuffer = Buffer.from(expected);
+
+  if (actualBuffer.length !== expectedBuffer.length) {
+    return false;
+  }
+
+  return crypto.timingSafeEqual(actualBuffer, expectedBuffer);
 }
 
 function createToken(admin) {
@@ -81,8 +88,14 @@ function verifyToken(token) {
   }
 
   const expected = sign(payload);
+  const providedBuffer = Buffer.from(signature);
+  const expectedBuffer = Buffer.from(expected);
 
-  if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
+  if (providedBuffer.length !== expectedBuffer.length) {
+    return null;
+  }
+
+  if (!crypto.timingSafeEqual(providedBuffer, expectedBuffer)) {
     return null;
   }
 
