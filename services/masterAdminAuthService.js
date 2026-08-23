@@ -123,9 +123,22 @@ async function getActiveMasterAdminFromToken(token) {
   });
 }
 
+async function revokeMasterAdminToken(adminId) {
+  const id = Number(adminId);
+  if (!Number.isInteger(id) || id <= 0) return false;
+
+  await prisma.masterAdmin.update({
+    where: { id },
+    data: { tokenVersion: { increment: 1 } }
+  });
+
+  return true;
+}
+
 module.exports = {
   createMasterAdmin,
   authenticateMasterAdmin,
   getActiveMasterAdminFromToken,
+  revokeMasterAdminToken,
   hashPassword
 };
