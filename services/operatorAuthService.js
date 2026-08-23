@@ -133,10 +133,12 @@ async function createAdminUser({ barId, email, displayName, password, role = 'OP
     throw new Error('El nombre es obligatorio.');
   }
 
-  const allowedRoles = new Set(['SUPER_ADMIN', 'BAR_ADMIN', 'DJ', 'OPERATOR']);
+  // SUPER_ADMIN tiene su propia entidad y flujo de autenticación.
+  // Este servicio solo crea usuarios ligados a un bar.
+  const allowedRoles = new Set(['BAR_ADMIN', 'DJ', 'OPERATOR']);
 
   if (!allowedRoles.has(role)) {
-    throw new Error('Rol inválido.');
+    throw new Error('Rol inválido para un administrador de bar.');
   }
 
   return prisma.adminUser.create({
