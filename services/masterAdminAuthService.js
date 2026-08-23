@@ -10,9 +10,9 @@ const MAX_LOGIN_ATTEMPTS = 10;
 const loginAttempts = new RateLimitStore(LOGIN_WINDOW_MS);
 
 function getSecret() {
-  const secret = process.env.MASTER_ADMIN_TOKEN_SECRET || process.env.OPERATOR_TOKEN_SECRET;
+  const secret = process.env.MASTER_ADMIN_TOKEN_SECRET;
   if (!secret || secret.length < 32) {
-    throw new Error('MASTER_ADMIN_TOKEN_SECRET u OPERATOR_TOKEN_SECRET debe tener al menos 32 caracteres.');
+    throw new Error('MASTER_ADMIN_TOKEN_SECRET debe tener al menos 32 caracteres.');
   }
   return secret;
 }
