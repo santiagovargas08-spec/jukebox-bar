@@ -69,6 +69,12 @@ describe('master admin HttpOnly session', () => {
     }
 
     if (masterAdminId) {
+      await prisma.adminAuditLog.deleteMany({
+        where: {
+          actorId: masterAdminId
+        }
+      });
+
       await prisma.masterAdmin.delete({
         where: { id: masterAdminId }
       });
@@ -171,5 +177,28 @@ describe('master admin HttpOnly session', () => {
 
     assert.ok(clearCookie);
     assert.match(clearCookie, /Max-Age=0|Expires=/i);
+
+    const auditRows = await prisma.adminAuditLog.findMany({
+      where: {
+        actorId: masterAdminId,
+        action: {
+          in: [
+            'session.master.login',
+            'session.master.logout'
+          ]
+        }
+      },
+      orderBy: {
+        createdAt: 'asc'
+      }
+    });
+
+    assert.deepEqual(
+      auditRows.map((row) => row.action),
+      [
+        'session.master.login',
+        'session.master.logout'
+      ]
+    );
   });
 });
