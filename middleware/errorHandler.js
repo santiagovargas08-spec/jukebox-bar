@@ -24,7 +24,8 @@ function errorHandler(err, req, res, next) {
 
   res.status(status).json({
     ok: false,
-    error: safeMessage
+    error: safeMessage,
+    requestId: req.id || null
   });
 }
 
