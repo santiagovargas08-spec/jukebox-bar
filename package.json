@@ -16,7 +16,7 @@
     "db:studio": "prisma studio",
     "master-admin:create": "node create-master-admin.js",
     "audit:public": "node scripts/audit-public-html.js",
-    "check:syntax": "node --check server.js && node --check routes/public.js && node --check services/youtubeSearchService.js && node --check services/songRequestPolicy.js && node --check services/barAccessService.js && node --check services/socketStateService.js && node --check public/js/operator-auth.js && node --check public/js/admin.js && node --check public/js/bar.js && node --check public/js/cliente.js && node --check public/js/master-admin.js",
+    "check:syntax": "node --check server.js && node --check routes/public.js && node --check services/youtubeSearchService.js && node --check services/songRequestPolicy.js && node --check services/searchRequestPolicy.js && node --check services/barAccessService.js && node --check services/socketStateService.js && node --check public/js/operator-auth.js && node --check public/js/admin.js && node --check public/js/bar.js && node --check public/js/cliente.js && node --check public/js/master-admin.js",
     "check": "npm run check:syntax && npm run audit:public"
   },
   "dependencies": {
