@@ -3,6 +3,9 @@
 const { prisma } = require('../db.js');
 
 const TRIAL_DAYS = 14;
+const MAX_BAR_NAME_LENGTH = 120;
+const MAX_DISPLAY_NAME_LENGTH = 120;
+const MAX_WELCOME_MESSAGE_LENGTH = 500;
 
 function calcularFinTrial(inicio) {
   const fin = new Date(inicio);
@@ -45,8 +48,37 @@ async function createBar({
   }
 
   const cleanName = name.trim();
-  const cleanDisplayName = typeof displayName === 'string' && displayName.trim() ? displayName.trim() : cleanName;
-  const cleanWelcomeMessage = typeof welcomeMessage === 'string' && welcomeMessage.trim() ? welcomeMessage.trim() : null;
+
+  if (cleanName.length > MAX_BAR_NAME_LENGTH) {
+    throw new Error(
+      `El nombre del bar no puede superar ${MAX_BAR_NAME_LENGTH} caracteres.`
+    );
+  }
+
+  const cleanDisplayName =
+    typeof displayName === 'string' && displayName.trim()
+      ? displayName.trim()
+      : cleanName;
+
+  if (cleanDisplayName.length > MAX_DISPLAY_NAME_LENGTH) {
+    throw new Error(
+      `El nombre mostrado no puede superar ${MAX_DISPLAY_NAME_LENGTH} caracteres.`
+    );
+  }
+
+  const cleanWelcomeMessage =
+    typeof welcomeMessage === 'string' && welcomeMessage.trim()
+      ? welcomeMessage.trim()
+      : null;
+
+  if (
+    cleanWelcomeMessage &&
+    cleanWelcomeMessage.length > MAX_WELCOME_MESSAGE_LENGTH
+  ) {
+    throw new Error(
+      `El mensaje de bienvenida no puede superar ${MAX_WELCOME_MESSAGE_LENGTH} caracteres.`
+    );
+  }
 
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
@@ -130,12 +162,48 @@ async function updateBar(id, data) {
   if (!Number.isInteger(barId) || barId <= 0) throw new Error('ID de bar inválido.');
 
   const barData = {};
-  if (typeof data.name === 'string' && data.name.trim()) barData.name = data.name.trim();
-  if (typeof data.active === 'boolean') barData.active = data.active;
+
+  if (typeof data.name === 'string' && data.name.trim()) {
+    const name = data.name.trim();
+
+    if (name.length > MAX_BAR_NAME_LENGTH) {
+      throw new Error(
+        `El nombre del bar no puede superar ${MAX_BAR_NAME_LENGTH} caracteres.`
+      );
+    }
+
+    barData.name = name;
+  }
+
+  if (typeof data.active === 'boolean') {
+    barData.active = data.active;
+  }
 
   const settingsData = {};
-  if (typeof data.displayName === 'string') settingsData.displayName = data.displayName.trim() || null;
-  if (typeof data.welcomeMessage === 'string') settingsData.welcomeMessage = data.welcomeMessage.trim() || null;
+
+  if (typeof data.displayName === 'string') {
+    const displayName = data.displayName.trim();
+
+    if (displayName.length > MAX_DISPLAY_NAME_LENGTH) {
+      throw new Error(
+        `El nombre mostrado no puede superar ${MAX_DISPLAY_NAME_LENGTH} caracteres.`
+      );
+    }
+
+    settingsData.displayName = displayName || null;
+  }
+
+  if (typeof data.welcomeMessage === 'string') {
+    const welcomeMessage = data.welcomeMessage.trim();
+
+    if (welcomeMessage.length > MAX_WELCOME_MESSAGE_LENGTH) {
+      throw new Error(
+        `El mensaje de bienvenida no puede superar ${MAX_WELCOME_MESSAGE_LENGTH} caracteres.`
+      );
+    }
+
+    settingsData.welcomeMessage = welcomeMessage || null;
+  }
 
   return prisma.$transaction(async (tx) => {
     if (Object.keys(barData).length === 0 && Object.keys(settingsData).length === 0) {
@@ -172,5 +240,8 @@ module.exports = {
   getBarById,
   listBars,
   updateBar,
-  slugify
+  slugify,
+  MAX_BAR_NAME_LENGTH,
+  MAX_DISPLAY_NAME_LENGTH,
+  MAX_WELCOME_MESSAGE_LENGTH
 };
