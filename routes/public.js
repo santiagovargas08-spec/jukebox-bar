@@ -79,7 +79,7 @@ router.post('/master-admin/login', async (req, res) => {
 
     await auditAdminAction({
       req: {
-        ...req,
+        id: req.id,
         masterAdmin: result.admin
       },
       action: 'session.master.login',
@@ -444,7 +444,7 @@ router.post('/bars/:slug/operator/login', noStore, requireTrustedOrigin, async (
 
     await auditAdminAction({
       req: {
-        ...req,
+        id: req.id,
         operator: result.admin
       },
       action: 'session.operator.login',
