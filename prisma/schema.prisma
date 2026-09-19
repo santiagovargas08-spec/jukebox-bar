@@ -217,3 +217,16 @@ model AdminAuditLog {
   @@index([action, createdAt])
   @@index([entityType, entityId])
 }
+
+
+model SearchCache {
+  queryKey  String   @id @db.VarChar(160)
+  query     String   @db.VarChar(160)
+  results   Json
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([expiresAt])
+  @@index([updatedAt])
+}
