@@ -9,6 +9,7 @@ const path = require('path');
 const publicRoutes = require('./routes/public.js');
 const { errorHandler } = require('./middleware/errorHandler.js');
 const { publicApiRateLimit } = require('./middleware/publicApiRateLimit.js');
+const { requestId } = require('./middleware/requestId.js');
 const { getOperatorTokenFromCookieHeader } = require('./middleware/operatorAuth.js');
 
 const {
@@ -96,6 +97,7 @@ io.use(async (socket, next) => {
 // ============================================================
 
 app.disable('x-powered-by');
+app.use(requestId);
 app.use(securityHeaders);
 app.use(express.json({ limit: '32kb' }));
 
