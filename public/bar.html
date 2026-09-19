@@ -181,6 +181,7 @@
 
   <script src="/js/dom-safe.js"></script>
   <script src="/js/bar-loader.js"></script>
+  <script src="/js/operator-auth.js"></script>
   <script src="/socket.io/socket.io.js"></script>
 
   <script>
@@ -216,30 +217,6 @@
 
     const socket = io({ reconnectionDelay: 1000, autoConnect: false });
 
-    async function iniciarSesionOperador(slug) {
-      const storageKey = `jukebox_operator_${slug}`;
-      let token = sessionStorage.getItem(storageKey);
-
-      if (!token) {
-        const email = window.prompt('Correo del operador de esta pantalla:');
-        const password = window.prompt('Contraseña del operador:');
-        if (!email || !password) throw new Error('La pantalla de reproducción requiere un operador autorizado.');
-
-        const response = await fetch(`/api/public/bars/${encodeURIComponent(slug)}/operator/login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password })
-        });
-        const result = await response.json();
-        if (!response.ok || !result.ok) throw new Error(result.error || 'No se pudo iniciar sesión.');
-        token = result.data.token;
-        sessionStorage.setItem(storageKey, token);
-      }
-
-      socket.auth = { operatorToken: token };
-      socket.connect();
-    }
-
     async function inicializarPantallaBar() {
       barActual = await BarLoader.inicializarBar({
         titulo: 'GENESIS 2.0 — Pantalla',
@@ -253,7 +230,7 @@
       barId = barActual.id;
 
       try {
-        await iniciarSesionOperador(barActual.slug);
+        await OperatorAuth.iniciarSesionOperador({ slug: barActual.slug, socket, titulo: 'Acceso a la pantalla del bar' });
       } catch (error) {
         BarLoader.mostrarErrorPantalla(error.message, 'Acceso de operador');
         return;
