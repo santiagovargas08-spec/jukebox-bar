@@ -32,29 +32,11 @@ window.BarLoader = (function () {
 
   function mostrarErrorPantalla(mensaje, titulo) {
     document.body.innerHTML = `
-      <main style="
-        min-height:100vh;
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        padding:24px;
-        background:#0a0a0f;
-        color:white;
-        font-family:Arial,sans-serif;
-        text-align:center;
-      ">
-        <div style="
-          width:100%;
-          max-width:420px;
-          padding:32px 24px;
-          border:1px solid rgba(0,240,255,.35);
-          border-radius:18px;
-          background:rgba(15,15,25,.95);
-          box-shadow:0 0 30px rgba(0,240,255,.12);
-        ">
-          <div style="font-size:3rem;margin-bottom:18px;">🎵</div>
-          <h1 style="margin:0 0 12px;color:#00f0ff;">${escapeHtml(titulo || 'GENESIS 2.0')}</h1>
-          <p style="margin:0;line-height:1.6;color:#ccc;">${escapeHtml(mensaje)}</p>
+      <main class="app-error-screen">
+        <div class="app-error-card">
+          <div class="app-error-icon" aria-hidden="true">🎵</div>
+          <h1 class="app-error-title">${escapeHtml(titulo || 'GENESIS 2.0')}</h1>
+          <p class="app-error-message">${escapeHtml(mensaje)}</p>
         </div>
       </main>
     `;
