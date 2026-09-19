@@ -41,9 +41,9 @@ describe('health', () => {
     }
   });
 
-  it('GET /health responde 200', async () => {
-    const data = await new Promise((resolve, reject) => {
-      http.get(`${baseUrl}/health`, (res) => {
+  async function getJson(pathname) {
+    return new Promise((resolve, reject) => {
+      http.get(`${baseUrl}${pathname}`, (res) => {
         let body = '';
 
         res.on('data', (chunk) => {
@@ -58,8 +58,20 @@ describe('health', () => {
         });
       }).on('error', reject);
     });
+  }
+
+  it('GET /health responde 200', async () => {
+    const data = await getJson('/health');
 
     assert.equal(data.status, 200);
     assert.equal(data.body.ok, true);
+  });
+
+  it('GET /ready responde 200 cuando PostgreSQL está disponible', async () => {
+    const data = await getJson('/ready');
+
+    assert.equal(data.status, 200);
+    assert.equal(data.body.ok, true);
+    assert.equal(data.body.database, 'ready');
   });
 });
