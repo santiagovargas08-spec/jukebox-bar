@@ -144,6 +144,7 @@ Variables en Render: `DATABASE_URL`, `OPERATOR_TOKEN_SECRET`, `MASTER_ADMIN_TOKE
 - `GET /api/public/bars/:slug` — info pública del bar
 - `POST /api/public/bars/:slug/operator/login` — login operador
 - `POST /api/public/bars/:slug/operator/logout` — revoca tokens del operador autenticado
+- `GET /api/public/master-admin/audit` — historial paginado de auditoría administrativa (requiere SUPER_ADMIN)
 - `/api/commercial/*` — API administrativa legacy, deshabilitada por defecto
 
 ## Cola y ordenamiento
@@ -167,7 +168,7 @@ Los operadores autenticados quedan vinculados a `token.barId`; no pueden acceder
 
 ## Observabilidad
 
-Los logs estructurados incluyen `requestId`, método, ruta, estado y duración. Los campos sensibles como contraseñas, tokens, cookies, secretos y API keys se redactan automáticamente antes de salir por consola. Las mutaciones del Master Admin generan eventos `admin_audit` con actor, bar, acción y entidad afectada. `/health` funciona como liveness y `/ready` verifica también PostgreSQL; Render usa `/ready`.
+Los logs estructurados incluyen `requestId`, método, ruta, estado y duración. Los campos sensibles como contraseñas, tokens, cookies, secretos y API keys se redactan automáticamente antes de salir por consola. Las mutaciones del Master Admin generan eventos `admin_audit` con actor, bar, acción y entidad afectada. Además, esos eventos se persisten en PostgreSQL (`AdminAuditLog`) y pueden consultarse desde el panel Master Admin. `/health` funciona como liveness y `/ready` verifica también PostgreSQL; Render usa `/ready`.
 
 ## Producción comercial
 
