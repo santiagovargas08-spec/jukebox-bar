@@ -399,7 +399,13 @@ router.get('/bars/:slug/license/status', async (req, res) => {
     if (!bar) return res.status(404).json({ ok: false, error: 'Bar no encontrado' });
     const status = await getLicenseStatus(bar.id);
     if (!status) return res.status(404).json({ ok: false, error: 'No se pudo obtener el estado de la licencia' });
-    res.json({ ok: true, data: { status: status.status, plan: status.plan, puedeUsar: status.puedeUsar, diasRestantes: status.diasRestantes, fechaFin: status.fechaFin, trialEndsAt: status.trialEndsAt, expiresAt: status.expiresAt } });
+    res.json({
+      ok: true,
+      data: {
+        status: status.status,
+        puedeUsar: status.puedeUsar
+      }
+    });
   } catch (error) {
     console.error('[PUBLIC] Error obteniendo licencia:', error);
     res.status(500).json({ ok: false, error: 'No se pudo obtener el estado de la licencia' });
