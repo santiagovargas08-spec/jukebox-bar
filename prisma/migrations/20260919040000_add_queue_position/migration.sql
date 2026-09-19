@@ -22,3 +22,9 @@ ALTER COLUMN "position" SET NOT NULL;
 
 CREATE INDEX "QueueItem_barId_position_idx"
 ON "QueueItem"("barId", "position");
+
+CREATE INDEX "SongHistory_barId_playedAt_idx"
+ON "SongHistory"("barId", "playedAt");
+
+CREATE INDEX "Payment_barId_paidAt_idx"
+ON "Payment"("barId", "paidAt");
