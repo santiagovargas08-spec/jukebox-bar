@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const { prisma } = require('../db.js');
 const { RateLimitStore } = require('../lib/rateLimitStore.js');
 const { logWarn } = require('../lib/logger.js');
+const { normalizeBarSlug } = require('../lib/barSlug.js');
 
 const TOKEN_TTL_MS = 12 * 60 * 60 * 1000;
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
@@ -198,9 +199,7 @@ function verifyToken(token) {
 
 function getLoginKey(slug, email) {
   return [
-    String(slug || '')
-      .trim()
-      .toLowerCase(),
+    normalizeBarSlug(slug) || 'invalid-slug',
     normalizeEmail(email)
   ].join(':');
 }
@@ -321,8 +320,10 @@ async function authenticateOperator({
   ip = 'unknown'
 }) {
   const normalizedEmail = normalizeEmail(email);
+  const normalizedSlug = normalizeBarSlug(slug);
 
   if (
+    !normalizedSlug ||
     normalizedEmail.length === 0 ||
     normalizedEmail.length > 254 ||
     typeof password !== 'string' ||
@@ -344,10 +345,7 @@ async function authenticateOperator({
       {
         event:
           'operator_login_rate_limited',
-        slug:
-          String(slug || '')
-            .trim()
-            .toLowerCase()
+        slug: normalizedSlug
       }
     );
 
@@ -367,10 +365,7 @@ async function authenticateOperator({
           ]
         },
         bar: {
-          slug:
-            String(slug || '')
-              .trim()
-              .toLowerCase(),
+          slug: normalizedSlug,
           active: true
         }
       },
