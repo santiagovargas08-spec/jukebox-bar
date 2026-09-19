@@ -5,6 +5,7 @@ require('dotenv').config();
 const { PrismaClient } = require('@prisma/client');
 const { PrismaPg } = require('@prisma/adapter-pg');
 const { Pool } = require('pg');
+const { logError } = require('./lib/logger.js');
 
 if (!process.env.DATABASE_URL) {
   throw new Error('DATABASE_URL no está configurada.');
@@ -23,6 +24,12 @@ const pool = new Pool({
 
   max: 5,
 
+  application_name: 'jukebox-bar',
+
+  // Evita que una consulta bloqueada consuma indefinidamente una conexión.
+  statement_timeout: 30000,
+  query_timeout: 35000,
+
   idleTimeoutMillis: 30000,
 
   // Evita que procesos de test queden 30 s esperando a que el pool libere
@@ -32,6 +39,13 @@ const pool = new Pool({
     Boolean(process.env.TEST_DATABASE_URL),
 
   connectionTimeoutMillis: 10000
+});
+
+pool.on('error', (error) => {
+  logError('Error inesperado en conexión PostgreSQL idle', {
+    event: 'postgres_pool_error',
+    error: error?.message || String(error)
+  });
 });
 
 const adapter =
