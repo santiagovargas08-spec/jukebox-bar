@@ -1,0 +1,127 @@
+'use strict';
+
+window.OperatorAuth = (function () {
+  function createElement(tag, attrs = {}, text = '') {
+    const el = document.createElement(tag);
+    Object.entries(attrs).forEach(([key, value]) => {
+      if (key === 'className') el.className = value;
+      else if (key === 'type') el.type = value;
+      else if (key === 'autocomplete') el.autocomplete = value;
+      else el.setAttribute(key, value);
+    });
+    if (text) el.textContent = text;
+    return el;
+  }
+
+  function pedirCredenciales(titulo = 'Acceso de operador') {
+    return new Promise((resolve, reject) => {
+      const overlay = createElement('div', { className: 'operator-login-overlay' });
+      const card = createElement('form', { className: 'operator-login-card' });
+      const heading = createElement('h2', { className: 'operator-login-title' }, titulo);
+      const help = createElement(
+        'p',
+        { className: 'operator-login-help' },
+        'Ingresa las credenciales autorizadas para este bar.'
+      );
+
+      const emailLabel = createElement('label', { className: 'operator-login-label' }, 'Correo');
+      const email = createElement('input', {
+        className: 'operator-login-input',
+        type: 'email',
+        autocomplete: 'username',
+        required: 'required'
+      });
+
+      const passwordLabel = createElement('label', { className: 'operator-login-label' }, 'Contraseña');
+      const password = createElement('input', {
+        className: 'operator-login-input',
+        type: 'password',
+        autocomplete: 'current-password',
+        required: 'required'
+      });
+
+      const error = createElement('div', { className: 'operator-login-error', role: 'alert' });
+      const actions = createElement('div', { className: 'operator-login-actions' });
+      const cancel = createElement('button', { className: 'operator-login-cancel', type: 'button' }, 'Cancelar');
+      const submit = createElement('button', { className: 'operator-login-submit', type: 'submit' }, 'Entrar');
+
+      actions.append(cancel, submit);
+      emailLabel.appendChild(email);
+      passwordLabel.appendChild(password);
+      card.append(heading, help, emailLabel, passwordLabel, error, actions);
+      overlay.appendChild(card);
+      document.body.appendChild(overlay);
+
+      const cleanup = () => overlay.remove();
+
+      cancel.addEventListener('click', () => {
+        cleanup();
+        reject(new Error('Inicio de sesión cancelado.'));
+      });
+
+      card.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const emailValue = email.value.trim();
+        const passwordValue = password.value;
+        if (!emailValue || !passwordValue) {
+          error.textContent = 'Completa correo y contraseña.';
+          return;
+        }
+        cleanup();
+        resolve({ email: emailValue, password: passwordValue });
+      });
+
+      setTimeout(() => email.focus(), 0);
+    });
+  }
+
+  async function iniciarSesionOperador({ slug, socket, titulo }) {
+    if (!slug || !socket) {
+      throw new Error('No se pudo inicializar la sesión del operador.');
+    }
+
+    const storageKey = `jukebox_operator_${slug}`;
+    let token = sessionStorage.getItem(storageKey);
+
+    if (!token) {
+      const credentials = await pedirCredenciales(titulo);
+      const response = await fetch(
+        `/api/public/bars/${encodeURIComponent(slug)}/operator/login`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-store'
+          },
+          body: JSON.stringify(credentials)
+        }
+      );
+
+      const result = await response.json().catch(() => ({
+        ok: false,
+        error: 'Respuesta inválida del servidor.'
+      }));
+
+      if (!response.ok || !result.ok || !result.data?.token) {
+        throw new Error(result.error || 'No se pudo iniciar sesión.');
+      }
+
+      token = result.data.token;
+      sessionStorage.setItem(storageKey, token);
+    }
+
+    socket.auth = { operatorToken: token };
+    socket.connect();
+    return token;
+  }
+
+  function cerrarSesion(slug) {
+    if (!slug) return;
+    sessionStorage.removeItem(`jukebox_operator_${slug}`);
+  }
+
+  return {
+    iniciarSesionOperador,
+    cerrarSesion
+  };
+})();
