@@ -1,5 +1,7 @@
 'use strict';
 const $=id=>document.getElementById(id);
+const BARS_PAGE_SIZE=25;
+let barsOffset=0;
 function setLoggedIn(value){$('login').classList.toggle('hidden',value);$('app').classList.toggle('hidden',!value)}
 async function api(path,options={}){const headers={'Content-Type':'application/json',...(options.headers||{})};const r=await fetch(`/api/public/master-admin${path}`,{...options,headers,credentials:'same-origin'});const data=await r.json().catch(()=>({ok:false,error:'Respuesta inválida'}));if(!r.ok||!data.ok)throw new Error(data.error||'Error de servidor');return data.data}
 function escapeHtml(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));}
@@ -90,8 +92,42 @@ async function licenseAction(id,action){
   }catch(e){await AdminDialog.message('No se pudo actualizar la licencia',e.message)}
 }
 async function loadPayments(id){const box=$(`payments-${id}`);if(!box)return;try{const payments=await api(`/bars/${id}/payments`);box.classList.remove('hidden');box.innerHTML=payments.length?payments.map(p=>`<div class="payment"><strong>${escapeHtml(p.amount)} ${escapeHtml(p.currency)}</strong> · ${escapeHtml(p.plan)} · ${escapeHtml(p.method)}<br><span class="muted">${escapeHtml(p.paidAt)}${p.reference?' · Ref: '+escapeHtml(p.reference):''}</span></div>`).join(''):'<div class="muted">No hay pagos registrados.</div>';}catch(e){await AdminDialog.message('No se pudieron cargar los pagos',e.message)}}
-async function load(){const [s,bars,me]=await Promise.all([api('/dashboard'),api('/bars'),api('/me')]);renderStats(s);renderBars(bars);$('who').textContent=`Sesión: ${me.email} · SUPER_ADMIN`}
+function renderBarsPager(page){
+  const total=Number(page.total)||0;
+  const offset=Number(page.offset)||0;
+  const limit=Number(page.limit)||BARS_PAGE_SIZE;
+  const start=total===0?0:offset+1;
+  const end=Math.min(offset+page.items.length,total);
+
+  $('bars-page').textContent=total===0?'0 bares':`${start}–${end} de ${total}`;
+  $('bars-prev').disabled=offset<=0;
+  $('bars-next').disabled=offset+limit>=total;
+}
+
+async function loadBars(){
+  const page=await api(`/bars?limit=${BARS_PAGE_SIZE}&offset=${barsOffset}`);
+
+  if(barsOffset>0&&page.items.length===0&&page.total>0){
+    barsOffset=Math.max(0,barsOffset-BARS_PAGE_SIZE);
+    return loadBars();
+  }
+
+  renderBars(page.items);
+  renderBarsPager(page);
+}
+
+async function load(){
+  const [s,me]=await Promise.all([
+    api('/dashboard'),
+    api('/me'),
+    loadBars()
+  ]);
+  renderStats(s);
+  $('who').textContent=`Sesión: ${me.email} · SUPER_ADMIN`;
+}
 $('loginForm').onsubmit=async e=>{e.preventDefault();$('loginError').textContent='';try{await api('/login',{method:'POST',body:JSON.stringify({email:$('email').value,password:$('password').value})});setLoggedIn(true);await load()}catch(err){$('loginError').textContent=err.message}};
-$('createForm').onsubmit=async e=>{e.preventDefault();$('createMessage').textContent='';try{const b=await api('/bars',{method:'POST',body:JSON.stringify({name:$('barName').value,displayName:$('displayName').value,welcomeMessage:$('welcomeMessage').value})});$('createMessage').className='ok';$('createMessage').textContent=`BAR CREADO · ID ${b.id} · slug ${b.slug}`;e.target.reset();await load()}catch(err){$('createMessage').className='error';$('createMessage').textContent=err.message}};
+$('createForm').onsubmit=async e=>{e.preventDefault();$('createMessage').textContent='';try{const b=await api('/bars',{method:'POST',body:JSON.stringify({name:$('barName').value,displayName:$('displayName').value,welcomeMessage:$('welcomeMessage').value})});$('createMessage').className='ok';$('createMessage').textContent=`BAR CREADO · ID ${b.id} · slug ${b.slug}`;e.target.reset();barsOffset=0;await load()}catch(err){$('createMessage').className='error';$('createMessage').textContent=err.message}};
+$('bars-prev').onclick=async()=>{if(barsOffset<=0)return;barsOffset=Math.max(0,barsOffset-BARS_PAGE_SIZE);try{await loadBars()}catch(e){await AdminDialog.message('No se pudieron cargar los bares',e.message)}};
+$('bars-next').onclick=async()=>{barsOffset+=BARS_PAGE_SIZE;try{await loadBars()}catch(e){barsOffset=Math.max(0,barsOffset-BARS_PAGE_SIZE);await AdminDialog.message('No se pudieron cargar los bares',e.message)}};
 $('logout').onclick=async()=>{try{await api('/logout',{method:'POST'})}catch(e){console.warn('No se pudo revocar la sesión en servidor:',e.message)}finally{setLoggedIn(false)}};
 (async()=>{try{await load();setLoggedIn(true)}catch(e){setLoggedIn(false)}})();
