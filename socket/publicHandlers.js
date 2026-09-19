@@ -12,6 +12,7 @@ const {
 } = require('../services/queueService.js');
 
 const { searchYoutube } = require('../services/youtubeSearchService.js');
+const { canSearch } = require('../services/searchRequestPolicy.js');
 const {
   canRequestSong,
   isBlockedSong
@@ -131,6 +132,14 @@ function registerPublicSocketHandlers({
       );
 
       if (!acceso) return;
+
+      if (!canSearch(socket, id)) {
+        socket.emit('error_busqueda', {
+          mensaje:
+            'Se alcanzó temporalmente el límite de búsquedas. Intenta nuevamente en un minuto.'
+        });
+        return;
+      }
 
       const texto = String(query || '').trim();
 
