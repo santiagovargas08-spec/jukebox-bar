@@ -48,6 +48,7 @@ const { prisma, pool } = require('./db.js');
 const { searchYoutube } = require('./services/youtubeSearchService.js');
 const { validarAccesoBar } = require('./services/barAccessService.js');
 const { canRequestSong, isBlockedSong } = require('./services/songRequestPolicy.js');
+const { createSocketStateService, HISTORIAL_MAX } = require('./services/socketStateService.js');
 
 
 // ============================================================
@@ -71,6 +72,12 @@ const io = new Server(server, {
   pingInterval: 25000
 });
 
+const {
+  verificarLicenciaSocket,
+  emitirEstadoBar,
+  emitirEstadoSocket
+} = createSocketStateService(io);
+
 const PORT = process.env.PORT || 3000;
 const HOST = '0.0.0.0';
 
@@ -92,8 +99,6 @@ io.use(async (socket, next) => {
 // ============================================================
 // CONFIGURACIÓN
 // ============================================================
-
-const HISTORIAL_MAX = 10;
 
 // ============================================================
 // MIDDLEWARE
@@ -156,215 +161,6 @@ app.use(errorHandler);
 
 // normalizarBarId, obtenerBarIdAutorizado y requireOperatorSocket
 // provienen de lib/socketBar.js (fuente única de tenant).
-
-// ============================================================
-// ERROR DE LICENCIA
-// ============================================================
-
-function emitirErrorLicencia(
-  socket,
-  resultado
-) {
-
-  socket.emit(
-    'acceso_bloqueado',
-    {
-      ok: false,
-
-      reason:
-        resultado.reason ||
-        'LICENSE_ERROR',
-
-      mensaje:
-        resultado.message ||
-        'El acceso a este bar no está disponible.'
-    }
-  );
-}
-
-
-// ============================================================
-// VERIFICAR LICENCIA DESDE SOCKET
-// ============================================================
-
-async function verificarLicenciaSocket(
-  socket,
-  barId
-) {
-
-  const resultado =
-    await validarAccesoBar(
-      barId
-    );
-
-  if (!resultado.valid) {
-
-    emitirErrorLicencia(
-      socket,
-      resultado
-    );
-
-    return null;
-  }
-
-  return resultado;
-}
-
-
-// ============================================================
-// EMITIR ESTADO DEL BAR
-// ============================================================
-
-async function emitirEstadoBar(barId) {
-
-  const id =
-    normalizarBarId(barId);
-
-  if (!id) {
-    return;
-  }
-
-
-  /*
-   * No emitimos estados de un bar cuya licencia
-   * ya no sea válida.
-   */
-
-  const acceso =
-    await validarAccesoBar(id);
-
-  if (!acceso.valid) {
-
-    io
-      .to(`bar:${id}`)
-      .emit(
-        'acceso_bloqueado',
-        {
-          ok: false,
-
-          reason:
-            acceso.reason,
-
-          mensaje:
-            acceso.message
-        }
-      );
-
-    return;
-  }
-
-
-  const cola =
-    await getQueue(id);
-
-  const historial =
-    await getHistory(
-      id,
-      HISTORIAL_MAX
-    );
-
-  const reproduciendo =
-    await getPlaybackState(id);
-
-
-  io
-    .to(`bar:${id}`)
-    .emit(
-      'cola_actualizada',
-      {
-        cola,
-
-        reproduciendo
-      }
-    );
-
-
-  io
-    .to(`bar:${id}`)
-    .emit(
-      'historial_actualizado',
-      {
-        historialReproducidas:
-          historial
-      }
-    );
-}
-
-
-// ============================================================
-// EMITIR ESTADO A UN SOCKET
-// ============================================================
-
-async function emitirEstadoSocket(
-  socket,
-  barId
-) {
-
-  const id =
-    normalizarBarId(barId);
-
-  if (!id) {
-    return;
-  }
-
-
-  const acceso =
-    await validarAccesoBar(id);
-
-  if (!acceso.valid) {
-
-    emitirErrorLicencia(
-      socket,
-      acceso
-    );
-
-    return;
-  }
-
-
-  const cola =
-    await getQueue(id);
-
-  const historial =
-    await getHistory(
-      id,
-      HISTORIAL_MAX
-    );
-
-  const reproduciendo =
-    await getPlaybackState(id);
-
-
-  socket.emit(
-    'estado_inicial',
-    {
-      cola,
-
-      reproduciendo,
-
-      historialReproducidas:
-        historial,
-
-      licencia: {
-        status:
-          acceso.status,
-
-        trialEndsAt:
-          acceso.bar.license?.trialEndsAt ||
-          null,
-
-        expiresAt:
-          acceso.bar.license?.expiresAt ||
-          null,
-
-        plan:
-          acceso.bar.license?.plan ||
-          null
-      }
-    }
-  );
-}
-
 
 // ============================================================
 // SOCKET.IO
