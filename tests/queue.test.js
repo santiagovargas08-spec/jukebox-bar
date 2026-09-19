@@ -151,6 +151,48 @@ describe('queue', () => {
     assert.ok(rejected.length >= 10);
   });
 
+  it('remove y reorder concurrentes no corrompen la cola', async () => {
+    await queueService.clearQueue(bar.id);
+
+    await queueService.addToQueue(bar.id, {
+      videoId: 'RaceA000001',
+      title: 'Race A',
+      name: 'Cliente'
+    });
+    await queueService.addToQueue(bar.id, {
+      videoId: 'RaceB000001',
+      title: 'Race B',
+      name: 'Cliente'
+    });
+    await queueService.addToQueue(bar.id, {
+      videoId: 'RaceC000001',
+      title: 'Race C',
+      name: 'Cliente'
+    });
+
+    const before = await queueService.getQueue(bar.id);
+    const middleId = before[1].id;
+    const reversedIds = before.map((item) => item.id).reverse();
+
+    const [reorderResult, removeResult] = await Promise.allSettled([
+      queueService.reorderQueue(bar.id, reversedIds),
+      queueService.removeFromQueue(bar.id, middleId)
+    ]);
+
+    assert.equal(removeResult.status, 'fulfilled');
+    assert.equal(removeResult.value, true);
+    assert.ok(['fulfilled', 'rejected'].includes(reorderResult.status));
+
+    const after = await queueService.getQueue(bar.id);
+    assert.equal(after.length, 2);
+    assert.equal(new Set(after.map((item) => item.id)).size, 2);
+    assert.equal(after.some((item) => item.id === middleId), false);
+
+    for (let index = 1; index < after.length; index += 1) {
+      assert.ok(after[index - 1].position < after[index].position);
+    }
+  });
+
   it('takeNext concurrente sobre un solo item devuelve una sola canción', async () => {
     await queueService.clearQueue(bar.id);
 
