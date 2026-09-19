@@ -32,7 +32,17 @@
       </form>
       <p id="createMessage"></p>
     </section>
-    <section class="card"><h2>Bares</h2><div id="bars"></div></section>
+    <section class="card">
+      <div class="bars-heading-row">
+        <h2>Bares</h2>
+        <div class="bars-toolbar" aria-label="Paginación de bares">
+          <button id="bars-prev" type="button" class="secondary">Anterior</button>
+          <span id="bars-page" class="muted" aria-live="polite">0 bares</span>
+          <button id="bars-next" type="button" class="secondary">Siguiente</button>
+        </div>
+      </div>
+      <div id="bars"></div>
+    </section>
   </main>
 </div>
 <script src="/js/admin-dialog.js"></script>
