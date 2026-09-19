@@ -1,7 +1,7 @@
 'use strict';
 
 const { prisma } = require('../db.js');
-const { sanitizeThumbnailUrl } = require('../lib/urlValidation.js');
+const { sanitizeThumbnailUrl, isValidYoutubeVideoId } = require('../lib/urlValidation.js');
 
 function normalizarBarId(barId) {
   const id = Number(barId);
@@ -40,13 +40,36 @@ async function getPlaybackState(barId) {
 
 async function setNowPlaying(barId, song) {
   const id = normalizarBarId(barId);
+
+  if (!song || !song.videoId) {
+    throw new Error('Datos de reproducción incompletos');
+  }
+
+  const videoId = String(song.videoId).trim();
+
+  if (!isValidYoutubeVideoId(videoId)) {
+    throw new Error('videoId inválido');
+  }
+
+  const title = String(
+    song.title || song.titulo || ''
+  ).trim();
+
+  const name = String(
+    song.name || song.nombre || ''
+  ).trim();
+
+  if (!title || !name) {
+    throw new Error('Título y nombre son obligatorios');
+  }
+
   const now = new Date();
 
   const data = {
     queueItemId: song.id ?? null,
-    videoId: String(song.videoId).trim(),
-    title: String(song.title || song.titulo || '').trim().slice(0, 100),
-    name: String(song.name || song.nombre || '').trim().slice(0, 30),
+    videoId,
+    title: title.slice(0, 100),
+    name: name.slice(0, 30),
     thumbnail: sanitizeThumbnailUrl(song.thumbnail),
     startedAt: now,
     status: 'PLAYING'
