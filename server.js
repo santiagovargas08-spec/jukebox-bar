@@ -41,11 +41,20 @@ if (process.env.NODE_ENV === 'production') {
 
 const server = http.createServer(app);
 
+// Límites conservadores para evitar conexiones HTTP lentas consumiendo recursos.
+// El timeout de 60 s sigue siendo compatible con el long-polling de Socket.IO.
+server.headersTimeout = 15 * 1000;
+server.requestTimeout = 60 * 1000;
+server.keepAliveTimeout = 5 * 1000;
+server.maxHeadersCount = 100;
+
 const io = new Server(server, {
   cors: createSocketCorsOptions(),
 
   pingTimeout: 60000,
-  pingInterval: 25000
+  pingInterval: 25000,
+  maxHttpBufferSize: 64 * 1024,
+  perMessageDeflate: false
 });
 
 const {
