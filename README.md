@@ -167,7 +167,7 @@ Los operadores autenticados quedan vinculados a `token.barId`; no pueden acceder
 
 ## Observabilidad
 
-Los logs estructurados incluyen `requestId`, método, ruta, estado y duración. Los campos sensibles como contraseñas, tokens, cookies, secretos y API keys se redactan automáticamente antes de salir por consola. `/health` funciona como liveness y `/ready` verifica también PostgreSQL; Render usa `/ready`.
+Los logs estructurados incluyen `requestId`, método, ruta, estado y duración. Los campos sensibles como contraseñas, tokens, cookies, secretos y API keys se redactan automáticamente antes de salir por consola. Las mutaciones del Master Admin generan eventos `admin_audit` con actor, bar, acción y entidad afectada. `/health` funciona como liveness y `/ready` verifica también PostgreSQL; Render usa `/ready`.
 
 ## Producción comercial
 
