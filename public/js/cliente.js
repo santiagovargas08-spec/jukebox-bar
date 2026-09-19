@@ -180,9 +180,27 @@ document.addEventListener('error', (event) => {
       return `jukebox_client_name:${slug}`;
     }
 
+
+    function safeLocalStorageGet(key) {
+      try {
+        return window.localStorage.getItem(key);
+      } catch {
+        return null;
+      }
+    }
+
+    function safeLocalStorageSet(key, value) {
+      try {
+        window.localStorage.setItem(key, value);
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
     function restaurarNombreGuardado() {
       const nombreGuardado =
-        localStorage.getItem(
+        safeLocalStorageGet(
           clientNameStorageKey()
         );
 
@@ -629,7 +647,7 @@ document.addEventListener('error', (event) => {
       // GUARDAR NOMBRE
       // ----------------------------------------------------------
 
-      localStorage.setItem(
+      safeLocalStorageSet(
         clientNameStorageKey(),
         nombre
       );
