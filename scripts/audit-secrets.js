@@ -37,6 +37,26 @@ const patterns = [
     name: 'Google API key',
     regex:
       /\bAIza[0-9A-Za-z_-]{35}\b/
+  },
+  {
+    name: 'AWS access key',
+    regex:
+      /\b(?:AKIA|ASIA)[A-Z0-9]{16}\b/
+  },
+  {
+    name: 'Stripe live secret',
+    regex:
+      /\b(?:sk|rk)_live_[A-Za-z0-9]{16,}\b/
+  },
+  {
+    name: 'Slack token',
+    regex:
+      /\bxox[baprs]-[A-Za-z0-9-]{20,}\b/
+  },
+  {
+    name: 'Generic JWT',
+    regex:
+      /\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b/
   }
 ];
 
