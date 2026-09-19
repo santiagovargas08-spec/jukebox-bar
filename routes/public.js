@@ -310,7 +310,9 @@ router.post('/master-admin/bars/:id/license/activate', async (req, res) => {
       notes,
       reference,
       currency,
-      createdBy: req.masterAdmin.email
+      createdBy: req.masterAdmin.email,
+      idempotencyKey:
+        req.get('idempotency-key') || null
     });
 
     await auditAdminAction({
@@ -323,7 +325,9 @@ router.post('/master-admin/bars/:id/license/activate', async (req, res) => {
         plan,
         amount,
         method,
-        currency
+        currency,
+        idempotent:
+          Boolean(result.idempotent)
       }
     });
 
