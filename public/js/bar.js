@@ -265,7 +265,7 @@ document.addEventListener('error', (event) => {
       if (historialReproducidas && historialReproducidas.length > 0) {
         // Seleccionar una canción aleatoria del historial para mayor variedad
         const semilla = historialReproducidas[Math.floor(Math.random() * historialReproducidas.length)];
-        console.log(`🎲 Semilla Auto-DJ del historial: "${semilla.titulo}"`);
+        console.log(`🎲 Semilla Auto-DJ del historial: "${semilla.titulo || semilla.title || ''}"`);
         return semilla.videoId;
       }
       // Fallback: semillas predefinidas
@@ -298,8 +298,8 @@ document.addEventListener('error', (event) => {
         sepEl.style.display   = 'none';
         return;
       }
-      tituloEl.textContent = cancion.titulo;
-      nombreEl.textContent = cancion.nombre;
+      tituloEl.textContent = String(cancion.titulo || cancion.title || '');
+      nombreEl.textContent = String(cancion.nombre || cancion.name || '');
       sepEl.style.display  = 'inline';
     }
 
@@ -377,7 +377,7 @@ document.addEventListener('error', (event) => {
         title.className = 'queue-song-title';
         title.append(
           document.createTextNode(
-            String(cancion.titulo || '')
+            String(cancion.titulo || cancion.title || '')
           )
         );
 
@@ -392,7 +392,7 @@ document.addEventListener('error', (event) => {
         requestedBy.className = 'queue-song-who';
         requestedBy.append(
           document.createTextNode(
-            `Pedido por: ${String(cancion.nombre || '')}`
+            `Pedido por: ${String(cancion.nombre || cancion.name || '')}`
           )
         );
 
@@ -478,8 +478,8 @@ document.addEventListener('error', (event) => {
       const songName = document.getElementById('notif-song-name');
       const quien    = document.getElementById('notif-quien');
 
-      songName.textContent = cancion.titulo;
-      quien.textContent    = cancion.nombre;
+      songName.textContent = String(cancion.titulo || cancion.title || '');
+      quien.textContent    = String(cancion.nombre || cancion.name || '');
 
       banner.classList.remove('notif-show', 'notif-hide');
       void banner.offsetWidth;
