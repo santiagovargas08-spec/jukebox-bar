@@ -246,15 +246,25 @@ async function refreshLicenseStatus(barId) {
     license.expiresAt &&
     ahora >= license.expiresAt
   ) {
+    // Actualización condicional: evita que una lectura obsoleta marque EXPIRED
+    // una licencia que acaba de ser renovada concurrentemente.
+    await prisma.license.updateMany({
+      where: {
+        id: license.id,
+        status: 'ACTIVE',
+        expiresAt: {
+          lte: ahora
+        }
+      },
+      data: {
+        status: 'EXPIRED'
+      }
+    });
 
     license =
-      await prisma.license.update({
+      await prisma.license.findUnique({
         where: {
           id: license.id
-        },
-
-        data: {
-          status: 'EXPIRED'
         }
       });
   }
@@ -272,15 +282,23 @@ async function refreshLicenseStatus(barId) {
     license.trialEndsAt &&
     ahora >= license.trialEndsAt
   ) {
+    await prisma.license.updateMany({
+      where: {
+        id: license.id,
+        status: 'TRIAL',
+        trialEndsAt: {
+          lte: ahora
+        }
+      },
+      data: {
+        status: 'EXPIRED'
+      }
+    });
 
     license =
-      await prisma.license.update({
+      await prisma.license.findUnique({
         where: {
           id: license.id
-        },
-
-        data: {
-          status: 'EXPIRED'
         }
       });
   }
@@ -669,29 +687,30 @@ async function suspendLicense(barId) {
   }
 
 
-  const license =
-    await prisma.license.findUnique({
+  return prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(${id})`;
+
+    const license =
+      await tx.license.findUnique({
+        where: {
+          barId: id
+        }
+      });
+
+    if (!license) {
+      throw new Error(
+        'El bar no tiene licencia.'
+      );
+    }
+
+    return tx.license.update({
       where: {
-        barId: id
+        id: license.id
+      },
+      data: {
+        status: 'SUSPENDED'
       }
     });
-
-
-  if (!license) {
-    throw new Error(
-      'El bar no tiene licencia.'
-    );
-  }
-
-
-  return prisma.license.update({
-    where: {
-      id: license.id
-    },
-
-    data: {
-      status: 'SUSPENDED'
-    }
   });
 }
 
