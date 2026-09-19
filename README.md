@@ -135,7 +135,7 @@ npm run test:db
 | Health check | `/ready` (incluye PostgreSQL) |
 | Database | PostgreSQL (plan pagado recomendado para comercialización) |
 
-Variables en Render: `DATABASE_URL`, `OPERATOR_TOKEN_SECRET`, `MASTER_ADMIN_TOKEN_SECRET`, `APP_URL`, `PORT`, `DATABASE_SSL=true`. La API `/api/commercial` permanece deshabilitada salvo que `ENABLE_LEGACY_COMMERCIAL_API=true`.
+Variables en Render: `DATABASE_URL`, `OPERATOR_TOKEN_SECRET`, `MASTER_ADMIN_TOKEN_SECRET`, `APP_URL`, `PORT`, `DATABASE_SSL=true`. La API `/api/commercial` permanece deshabilitada salvo que `ENABLE_LEGACY_COMMERCIAL_API=true`; si se habilita, `ADMIN_API_KEY` debe agregarse manualmente con un secreto independiente de al menos 32 caracteres.
 
 ## Endpoints principales
 
