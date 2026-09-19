@@ -52,6 +52,26 @@ describe('bar service', () => {
       false
     );
   });
+  it('rechaza slugs públicos malformados antes de consultar datos', async () => {
+    assert.equal(
+      await barService.getBarBySlug('../admin'),
+      null
+    );
+    assert.equal(
+      await barService.getBarBySlug('x'.repeat(81)),
+      null
+    );
+  });
+
+  it('normaliza mayúsculas y espacios en un slug válido', async () => {
+    const result = await barService.getBarBySlug(
+      `  ${bar.slug.toUpperCase()}  `
+    );
+
+    assert.ok(result);
+    assert.equal(result.id, bar.id);
+  });
+
   it('pagina la lista de bares con total y límites seguros', async () => {
     const extra = await createTestBar(prisma, {
       slug: uniqueSlug('bar-service-page')
