@@ -2,6 +2,7 @@
 
 const { prisma } = require('../db.js');
 const { sanitizeThumbnailUrl, isValidYoutubeVideoId } = require('../lib/urlValidation.js');
+const { rememberKnownSong } = require('./knownSongCatalogService.js');
 
 function normalizarBarId(barId) {
   const id = Number(barId);
@@ -26,15 +27,29 @@ async function addToHistory(barId, song) {
     throw new Error('videoId inválido');
   }
 
-  return prisma.songHistory.create({
-    data: {
-      barId: id,
-      videoId,
-      title: String(song.title).trim().slice(0, 100),
-      name: String(song.name).trim().slice(0, 30),
-      thumbnail: sanitizeThumbnailUrl(song.thumbnail),
-    }
-  });
+  const saved =
+    await prisma.songHistory.create({
+      data: {
+        barId: id,
+        videoId,
+        title:
+          String(song.title)
+            .trim()
+            .slice(0, 100),
+        name:
+          String(song.name)
+            .trim()
+            .slice(0, 30),
+        thumbnail:
+          sanitizeThumbnailUrl(
+            song.thumbnail
+          ),
+      }
+    });
+
+  rememberKnownSong(saved, 2);
+
+  return saved;
 }
 
 async function getHistory(barId, limit = 10) {
