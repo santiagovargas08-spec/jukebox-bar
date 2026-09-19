@@ -103,10 +103,12 @@ model QueueItem {
   title     String
   name      String
   thumbnail String?
+  position  Int
   createdAt DateTime @default(now())
   bar       Bar      @relation(fields: [barId], references: [id], onDelete: Cascade)
 
   @@index([barId])
+  @@index([barId, position])
   @@index([videoId])
   @@unique([barId, videoId])
 }
