@@ -13,6 +13,21 @@ const PROVIDER_OPEN_MS = 30 * 1000;
 const MIN_VIDEO_DURATION_SECONDS = 45;
 const MAX_VIDEO_DURATION_SECONDS = 15 * 60;
 const MAX_SEARCH_RESULTS = 12;
+const NEGATIVE_TITLE_TERMS = [
+  'mix',
+  'playlist',
+  'compilation',
+  'full album',
+  'album completo',
+  '1 hour',
+  '2 hours',
+  '3 hours',
+  'hour loop',
+  'radio',
+  'live stream',
+  'livestream',
+  'karaoke'
+];
 
 const cache = new Map();
 const inFlight = new Map();
@@ -89,6 +104,75 @@ function isAcceptableYoutubeResult(video) {
   return true;
 }
 
+function normalizeSearchText(value) {
+  return String(value || '')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+function scoreYoutubeResult(video, query) {
+  const normalizedQuery = normalizeSearchText(query);
+  const queryTokens = normalizedQuery
+    .split(' ')
+    .filter((token) => token.length >= 2);
+
+  const title = normalizeSearchText(video?.title);
+  const author = normalizeSearchText(video?.author?.name);
+  const combined = `${title} ${author}`.trim();
+
+  let score = 0;
+
+  if (normalizedQuery && title === normalizedQuery) {
+    score += 120;
+  } else if (normalizedQuery && title.includes(normalizedQuery)) {
+    score += 70;
+  }
+
+  if (normalizedQuery && combined.includes(normalizedQuery)) {
+    score += 25;
+  }
+
+  for (const token of queryTokens) {
+    if (title.includes(token)) score += 18;
+    else if (author.includes(token)) score += 8;
+  }
+
+  if (/official (video|audio)|video oficial|audio oficial/.test(title)) {
+    score += 20;
+  }
+
+  const durationSeconds = getVideoDurationSeconds(video);
+  if (
+    durationSeconds !== null &&
+    durationSeconds >= 120 &&
+    durationSeconds <= 420
+  ) {
+    score += 10;
+  }
+
+  for (const term of NEGATIVE_TITLE_TERMS) {
+    if (title.includes(term)) {
+      score -= 45;
+    }
+  }
+
+  return score;
+}
+
+function rankYoutubeResults(videos, query) {
+  return videos
+    .map((video, index) => ({
+      video,
+      index,
+      score: scoreYoutubeResult(video, query)
+    }))
+    .sort((a, b) => b.score - a.score || a.index - b.index)
+    .map((entry) => entry.video);
+}
+
 function normalizeYoutubeResult(video) {
   if (!video) return null;
 
@@ -160,7 +244,13 @@ async function searchYoutube(
   } = {}
 ) {
   const text = String(query || '').trim();
-  if (!text) return { videos: [], cached: false };
+  if (!text) {
+    return {
+      videos: [],
+      cached: false,
+      status: 'EMPTY_QUERY'
+    };
+  }
 
   const key = text.toLowerCase();
   const cachedVideos = getCached(key);
@@ -168,14 +258,16 @@ async function searchYoutube(
   if (cachedVideos) {
     return {
       videos: cachedVideos,
-      cached: true
+      cached: true,
+      status: 'OK'
     };
   }
 
   if (isProviderCircuitOpen()) {
     return {
       videos: [],
-      cached: false
+      cached: false,
+      status: 'PROVIDER_UNAVAILABLE'
     };
   }
 
@@ -197,8 +289,10 @@ async function searchYoutube(
           return [];
         }
 
-        const videos = result.videos
-          .filter(isAcceptableYoutubeResult)
+        const videos = rankYoutubeResults(
+          result.videos.filter(isAcceptableYoutubeResult),
+          text
+        )
           .map(normalizeYoutubeResult)
           .filter(Boolean)
           .slice(0, MAX_SEARCH_RESULTS);
@@ -212,7 +306,10 @@ async function searchYoutube(
           setCached(key, videos);
         }
 
-        return videos;
+        return {
+          videos,
+          status: videos.length > 0 ? 'OK' : 'NO_RESULTS'
+        };
       } catch (error) {
         recordProviderFailure();
 
@@ -222,7 +319,13 @@ async function searchYoutube(
           error: error?.message || String(error)
         });
 
-        return [];
+        return {
+          videos: [],
+          status:
+            error?.code === 'YOUTUBE_SEARCH_TIMEOUT'
+              ? 'TIMEOUT'
+              : 'PROVIDER_ERROR'
+        };
       } finally {
         inFlight.delete(key);
       }
@@ -231,11 +334,12 @@ async function searchYoutube(
     inFlight.set(key, pending);
   }
 
-  const videos = await pending;
+  const result = await pending;
 
   return {
-    videos,
-    cached: false
+    videos: result.videos,
+    cached: false,
+    status: result.status
   };
 }
 
@@ -249,6 +353,9 @@ module.exports = {
   searchYoutube,
   clearSearchCache,
   normalizeYoutubeResult,
+  normalizeSearchText,
+  scoreYoutubeResult,
+  rankYoutubeResults,
   isAcceptableYoutubeResult,
   getVideoDurationSeconds,
   resetProviderCircuit,
