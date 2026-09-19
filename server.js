@@ -8,6 +8,7 @@ const { Server } = require('socket.io');
 const path = require('path');
 const publicRoutes = require('./routes/public.js');
 const { errorHandler } = require('./middleware/errorHandler.js');
+const { publicApiRateLimit } = require('./middleware/publicApiRateLimit.js');
 const { getOperatorTokenFromCookieHeader } = require('./middleware/operatorAuth.js');
 
 const {
@@ -136,6 +137,7 @@ app.use(
 
 app.use(
   '/api/public',
+  publicApiRateLimit,
   publicRoutes
 );
 
