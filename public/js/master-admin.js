@@ -66,15 +66,204 @@ function renderStats(s){
     container.appendChild(card);
   }
 }
-function licenseButtons(b){const status=b.license?.status||'NONE';if(status==='SUSPENDED')return `<button class="secondary" data-license-action="reactivate" data-id="${b.id}">Reactivar licencia</button>`;if(status==='ACTIVE')return `<button class="danger" data-license-action="suspend" data-id="${b.id}">Suspender licencia</button>`;return `<button data-license-action="activate" data-id="${b.id}">Activar suscripción</button>`;}
+function createActionButton(text,className=''){
+  const button=document.createElement('button');
+  button.type='button';
+  button.textContent=text;
+  if(className)button.className=className;
+  return button;
+}
+
+function licenseButton(b){
+  const status=b.license?.status||'NONE';
+  const button=createActionButton(
+    status==='SUSPENDED'
+      ?'Reactivar licencia'
+      :status==='ACTIVE'
+        ?'Suspender licencia'
+        :'Activar suscripción',
+    status==='SUSPENDED'
+      ?'secondary'
+      :status==='ACTIVE'
+        ?'danger'
+        :''
+  );
+
+  button.dataset.licenseAction=
+    status==='SUSPENDED'
+      ?'reactivate'
+      :status==='ACTIVE'
+        ?'suspend'
+        :'activate';
+
+  button.dataset.id=String(b.id);
+  return button;
+}
+
 function renderBars(bars){
-  $('bars').innerHTML=bars.length?bars.map(b=>`<article class="bar">
-    <div class="bar-head"><div><h3>${escapeHtml(b.name)}</h3><div class="muted">ID ${b.id} · ${escapeHtml(b.slug)}</div><span class="badge">${b.active?'ACTIVO':'INACTIVO'} · ${escapeHtml(b.license?.status||'SIN LICENCIA')}</span></div>
-    <div class="table-actions"><button class="secondary" data-edit="${b.id}" data-name="${escapeHtml(b.name)}" data-display="${escapeHtml(b.settings?.displayName||'')}" data-welcome="${escapeHtml(b.settings?.welcomeMessage||'')}">Editar</button><button class="secondary" data-toggle="${b.id}" data-active="${!b.active}">${b.active?'Desactivar':'Activar'}</button><button data-admin="${b.id}">Crear BAR_ADMIN</button></div></div>
-    <div class="urls"><a href="${escapeHtml(b.urls.cliente)}" target="_blank" rel="noopener">Cliente: ${escapeHtml(b.urls.cliente)}</a><a href="${escapeHtml(b.urls.bar)}" target="_blank" rel="noopener">Bar: ${escapeHtml(b.urls.bar)}</a><a href="${escapeHtml(b.urls.admin)}" target="_blank" rel="noopener">Admin: ${escapeHtml(b.urls.admin)}</a></div>
-    <div class="license-box"><strong>Licencia</strong><div class="muted">Estado: ${escapeHtml(b.license?.status||'SIN LICENCIA')} · Plan: ${escapeHtml(b.license?.plan||'—')} · Vence: ${escapeHtml(b.license?.expiresAt||b.license?.trialEndsAt||'—')}</div><div class="license-actions">${licenseButtons(b)}<button class="secondary" data-payments="${b.id}">Ver pagos</button></div><div id="payments-${b.id}" class="payment-list hidden"></div></div>
-    <div class="row qr-row"><img class="qr" src="${escapeHtml(b.urls.qr)}" alt="QR de ${escapeHtml(b.name)}"><div><p><strong>QR del cliente</strong></p><p class="muted">El QR apunta a la URL cliente real del bar.</p><div class="actions"><a href="${escapeHtml(b.urls.qr)}" target="_blank" rel="noopener"><button type="button" class="secondary">Abrir QR</button></a><a href="${escapeHtml(b.urls.qr)}" download="qr-${escapeHtml(b.slug)}.png"><button type="button" class="secondary">Descargar QR</button></a><button type="button" class="secondary" data-copy="${escapeHtml(b.urls.cliente)}">Copiar URL cliente</button></div></div></div>
-  </article>`).join(''):'<p class="muted">Todavía no hay bares. Crea el primero desde este panel.</p>';
+  const container=$('bars');
+  container.replaceChildren();
+
+  if(!bars.length){
+    const empty=document.createElement('p');
+    empty.className='muted';
+    empty.textContent='Todavía no hay bares. Crea el primero desde este panel.';
+    container.appendChild(empty);
+    return;
+  }
+
+  for(const b of bars){
+    const article=document.createElement('article');
+    article.className='bar';
+
+    const head=document.createElement('div');
+    head.className='bar-head';
+
+    const info=document.createElement('div');
+    const title=document.createElement('h3');
+    title.textContent=String(b.name||'');
+
+    const identity=document.createElement('div');
+    identity.className='muted';
+    identity.textContent=`ID ${b.id} · ${b.slug||''}`;
+
+    const badge=document.createElement('span');
+    badge.className='badge';
+    badge.textContent=
+      `${b.active?'ACTIVO':'INACTIVO'} · ${b.license?.status||'SIN LICENCIA'}`;
+
+    info.append(title,identity,badge);
+
+    const tableActions=document.createElement('div');
+    tableActions.className='table-actions';
+
+    const edit=createActionButton('Editar','secondary');
+    edit.dataset.edit=String(b.id);
+    edit.dataset.name=String(b.name||'');
+    edit.dataset.display=String(b.settings?.displayName||'');
+    edit.dataset.welcome=String(b.settings?.welcomeMessage||'');
+
+    const toggle=createActionButton(
+      b.active?'Desactivar':'Activar',
+      'secondary'
+    );
+    toggle.dataset.toggle=String(b.id);
+    toggle.dataset.active=String(!b.active);
+
+    const admin=createActionButton('Crear BAR_ADMIN');
+    admin.dataset.admin=String(b.id);
+
+    tableActions.append(edit,toggle,admin);
+    head.append(info,tableActions);
+
+    const urls=document.createElement('div');
+    urls.className='urls';
+
+    for(const [label,url] of [
+      ['Cliente',b.urls?.cliente],
+      ['Bar',b.urls?.bar],
+      ['Admin',b.urls?.admin]
+    ]){
+      const anchor=document.createElement('a');
+      anchor.href=String(url||'#');
+      anchor.target='_blank';
+      anchor.rel='noopener';
+      anchor.textContent=`${label}: ${String(url||'')}`;
+      urls.appendChild(anchor);
+    }
+
+    const licenseBox=document.createElement('div');
+    licenseBox.className='license-box';
+
+    const licenseTitle=document.createElement('strong');
+    licenseTitle.textContent='Licencia';
+
+    const licenseMeta=document.createElement('div');
+    licenseMeta.className='muted';
+    licenseMeta.textContent=
+      `Estado: ${b.license?.status||'SIN LICENCIA'} · Plan: ${b.license?.plan||'—'} · Vence: ${b.license?.expiresAt||b.license?.trialEndsAt||'—'}`;
+
+    const licenseActions=document.createElement('div');
+    licenseActions.className='license-actions';
+    licenseActions.appendChild(licenseButton(b));
+
+    const paymentsButton=createActionButton(
+      'Ver pagos',
+      'secondary'
+    );
+    paymentsButton.dataset.payments=String(b.id);
+    licenseActions.appendChild(paymentsButton);
+
+    const payments=document.createElement('div');
+    payments.id=`payments-${b.id}`;
+    payments.className='payment-list hidden';
+
+    licenseBox.append(
+      licenseTitle,
+      licenseMeta,
+      licenseActions,
+      payments
+    );
+
+    const qrRow=document.createElement('div');
+    qrRow.className='row qr-row';
+
+    const qr=document.createElement('img');
+    qr.className='qr';
+    qr.src=String(b.urls?.qr||'');
+    qr.alt=`QR de ${String(b.name||'')}`;
+    qr.loading='lazy';
+
+    const qrInfo=document.createElement('div');
+    const qrTitle=document.createElement('p');
+    const qrStrong=document.createElement('strong');
+    qrStrong.textContent='QR del cliente';
+    qrTitle.appendChild(qrStrong);
+
+    const qrHelp=document.createElement('p');
+    qrHelp.className='muted';
+    qrHelp.textContent='El QR apunta a la URL cliente real del bar.';
+
+    const qrActions=document.createElement('div');
+    qrActions.className='actions';
+
+    const openAnchor=document.createElement('a');
+    openAnchor.href=String(b.urls?.qr||'#');
+    openAnchor.target='_blank';
+    openAnchor.rel='noopener';
+    openAnchor.appendChild(
+      createActionButton('Abrir QR','secondary')
+    );
+
+    const downloadAnchor=document.createElement('a');
+    downloadAnchor.href=String(b.urls?.qr||'#');
+    downloadAnchor.download=`qr-${b.slug||'bar'}.png`;
+    downloadAnchor.appendChild(
+      createActionButton('Descargar QR','secondary')
+    );
+
+    const copy=createActionButton(
+      'Copiar URL cliente',
+      'secondary'
+    );
+    copy.dataset.copy=String(b.urls?.cliente||'');
+
+    qrActions.append(
+      openAnchor,
+      downloadAnchor,
+      copy
+    );
+    qrInfo.append(qrTitle,qrHelp,qrActions);
+    qrRow.append(qr,qrInfo);
+
+    article.append(
+      head,
+      urls,
+      licenseBox,
+      qrRow
+    );
+    container.appendChild(article);
+  }
 
   document.querySelectorAll('[data-edit]').forEach(btn=>btn.onclick=()=>editBar(btn.dataset.id,btn.dataset.name,btn.dataset.display,btn.dataset.welcome));
   document.querySelectorAll('[data-toggle]').forEach(btn=>btn.onclick=async()=>{try{await api(`/bars/${btn.dataset.toggle}/active`,{method:'PATCH',body:JSON.stringify({active:btn.dataset.active==='true'})});await load()}catch(e){await AdminDialog.message('No se pudo cambiar el estado',e.message)}});
