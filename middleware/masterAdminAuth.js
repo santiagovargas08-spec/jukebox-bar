@@ -2,6 +2,7 @@
 
 const { getActiveMasterAdminFromToken } = require('../services/masterAdminAuthService.js');
 const { RateLimitStore } = require('../lib/rateLimitStore.js');
+const { logError } = require('../lib/logger.js');
 
 const WINDOW_MS = 60 * 1000;
 const MAX_REQUESTS = 180;
@@ -68,6 +69,13 @@ async function requireMasterAdmin(req, res, next) {
     const admin = await getActiveMasterAdminFromToken(token);
 
     if (!admin) {
+      res.clearCookie(MASTER_ADMIN_COOKIE, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        path: '/api/public/master-admin'
+      });
+
       return res.status(401).json({
         ok: false,
         error: 'Sesión inválida o expirada.'
@@ -77,7 +85,12 @@ async function requireMasterAdmin(req, res, next) {
     req.masterAdmin = admin;
     next();
   } catch (error) {
-    console.error('[MASTER_AUTH] Error validando sesión:', error);
+    logError('Error validando sesión Master Admin', {
+      event: 'master_auth_error',
+      requestId: req.id || null,
+      error: error?.message || String(error)
+    });
+
     res.status(401).json({ ok: false, error: 'No autorizado.' });
   }
 }
