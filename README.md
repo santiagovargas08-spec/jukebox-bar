@@ -53,7 +53,7 @@ Ver `.env.example`:
 | `ADMIN_API_KEY` | Clave de la API legacy cuando está habilitada |
 | `OPERATOR_TOKEN_SECRET` | Secreto HMAC tokens operador (≥32 chars) |
 | `MASTER_ADMIN_TOKEN_SECRET` | Secreto independiente del SUPER_ADMIN (≥32 chars) |
-| `APP_URL` | Uno o más orígenes públicos HTTP(S), separados por coma; sin paths |
+| `APP_URL` | Uno o más orígenes HTTP(S), separados por coma; el primero genera QR/enlaces |
 | `PORT` | Puerto HTTP (Render lo asigna) |
 | `TEST_DATABASE_URL` | Base de datos separada para tests |
 
