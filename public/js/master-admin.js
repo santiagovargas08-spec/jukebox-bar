@@ -15,7 +15,7 @@ function renderBars(bars){
   </article>`).join(''):'<p class="muted">Todavía no hay bares. Crea el primero desde este panel.</p>';
 
   document.querySelectorAll('[data-edit]').forEach(btn=>btn.onclick=()=>editBar(btn.dataset.id,btn.dataset.name,btn.dataset.display,btn.dataset.welcome));
-  document.querySelectorAll('[data-toggle]').forEach(btn=>btn.onclick=async()=>{try{await api(`/bars/${btn.dataset.toggle}/active`,{method:'PATCH',body:JSON.stringify({active:btn.dataset.active==='true'})});await load()}catch(e){alert(e.message)}});
+  document.querySelectorAll('[data-toggle]').forEach(btn=>btn.onclick=async()=>{try{await api(`/bars/${btn.dataset.toggle}/active`,{method:'PATCH',body:JSON.stringify({active:btn.dataset.active==='true'})});await load()}catch(e){await AdminDialog.message('No se pudo cambiar el estado',e.message)}});
   document.querySelectorAll('[data-admin]').forEach(btn=>btn.onclick=async()=>{
     const values=await AdminDialog.ask('Crear BAR_ADMIN',[
       {name:'email',label:'Correo',type:'email',required:true,autocomplete:'username'},
@@ -28,16 +28,16 @@ function renderBars(bars){
         method:'POST',
         body:JSON.stringify(values)
       });
-      alert(`BAR_ADMIN creado: ${a.email}`);
+      await AdminDialog.message('Administrador creado', `BAR_ADMIN creado: ${a.email}`);
       await load();
-    }catch(e){alert(e.message)}
+    }catch(e){await AdminDialog.message('No se pudo crear el administrador',e.message)}
   });
   document.querySelectorAll('[data-license-action]').forEach(btn=>btn.onclick=()=>licenseAction(btn.dataset.id,btn.dataset.licenseAction));
   document.querySelectorAll('[data-payments]').forEach(btn=>btn.onclick=()=>loadPayments(btn.dataset.payments));
   document.querySelectorAll('[data-copy]').forEach(btn=>btn.onclick=async()=>{
     try{
       await navigator.clipboard.writeText(btn.dataset.copy);
-      alert('URL copiada.');
+      await AdminDialog.message('URL copiada', 'La URL del cliente se copió al portapapeles.');
     }catch(e){
       const values=await AdminDialog.ask('Copiar URL',[
         {name:'url',label:'URL',value:btn.dataset.copy}
@@ -58,12 +58,16 @@ async function editBar(id,name,displayName,welcomeMessage){
   try{
     await api(`/bars/${id}`,{method:'PUT',body:JSON.stringify(values)});
     await load();
-  }catch(e){alert(e.message)}
+  }catch(e){await AdminDialog.message('No se pudo editar el bar',e.message)}
 }
 async function licenseAction(id,action){
   try{
     if(action==='suspend'){
-      if(!confirm('¿Suspender la licencia de este bar?'))return;
+      if(!await AdminDialog.confirm(
+        'Suspender licencia',
+        '¿Seguro que deseas suspender la licencia de este bar?',
+        { confirmText: 'Suspender', danger: true }
+      ))return;
       await api(`/bars/${id}/license/suspend`,{method:'POST'});
     }else if(action==='reactivate'){
       await api(`/bars/${id}/license/reactivate`,{method:'POST'});
@@ -83,9 +87,9 @@ async function licenseAction(id,action){
       });
     }
     await load();
-  }catch(e){alert(e.message)}
+  }catch(e){await AdminDialog.message('No se pudo actualizar la licencia',e.message)}
 }
-async function loadPayments(id){const box=$(`payments-${id}`);if(!box)return;try{const payments=await api(`/bars/${id}/payments`);box.classList.remove('hidden');box.innerHTML=payments.length?payments.map(p=>`<div class="payment"><strong>${escapeHtml(p.amount)} ${escapeHtml(p.currency)}</strong> · ${escapeHtml(p.plan)} · ${escapeHtml(p.method)}<br><span class="muted">${escapeHtml(p.paidAt)}${p.reference?' · Ref: '+escapeHtml(p.reference):''}</span></div>`).join(''):'<div class="muted">No hay pagos registrados.</div>';}catch(e){alert(e.message)}}
+async function loadPayments(id){const box=$(`payments-${id}`);if(!box)return;try{const payments=await api(`/bars/${id}/payments`);box.classList.remove('hidden');box.innerHTML=payments.length?payments.map(p=>`<div class="payment"><strong>${escapeHtml(p.amount)} ${escapeHtml(p.currency)}</strong> · ${escapeHtml(p.plan)} · ${escapeHtml(p.method)}<br><span class="muted">${escapeHtml(p.paidAt)}${p.reference?' · Ref: '+escapeHtml(p.reference):''}</span></div>`).join(''):'<div class="muted">No hay pagos registrados.</div>';}catch(e){await AdminDialog.message('No se pudieron cargar los pagos',e.message)}}
 async function load(){const [s,bars,me]=await Promise.all([api('/dashboard'),api('/bars'),api('/me')]);renderStats(s);renderBars(bars);$('who').textContent=`Sesión: ${me.email} · SUPER_ADMIN`}
 $('loginForm').onsubmit=async e=>{e.preventDefault();$('loginError').textContent='';try{await api('/login',{method:'POST',body:JSON.stringify({email:$('email').value,password:$('password').value})});setLoggedIn(true);await load()}catch(err){$('loginError').textContent=err.message}};
 $('createForm').onsubmit=async e=>{e.preventDefault();$('createMessage').textContent='';try{const b=await api('/bars',{method:'POST',body:JSON.stringify({name:$('barName').value,displayName:$('displayName').value,welcomeMessage:$('welcomeMessage').value})});$('createMessage').className='ok';$('createMessage').textContent=`BAR CREADO · ID ${b.id} · slug ${b.slug}`;e.target.reset();await load()}catch(err){$('createMessage').className='error';$('createMessage').textContent=err.message}};
