@@ -60,6 +60,36 @@ describe('playback', () => {
     );
   });
 
+  it('startPlaybackIfIdle inicia la primera canción y no consume otra si ya reproduce', async () => {
+    await queueService.clearQueue(bar.id);
+    await playbackService.clearPlaybackState(bar.id);
+
+    await queueService.addToQueue(bar.id, {
+      videoId: 'StartA00001',
+      title: 'Primera',
+      name: 'Cliente A'
+    });
+    await queueService.addToQueue(bar.id, {
+      videoId: 'StartB00001',
+      title: 'Segunda',
+      name: 'Cliente B'
+    });
+
+    const first = await playbackService.startPlaybackIfIdle(bar.id);
+
+    assert.equal(first.started, true);
+    assert.equal(first.playback.videoId, 'StartA00001');
+
+    const second = await playbackService.startPlaybackIfIdle(bar.id);
+
+    assert.equal(second.started, false);
+    assert.equal(second.playback.videoId, 'StartA00001');
+
+    const queue = await queueService.getQueue(bar.id);
+    assert.equal(queue.length, 1);
+    assert.equal(queue[0].videoId, 'StartB00001');
+  });
+
   it('advancePlayback mueve cola y reproducción en una sola operación', async () => {
     await queueService.clearQueue(bar.id);
     await playbackService.clearPlaybackState(bar.id);
