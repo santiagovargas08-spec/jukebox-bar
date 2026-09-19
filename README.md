@@ -1,5 +1,7 @@
 # Jukebox Bar
 
+Política de seguridad y reporte responsable: [`SECURITY.md`](SECURITY.md).
+
 Plataforma multi-tenant para bares: cola de canciones, búsqueda YouTube, reproducción en tiempo real, operadores, licencias y pagos.
 
 ## Arquitectura
