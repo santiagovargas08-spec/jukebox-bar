@@ -8,7 +8,8 @@ const {
 const {
   removeFromQueue,
   clearQueue,
-  reorderQueue
+  reorderQueue,
+  MAX_QUEUE_PER_BAR
 } = require('../services/queueService.js');
 
 const {
@@ -176,15 +177,27 @@ function registerPlaybackAdminHandlers({
       const acceso = await verificarLicenciaSocket(socket, id);
       if (!acceso) return;
 
+      const queueItemId = Number(payload?.id);
+
+      if (
+        !Number.isInteger(queueItemId) ||
+        queueItemId <= 0
+      ) {
+        socket.emit('error_cola', {
+          mensaje: 'Canción de cola inválida.'
+        });
+        return;
+      }
+
       const eliminado = await removeFromQueue(
         id,
-        payload?.id
+        queueItemId
       );
 
       logInfo('Canción eliminada por operador', {
         event: 'queue_song_removed',
         barId: id,
-        queueItemId: payload?.id || null,
+        queueItemId,
         removed: eliminado
       });
 
@@ -194,7 +207,7 @@ function registerPlaybackAdminHandlers({
           action: 'queue.remove',
           barId: id,
           entityType: 'queueItem',
-          entityId: payload?.id || null
+          entityId: queueItemId
         });
       }
 
@@ -272,14 +285,26 @@ function registerPlaybackAdminHandlers({
         ? payload
         : payload?.orderedIds;
 
-      if (!Array.isArray(orderedIds) || orderedIds.length === 0) {
+      if (
+        !Array.isArray(orderedIds) ||
+        orderedIds.length === 0 ||
+        orderedIds.length > MAX_QUEUE_PER_BAR ||
+        orderedIds.some(
+          (queueId) =>
+            !Number.isInteger(Number(queueId)) ||
+            Number(queueId) <= 0
+        )
+      ) {
         socket.emit('error_cola', {
           mensaje: 'Orden de cola inválido.'
         });
         return;
       }
 
-      await reorderQueue(id, orderedIds);
+      await reorderQueue(
+        id,
+        orderedIds.map(Number)
+      );
 
       await auditSocketAdminAction({
         socket,
