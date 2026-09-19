@@ -74,6 +74,36 @@ describe('origin validation', () => {
     process.env.APP_URL = previous;
   });
 
+  it('rechaza Sec-Fetch-Site cross-site aunque no exista Origin', () => {
+    const req = {
+      protocol: 'https',
+      headers: {
+        host: 'jukebox.example.com',
+        'sec-fetch-site': 'cross-site'
+      },
+      get(name) {
+        return this.headers[name.toLowerCase()] || null;
+      }
+    };
+
+    assert.equal(isTrustedRequestOrigin(req), false);
+  });
+
+  it('acepta Sec-Fetch-Site same-origin sin Origin', () => {
+    const req = {
+      protocol: 'https',
+      headers: {
+        host: 'jukebox.example.com',
+        'sec-fetch-site': 'same-origin'
+      },
+      get(name) {
+        return this.headers[name.toLowerCase()] || null;
+      }
+    };
+
+    assert.equal(isTrustedRequestOrigin(req), true);
+  });
+
   it('permite clientes no navegador sin cabecera Origin', () => {
     const req = {
       protocol: 'https',
