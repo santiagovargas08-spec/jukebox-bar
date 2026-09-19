@@ -30,58 +30,167 @@ const btnLogout        = document.getElementById('btn-logout-operator');
     socket.on('estado_inicial', (data) => actualizarPanel(data));
     socket.on('cola_actualizada', (data) => actualizarPanel(data));
 
+    function crearMensaje(texto, extraClass = '') {
+      const message = document.createElement('div');
+      message.className =
+        `empty-msg${extraClass ? ` ${extraClass}` : ''}`;
+      message.textContent = texto;
+      return message;
+    }
+
+    function mostrarMensajeResultados(texto, extraClass = '') {
+      adminResults.replaceChildren(
+        crearMensaje(texto, extraClass)
+      );
+    }
+
     function actualizarPanel({ cola, reproduciendo }) {
+      boxReproduciendo.replaceChildren();
+
       // 1. Renderizar canción actual
       if (reproduciendo) {
-        const thumbSrc = DomSafe.safeThumbnailAttr(reproduciendo.thumbnail);
-        const thumbHtml = thumbSrc
-          ? `<img class="admin-thumb" src="${thumbSrc}" alt="" loading="lazy">`
-          : `<div class="admin-thumb admin-thumb-placeholder admin-thumb-placeholder-lg">🎵</div>`;
+        const nowPlaying = document.createElement('div');
+        nowPlaying.className = 'now-playing-box';
 
-        boxReproduciendo.innerHTML = `
-          <div class="now-playing-box">
-            ${thumbHtml}
-            <div class="track-details">
-              <div class="track-title">${escapeHtml(reproduciendo.titulo)}</div>
-              <div class="track-author">Pedida por: <strong class="admin-requester-dj">${escapeHtml(reproduciendo.nombre)}</strong> · Fila: ${escapeHtml(reproduciendo.timestamp)}</div>
-            </div>
-            <button class="btn-admin" id="btn-saltar">⏭️ Saltar</button>
-          </div>
-        `;
-        document.getElementById('btn-saltar').addEventListener('click', () => {
+        const thumbSrc =
+          DomSafe.safeThumbnailAttr(
+            reproduciendo.thumbnail
+          );
+
+        let thumb;
+
+        if (thumbSrc) {
+          thumb = document.createElement('img');
+          thumb.className = 'admin-thumb';
+          thumb.src = thumbSrc;
+          thumb.alt = '';
+          thumb.loading = 'lazy';
+        } else {
+          thumb = document.createElement('div');
+          thumb.className =
+            'admin-thumb admin-thumb-placeholder admin-thumb-placeholder-lg';
+          thumb.textContent = '🎵';
+        }
+
+        const details = document.createElement('div');
+        details.className = 'track-details';
+
+        const title = document.createElement('div');
+        title.className = 'track-title';
+        title.textContent =
+          String(reproduciendo.titulo || '');
+
+        const author = document.createElement('div');
+        author.className = 'track-author';
+        author.append(
+          document.createTextNode('Pedida por: ')
+        );
+
+        const requester = document.createElement('strong');
+        requester.className = 'admin-requester-dj';
+        requester.textContent =
+          String(reproduciendo.nombre || '');
+
+        author.append(
+          requester,
+          document.createTextNode(
+            ` · Fila: ${String(reproduciendo.timestamp || '')}`
+          )
+        );
+
+        details.append(title, author);
+
+        const skip = document.createElement('button');
+        skip.className = 'btn-admin';
+        skip.type = 'button';
+        skip.textContent = '⏭️ Saltar';
+        skip.addEventListener('click', () => {
           socket.emit('admin_saltar', { barId });
         });
+
+        nowPlaying.append(
+          thumb,
+          details,
+          skip
+        );
+        boxReproduciendo.appendChild(nowPlaying);
       } else {
-        boxReproduciendo.innerHTML = `<div class="empty-msg">No hay ninguna canción reproduciéndose en este momento.</div>`;
+        boxReproduciendo.appendChild(
+          crearMensaje(
+            'No hay ninguna canción reproduciéndose en este momento.'
+          )
+        );
       }
 
       // 2. Renderizar fila de espera
-      countCola.textContent = cola.length;
+      countCola.textContent = String(cola.length);
+      listaCola.replaceChildren();
+
       if (cola.length === 0) {
-        listaCola.innerHTML = `<div class="empty-msg">La fila de espera está vacía.</div>`;
+        listaCola.appendChild(
+          crearMensaje(
+            'La fila de espera está vacía.'
+          )
+        );
         return;
       }
 
-      // ✨ Añadido draggable y drag-handle para reordenar
-      listaCola.innerHTML = cola.map((c, index) => `
-        <div class="admin-queue-item" draggable="true" data-id="${c.id}">
-          <div class="drag-handle" title="Arrastrar para mover">☰</div>
-          <div class="admin-item-main">
-            <div class="admin-item-title">${index + 1}. ${escapeHtml(c.title || c.titulo)}</div>
-            <div class="admin-item-meta">📍 Mesa/Nombre: <span class="${c.name === '👑 DJ / Admin' || c.nombre === '👑 DJ / Admin' ? 'admin-requester-dj' : ''}">${escapeHtml(c.name || c.nombre)}</span></div>
-          </div>
-          <button class="btn-delete-item" data-id="${c.id}">❌</button>
-        </div>
-      `).join('');
+      cola.forEach((song, index) => {
+        const item = document.createElement('div');
+        item.className = 'admin-queue-item';
+        item.draggable = true;
+        item.dataset.id = String(song.id);
 
-      // Eventos para borrar canciones
-      listaCola.querySelectorAll('.btn-delete-item').forEach(btn => {
-        btn.addEventListener('click', () => {
+        const handle = document.createElement('div');
+        handle.className = 'drag-handle';
+        handle.title = 'Arrastrar para mover';
+        handle.textContent = '☰';
+
+        const main = document.createElement('div');
+        main.className = 'admin-item-main';
+
+        const itemTitle = document.createElement('div');
+        itemTitle.className = 'admin-item-title';
+        itemTitle.textContent =
+          `${index + 1}. ${String(song.title || song.titulo || '')}`;
+
+        const meta = document.createElement('div');
+        meta.className = 'admin-item-meta';
+        meta.append(
+          document.createTextNode('📍 Mesa/Nombre: ')
+        );
+
+        const requester = document.createElement('span');
+        const requesterName =
+          String(song.name || song.nombre || '');
+
+        if (requesterName === '👑 DJ / Admin') {
+          requester.className = 'admin-requester-dj';
+        }
+
+        requester.textContent = requesterName;
+        meta.appendChild(requester);
+
+        main.append(itemTitle, meta);
+
+        const remove = document.createElement('button');
+        remove.className = 'btn-delete-item';
+        remove.type = 'button';
+        remove.dataset.id = String(song.id);
+        remove.textContent = '❌';
+        remove.setAttribute(
+          'aria-label',
+          `Eliminar ${String(song.title || song.titulo || 'canción')}`
+        );
+        remove.addEventListener('click', () => {
           socket.emit('admin_eliminar_cancion', {
             barId,
-            id: Number(btn.dataset.id)
+            id: Number(remove.dataset.id)
           });
         });
+
+        item.append(handle, main, remove);
+        listaCola.appendChild(item);
       });
 
       // 🔥 Inicializamos los eventos de Drag & Drop
