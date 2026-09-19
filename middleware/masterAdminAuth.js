@@ -6,13 +6,46 @@ const { RateLimitStore } = require('../lib/rateLimitStore.js');
 const WINDOW_MS = 60 * 1000;
 const MAX_REQUESTS = 180;
 const limiter = new RateLimitStore(WINDOW_MS);
+const MASTER_ADMIN_COOKIE = 'jukebox_master_admin';
+
+function getCookieValue(req, name) {
+  const raw = req.headers.cookie;
+
+  if (typeof raw !== 'string' || !raw) {
+    return '';
+  }
+
+  for (const part of raw.split(';')) {
+    const [key, ...valueParts] = part.trim().split('=');
+
+    if (key === name) {
+      return decodeURIComponent(valueParts.join('='));
+    }
+  }
+
+  return '';
+}
+
+function getMasterAdminToken(req) {
+  const header = req.headers.authorization || '';
+
+  if (header.startsWith('Bearer ')) {
+    return header.slice(7).trim();
+  }
+
+  return getCookieValue(req, MASTER_ADMIN_COOKIE);
+}
 
 async function requireMasterAdmin(req, res, next) {
   try {
-    const header = req.headers.authorization || '';
-    const token = header.startsWith('Bearer ') ? header.slice(7).trim() : '';
+    const token = getMasterAdminToken(req);
 
-    if (!token) return res.status(401).json({ ok: false, error: 'No autorizado.' });
+    if (!token) {
+      return res.status(401).json({
+        ok: false,
+        error: 'No autorizado.'
+      });
+    }
 
     const admin = await getActiveMasterAdminFromToken(token);
     if (!admin) return res.status(401).json({ ok: false, error: 'Sesión inválida o expirada.' });
@@ -29,4 +62,9 @@ async function requireMasterAdmin(req, res, next) {
   }
 }
 
-module.exports = { requireMasterAdmin };
+module.exports = {
+  MASTER_ADMIN_COOKIE,
+  getCookieValue,
+  getMasterAdminToken,
+  requireMasterAdmin
+};
