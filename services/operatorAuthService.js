@@ -17,57 +17,101 @@ function getSecret() {
   const secret = process.env.OPERATOR_TOKEN_SECRET;
 
   if (!secret || secret.length < 32) {
-    throw new Error('OPERATOR_TOKEN_SECRET debe tener al menos 32 caracteres.');
+    throw new Error(
+      'OPERATOR_TOKEN_SECRET debe tener al menos 32 caracteres.'
+    );
   }
 
   return secret;
 }
 
 function encode(value) {
-  return Buffer.from(JSON.stringify(value)).toString('base64url');
+  return Buffer
+    .from(JSON.stringify(value))
+    .toString('base64url');
 }
 
 function sign(value) {
-  return crypto.createHmac('sha256', getSecret()).update(value).digest('base64url');
+  return crypto
+    .createHmac('sha256', getSecret())
+    .update(value)
+    .digest('base64url');
 }
 
 function normalizeEmail(email) {
-  return typeof email === 'string' ? email.trim().toLowerCase() : '';
+  return typeof email === 'string'
+    ? email.trim().toLowerCase()
+    : '';
 }
 
-function hashPassword(password, salt = crypto.randomBytes(16).toString('base64url')) {
+function hashPassword(
+  password,
+  salt = crypto.randomBytes(16).toString('base64url')
+) {
   if (
     typeof password !== 'string' ||
     password.length < 12 ||
     password.length > 256
   ) {
-    throw new Error('La contraseña debe tener entre 12 y 256 caracteres.');
+    throw new Error(
+      'La contraseña debe tener entre 12 y 256 caracteres.'
+    );
   }
 
-  const hash = crypto.scryptSync(password, salt, 64).toString('base64url');
+  const hash = crypto
+    .scryptSync(password, salt, 64)
+    .toString('base64url');
+
   return `scrypt$${salt}$${hash}`;
 }
 
 const DUMMY_PASSWORD_HASH =
-  'scrypt$jukebox-dummy-salt  if (typeof password !== 'string' || typeof storedHash !== 'string') {
+  'scrypt$jukebox-dummy-salt$' +
+  crypto
+    .scryptSync(
+      'jukebox-dummy-password-not-used',
+      'jukebox-dummy-salt',
+      64
+    )
+    .toString('base64url');
+
+function verifyPassword(password, storedHash) {
+  if (
+    typeof password !== 'string' ||
+    typeof storedHash !== 'string'
+  ) {
     return false;
   }
 
-  const [algorithm, salt, expected] = storedHash.split('$');
+  const [algorithm, salt, expected] =
+    storedHash.split('$');
 
-  if (algorithm !== 'scrypt' || !salt || !expected) {
+  if (
+    algorithm !== 'scrypt' ||
+    !salt ||
+    !expected
+  ) {
     return false;
   }
 
-  const actual = crypto.scryptSync(password, salt, 64).toString('base64url');
+  const actual = crypto
+    .scryptSync(password, salt, 64)
+    .toString('base64url');
+
   const actualBuffer = Buffer.from(actual);
   const expectedBuffer = Buffer.from(expected);
 
-  if (actualBuffer.length !== expectedBuffer.length) {
+  if (
+    actualBuffer.length !==
+    expectedBuffer.length
+  ) {
     return false;
   }
 
-  return crypto.timingSafeEqual(actualBuffer, expectedBuffer);
+  return crypto.timingSafeEqual(
+    actualBuffer,
+    expectedBuffer
+  );
 }
 
 function createToken(admin) {
@@ -97,16 +141,28 @@ function verifyToken(token) {
   const providedBuffer = Buffer.from(signature);
   const expectedBuffer = Buffer.from(expected);
 
-  if (providedBuffer.length !== expectedBuffer.length) {
+  if (
+    providedBuffer.length !==
+    expectedBuffer.length
+  ) {
     return null;
   }
 
-  if (!crypto.timingSafeEqual(providedBuffer, expectedBuffer)) {
+  if (
+    !crypto.timingSafeEqual(
+      providedBuffer,
+      expectedBuffer
+    )
+  ) {
     return null;
   }
 
   try {
-    const data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+    const data = JSON.parse(
+      Buffer
+        .from(payload, 'base64url')
+        .toString('utf8')
+    );
 
     if (
       !Number.isInteger(data.sub) ||
@@ -124,15 +180,33 @@ function verifyToken(token) {
 }
 
 function getLoginKey(slug, email) {
-  return `${String(slug || '').trim().toLowerCase()}:${normalizeEmail(email)}`;
+  return [
+    String(slug || '')
+      .trim()
+      .toLowerCase(),
+    normalizeEmail(email)
+  ].join(':');
 }
 
 function normalizeIp(ip) {
-  if (typeof ip !== 'string' || !ip.trim()) return 'unknown';
-  return ip.split(',')[0].trim().slice(0, 120);
+  if (
+    typeof ip !== 'string' ||
+    !ip.trim()
+  ) {
+    return 'unknown';
+  }
+
+  return ip
+    .split(',')[0]
+    .trim()
+    .slice(0, 120);
 }
 
-function checkLoginRateLimit(slug, email, ip = 'unknown') {
+function checkLoginRateLimit(
+  slug,
+  email,
+  ip = 'unknown'
+) {
   const accountLimit = loginAttempts.hit(
     getLoginKey(slug, email),
     LOGIN_WINDOW_MS,
@@ -145,41 +219,70 @@ function checkLoginRateLimit(slug, email, ip = 'unknown') {
     MAX_IP_LOGIN_ATTEMPTS
   );
 
-  return accountLimit.allowed && ipLimit.allowed;
+  return (
+    accountLimit.allowed &&
+    ipLimit.allowed
+  );
 }
 
-async function createAdminUser({ barId, email, displayName, password, role = 'OPERATOR' }) {
+async function createAdminUser({
+  barId,
+  email,
+  displayName,
+  password,
+  role = 'OPERATOR'
+}) {
   const normalizedEmail = normalizeEmail(email);
 
-  if (!Number.isInteger(Number(barId)) || Number(barId) <= 0) {
-    throw new Error('ID de bar inválido.');
+  if (
+    !Number.isInteger(Number(barId)) ||
+    Number(barId) <= 0
+  ) {
+    throw new Error(
+      'ID de bar inválido.'
+    );
   }
 
   if (
+    normalizedEmail.length === 0 ||
     normalizedEmail.length > 254 ||
     !/^\S+@\S+\.\S+$/.test(normalizedEmail)
   ) {
-    throw new Error('Correo electrónico inválido.');
+    throw new Error(
+      'Correo electrónico inválido.'
+    );
   }
 
-  if (typeof displayName !== 'string' || !displayName.trim()) {
-    throw new Error('El nombre es obligatorio.');
+  if (
+    typeof displayName !== 'string' ||
+    !displayName.trim()
+  ) {
+    throw new Error(
+      'El nombre es obligatorio.'
+    );
   }
 
-  // SUPER_ADMIN tiene su propia entidad y flujo de autenticación.
-  // Este servicio solo crea usuarios ligados a un bar.
-  const allowedRoles = new Set(['BAR_ADMIN', 'DJ', 'OPERATOR']);
+  const allowedRoles =
+    new Set([
+      'BAR_ADMIN',
+      'DJ',
+      'OPERATOR'
+    ]);
 
   if (!allowedRoles.has(role)) {
-    throw new Error('Rol inválido para un administrador de bar.');
+    throw new Error(
+      'Rol inválido para un administrador de bar.'
+    );
   }
 
   return prisma.adminUser.create({
     data: {
       barId: Number(barId),
       email: normalizedEmail,
-      displayName: displayName.trim().slice(0, 80),
-      passwordHash: hashPassword(password),
+      displayName:
+        displayName.trim().slice(0, 80),
+      passwordHash:
+        hashPassword(password),
       role
     },
     select: {
@@ -194,7 +297,12 @@ async function createAdminUser({ barId, email, displayName, password, role = 'OP
   });
 }
 
-async function authenticateOperator({ slug, email, password, ip = 'unknown' }) {
+async function authenticateOperator({
+  slug,
+  email,
+  password,
+  ip = 'unknown'
+}) {
   const normalizedEmail = normalizeEmail(email);
 
   if (
@@ -207,51 +315,82 @@ async function authenticateOperator({ slug, email, password, ip = 'unknown' }) {
     return null;
   }
 
-  if (!checkLoginRateLimit(slug, normalizedEmail, ip)) {
-    logWarn('Login bloqueado por rate limit', {
-      event: 'operator_login_rate_limited',
-      slug: String(slug || '').trim().toLowerCase()
-    });
+  if (
+    !checkLoginRateLimit(
+      slug,
+      normalizedEmail,
+      ip
+    )
+  ) {
+    logWarn(
+      'Login bloqueado por rate limit',
+      {
+        event:
+          'operator_login_rate_limited',
+        slug:
+          String(slug || '')
+            .trim()
+            .toLowerCase()
+      }
+    );
+
     return null;
   }
 
-  const admin = await prisma.adminUser.findFirst({
-    where: {
-      email: normalizedEmail,
-      active: true,
-      role: { in: ['BAR_ADMIN', 'DJ', 'OPERATOR'] },
-      bar: {
-        slug: String(slug || '').trim().toLowerCase(),
-        active: true
+  const admin =
+    await prisma.adminUser.findFirst({
+      where: {
+        email: normalizedEmail,
+        active: true,
+        role: {
+          in: [
+            'BAR_ADMIN',
+            'DJ',
+            'OPERATOR'
+          ]
+        },
+        bar: {
+          slug:
+            String(slug || '')
+              .trim()
+              .toLowerCase(),
+          active: true
+        }
+      },
+      select: {
+        id: true,
+        barId: true,
+        email: true,
+        displayName: true,
+        tokenVersion: true,
+        role: true,
+        passwordHash: true
       }
-    },
-    select: {
-      id: true,
-      barId: true,
-      email: true,
-      displayName: true,
-      tokenVersion: true,
-      role: true,
-      passwordHash: true
-    }
-  });
+    });
 
-  // Ejecutar siempre scrypt evita una diferencia de tiempo evidente entre
-  // "correo inexistente" y "contraseña incorrecta".
   const passwordHash =
     admin?.passwordHash ||
     DUMMY_PASSWORD_HASH;
 
   const passwordValid =
-    verifyPassword(password, passwordHash);
+    verifyPassword(
+      password,
+      passwordHash
+    );
 
-  if (!admin || !passwordValid) {
+  if (
+    !admin ||
+    !passwordValid
+  ) {
     return null;
   }
 
-  // Un inicio de sesión válido no debe consumir el presupuesto de intentos
-  // de la cuenta durante el resto de la ventana.
-  loginAttempts.reset(getLoginKey(slug, normalizedEmail));
+  loginAttempts.reset(
+    getLoginKey(
+      slug,
+      normalizedEmail
+    )
+  );
 
   return {
     token: createToken(admin),
@@ -259,318 +398,71 @@ async function authenticateOperator({ slug, email, password, ip = 'unknown' }) {
       id: admin.id,
       barId: admin.barId,
       email: admin.email,
-      displayName: admin.displayName,
+      displayName:
+        admin.displayName,
       role: admin.role
     },
-    expiresAt: new Date(Date.now() + TOKEN_TTL_MS).toISOString()
+    expiresAt:
+      new Date(
+        Date.now() +
+        TOKEN_TTL_MS
+      ).toISOString()
   };
 }
 
-async function getActiveAdminFromToken(token) {
+async function getActiveAdminFromToken(
+  token
+) {
   const data = verifyToken(token);
 
   if (!data) {
     return null;
   }
 
-  const admin = await prisma.adminUser.findFirst({
-    where: {
-      id: data.sub,
-      barId: data.barId,
-      email: data.email,
-      tokenVersion: data.tv,
-      active: true,
-      role: { in: ['BAR_ADMIN', 'DJ', 'OPERATOR'] },
-      bar: { active: true }
-    },
-    select: {
-      id: true,
-      barId: true,
-      email: true,
-      displayName: true,
-      role: true,
-      tokenVersion: true
-    }
-  });
-
-  return admin || null;
-}
-
-async function revokeOperatorTokens(adminUserId) {
-  const id = Number(adminUserId);
-
-  if (!Number.isInteger(id) || id <= 0) {
-    throw new Error('ID de administrador inválido.');
-  }
-
-  return prisma.adminUser.update({
-    where: { id },
-    data: {
-      tokenVersion: {
-        increment: 1
+  const admin =
+    await prisma.adminUser.findFirst({
+      where: {
+        id: data.sub,
+        barId: data.barId,
+        email: data.email,
+        tokenVersion: data.tv,
+        active: true,
+        role: {
+          in: [
+            'BAR_ADMIN',
+            'DJ',
+            'OPERATOR'
+          ]
+        },
+        bar: {
+          active: true
+        }
+      },
+      select: {
+        id: true,
+        barId: true,
+        email: true,
+        displayName: true,
+        role: true,
+        tokenVersion: true
       }
-    },
-    select: {
-      id: true,
-      barId: true,
-      tokenVersion: true
-    }
-  });
-}
-
-module.exports = {
-  createAdminUser,
-  authenticateOperator,
-  getActiveAdminFromToken,
-  revokeOperatorTokens,
-  checkLoginRateLimit
-};
- +
-  crypto.scryptSync(
-    'jukebox-dummy-password-not-used',
-    'jukebox-dummy-salt',
-    64
-  ).toString('base64url');
-
-function verifyPassword(password, storedHash) {
-  if (typeof password !== 'string' || typeof storedHash !== 'string') {
-    return false;
-  }
-
-  const [algorithm, salt, expected] = storedHash.split('$');
-
-  if (algorithm !== 'scrypt' || !salt || !expected) {
-    return false;
-  }
-
-  const actual = crypto.scryptSync(password, salt, 64).toString('base64url');
-  const actualBuffer = Buffer.from(actual);
-  const expectedBuffer = Buffer.from(expected);
-
-  if (actualBuffer.length !== expectedBuffer.length) {
-    return false;
-  }
-
-  return crypto.timingSafeEqual(actualBuffer, expectedBuffer);
-}
-
-function createToken(admin) {
-  const payload = encode({
-    sub: admin.id,
-    barId: admin.barId,
-    email: admin.email,
-    tv: admin.tokenVersion ?? 0,
-    exp: Date.now() + TOKEN_TTL_MS
-  });
-
-  return `${payload}.${sign(payload)}`;
-}
-
-function verifyToken(token) {
-  if (typeof token !== 'string') {
-    return null;
-  }
-
-  const [payload, signature] = token.split('.');
-
-  if (!payload || !signature) {
-    return null;
-  }
-
-  const expected = sign(payload);
-  const providedBuffer = Buffer.from(signature);
-  const expectedBuffer = Buffer.from(expected);
-
-  if (providedBuffer.length !== expectedBuffer.length) {
-    return null;
-  }
-
-  if (!crypto.timingSafeEqual(providedBuffer, expectedBuffer)) {
-    return null;
-  }
-
-  try {
-    const data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
-
-    if (
-      !Number.isInteger(data.sub) ||
-      !Number.isInteger(data.barId) ||
-      !Number.isInteger(data.tv) ||
-      data.exp <= Date.now()
-    ) {
-      return null;
-    }
-
-    return data;
-  } catch {
-    return null;
-  }
-}
-
-function getLoginKey(slug, email) {
-  return `${String(slug || '').trim().toLowerCase()}:${normalizeEmail(email)}`;
-}
-
-function normalizeIp(ip) {
-  if (typeof ip !== 'string' || !ip.trim()) return 'unknown';
-  return ip.split(',')[0].trim().slice(0, 120);
-}
-
-function checkLoginRateLimit(slug, email, ip = 'unknown') {
-  const accountLimit = loginAttempts.hit(
-    getLoginKey(slug, email),
-    LOGIN_WINDOW_MS,
-    MAX_LOGIN_ATTEMPTS
-  );
-
-  const ipLimit = ipLoginAttempts.hit(
-    `operator-ip:${normalizeIp(ip)}`,
-    LOGIN_WINDOW_MS,
-    MAX_IP_LOGIN_ATTEMPTS
-  );
-
-  return accountLimit.allowed && ipLimit.allowed;
-}
-
-async function createAdminUser({ barId, email, displayName, password, role = 'OPERATOR' }) {
-  const normalizedEmail = normalizeEmail(email);
-
-  if (!Number.isInteger(Number(barId)) || Number(barId) <= 0) {
-    throw new Error('ID de bar inválido.');
-  }
-
-  if (!/^\S+@\S+\.\S+$/.test(normalizedEmail)) {
-    throw new Error('Correo electrónico inválido.');
-  }
-
-  if (typeof displayName !== 'string' || !displayName.trim()) {
-    throw new Error('El nombre es obligatorio.');
-  }
-
-  // SUPER_ADMIN tiene su propia entidad y flujo de autenticación.
-  // Este servicio solo crea usuarios ligados a un bar.
-  const allowedRoles = new Set(['BAR_ADMIN', 'DJ', 'OPERATOR']);
-
-  if (!allowedRoles.has(role)) {
-    throw new Error('Rol inválido para un administrador de bar.');
-  }
-
-  return prisma.adminUser.create({
-    data: {
-      barId: Number(barId),
-      email: normalizedEmail,
-      displayName: displayName.trim().slice(0, 80),
-      passwordHash: hashPassword(password),
-      role
-    },
-    select: {
-      id: true,
-      barId: true,
-      email: true,
-      displayName: true,
-      active: true,
-      role: true,
-      createdAt: true
-    }
-  });
-}
-
-async function authenticateOperator({ slug, email, password, ip = 'unknown' }) {
-  const normalizedEmail = normalizeEmail(email);
-
-  if (!checkLoginRateLimit(slug, normalizedEmail, ip)) {
-    logWarn('Login bloqueado por rate limit', {
-      event: 'operator_login_rate_limited',
-      slug: String(slug || '').trim().toLowerCase()
     });
-    return null;
-  }
-
-  const admin = await prisma.adminUser.findFirst({
-    where: {
-      email: normalizedEmail,
-      active: true,
-      role: { in: ['BAR_ADMIN', 'DJ', 'OPERATOR'] },
-      bar: {
-        slug: String(slug || '').trim().toLowerCase(),
-        active: true
-      }
-    },
-    select: {
-      id: true,
-      barId: true,
-      email: true,
-      displayName: true,
-      tokenVersion: true,
-      role: true
-    }
-  });
-
-  if (!admin) {
-    return null;
-  }
-
-  const credential = await prisma.adminUser.findUnique({
-    where: { id: admin.id },
-    select: { passwordHash: true }
-  });
-
-  if (!credential || !verifyPassword(password, credential.passwordHash)) {
-    return null;
-  }
-
-  // Un inicio de sesión válido no debe consumir el presupuesto de intentos
-  // de la cuenta durante el resto de la ventana.
-  loginAttempts.reset(getLoginKey(slug, normalizedEmail));
-
-  return {
-    token: createToken(admin),
-    admin: {
-      id: admin.id,
-      barId: admin.barId,
-      email: admin.email,
-      displayName: admin.displayName,
-      role: admin.role
-    },
-    expiresAt: new Date(Date.now() + TOKEN_TTL_MS).toISOString()
-  };
-}
-
-async function getActiveAdminFromToken(token) {
-  const data = verifyToken(token);
-
-  if (!data) {
-    return null;
-  }
-
-  const admin = await prisma.adminUser.findFirst({
-    where: {
-      id: data.sub,
-      barId: data.barId,
-      email: data.email,
-      tokenVersion: data.tv,
-      active: true,
-      role: { in: ['BAR_ADMIN', 'DJ', 'OPERATOR'] },
-      bar: { active: true }
-    },
-    select: {
-      id: true,
-      barId: true,
-      email: true,
-      displayName: true,
-      role: true,
-      tokenVersion: true
-    }
-  });
 
   return admin || null;
 }
 
-async function revokeOperatorTokens(adminUserId) {
+async function revokeOperatorTokens(
+  adminUserId
+) {
   const id = Number(adminUserId);
 
-  if (!Number.isInteger(id) || id <= 0) {
-    throw new Error('ID de administrador inválido.');
+  if (
+    !Number.isInteger(id) ||
+    id <= 0
+  ) {
+    throw new Error(
+      'ID de administrador inválido.'
+    );
   }
 
   return prisma.adminUser.update({
