@@ -67,20 +67,20 @@ describe('playback', () => {
   it('clear condicional ignora finalización obsoleta', async () => {
     await playbackService.setNowPlaying(bar.id, {
       id: 200,
-      videoId: 'Current00001',
+      videoId: 'Currnt00001',
       title: 'Current Song',
       name: 'DJ'
     });
 
     const stale = await playbackService.clearPlaybackStateIfMatches(
       bar.id,
-      'OldSong00001'
+      'OldSng00001'
     );
 
     assert.equal(stale, false);
 
     const stillPlaying = await playbackService.getPlaybackState(bar.id);
-    assert.equal(stillPlaying.videoId, 'Current00001');
+    assert.equal(stillPlaying.videoId, 'Currnt00001');
   });
 
   it('clear condicional solo limpia el video actual', async () => {
