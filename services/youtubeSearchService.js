@@ -8,9 +8,45 @@ const { logWarn } = require('../lib/logger.js');
 const CACHE_TTL_MS = 60 * 60 * 1000;
 const MAX_CACHE_ENTRIES = 500;
 const SEARCH_TIMEOUT_MS = 8 * 1000;
+const PROVIDER_FAILURE_THRESHOLD = 5;
+const PROVIDER_OPEN_MS = 30 * 1000;
 
 const cache = new Map();
 const inFlight = new Map();
+
+const providerCircuit = {
+  failures: 0,
+  openedAt: 0
+};
+
+function resetProviderCircuit() {
+  providerCircuit.failures = 0;
+  providerCircuit.openedAt = 0;
+}
+
+function isProviderCircuitOpen(now = Date.now()) {
+  if (!providerCircuit.openedAt) {
+    return false;
+  }
+
+  if (now - providerCircuit.openedAt >= PROVIDER_OPEN_MS) {
+    resetProviderCircuit();
+    return false;
+  }
+
+  return true;
+}
+
+function recordProviderFailure(now = Date.now()) {
+  providerCircuit.failures += 1;
+
+  if (
+    providerCircuit.failures >= PROVIDER_FAILURE_THRESHOLD &&
+    !providerCircuit.openedAt
+  ) {
+    providerCircuit.openedAt = now;
+  }
+}
 
 function normalizeYoutubeResult(video) {
   if (!video) return null;
@@ -91,6 +127,18 @@ async function searchYoutube(
     };
   }
 
+  if (isProviderCircuitOpen()) {
+    logWarn('Búsqueda de YouTube omitida por circuit breaker', {
+      event: 'youtube_search_circuit_open',
+      failures: providerCircuit.failures
+    });
+
+    return {
+      videos: [],
+      cached: false
+    };
+  }
+
   let pending = inFlight.get(key);
   if (!pending) {
     pending = (async () => {
@@ -105,6 +153,7 @@ async function searchYoutube(
         );
 
         if (!result || !Array.isArray(result.videos)) {
+          recordProviderFailure();
           return [];
         }
 
@@ -115,10 +164,15 @@ async function searchYoutube(
 
         if (videos.length > 0) {
           setCached(key, videos);
+          resetProviderCircuit();
+        } else {
+          recordProviderFailure();
         }
 
         return videos;
       } catch (error) {
+        recordProviderFailure();
+
         logWarn('Error en búsqueda de YouTube', {
           event: 'youtube_search_provider_error',
           code: error?.code || null,
@@ -145,11 +199,17 @@ async function searchYoutube(
 function clearSearchCache() {
   cache.clear();
   inFlight.clear();
+  resetProviderCircuit();
 }
 
 module.exports = {
   searchYoutube,
   clearSearchCache,
   normalizeYoutubeResult,
-  SEARCH_TIMEOUT_MS
+  resetProviderCircuit,
+  isProviderCircuitOpen,
+  recordProviderFailure,
+  SEARCH_TIMEOUT_MS,
+  PROVIDER_FAILURE_THRESHOLD,
+  PROVIDER_OPEN_MS
 };
