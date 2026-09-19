@@ -92,6 +92,44 @@ describe('license', () => {
     await deleteTestBar(prisma, concurrentBar.id);
   });
 
+  it('rechaza monto fuera de rango', async () => {
+    await assert.rejects(
+      () => licenseService.activateSubscription({
+        barId: bar.id,
+        plan: 'MONTHLY',
+        amount: 100000000,
+        method: 'CASH'
+      }),
+      /no superar/
+    );
+  });
+
+  it('rechaza código de moneda inválido', async () => {
+    await assert.rejects(
+      () => licenseService.activateSubscription({
+        barId: bar.id,
+        plan: 'MONTHLY',
+        amount: 10,
+        method: 'CASH',
+        currency: 'US'
+      }),
+      /3 letras/
+    );
+  });
+
+  it('rechaza notas excesivamente largas', async () => {
+    await assert.rejects(
+      () => licenseService.activateSubscription({
+        barId: bar.id,
+        plan: 'MONTHLY',
+        amount: 10,
+        method: 'CASH',
+        notes: 'x'.repeat(1001)
+      }),
+      /notas no pueden superar/i
+    );
+  });
+
   it('TRIAL vigente permite uso', async () => {
     const trialBar = await createTestBar(prisma, { slug: uniqueSlug('trial-bar') });
     const valid = await licenseService.isLicenseValid(trialBar.id);
