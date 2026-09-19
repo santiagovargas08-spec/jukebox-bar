@@ -168,3 +168,24 @@
     }
     
     .empty-msg { color: #666; text-align: center; padding: 20px; }
+
+.admin-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.admin-logout {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 620px) {
+  .admin-header-row {
+    flex-direction: column;
+  }
+
+  .admin-logout {
+    width: 100%;
+  }
+}
