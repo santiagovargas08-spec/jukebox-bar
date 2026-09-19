@@ -131,8 +131,8 @@ npm run test:db
 | Configuración | Valor |
 |---------------|-------|
 | Node | 20 |
-| Build | `npm ci && npm run build` |
-| Start | `npx prisma migrate deploy && npm start` |
+| Build | `npm ci --include=dev && npm run build` |
+| Start | `npx --no-install prisma migrate deploy && npm start` |
 | Health check | `/ready` (incluye PostgreSQL) |
 | Database | PostgreSQL (plan pagado recomendado para comercialización) |
 
