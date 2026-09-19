@@ -90,11 +90,39 @@ async function setNowPlaying(barId, song) {
   return toPlaybackPayload(state);
 }
 
-async function advancePlayback(barId) {
+async function advancePlayback(
+  barId,
+  { expectedPlaybackId = null } = {}
+) {
   const id = normalizarBarId(barId);
 
   return prisma.$transaction(async (tx) => {
     await acquireQueueLock(tx, id);
+
+    if (
+      expectedPlaybackId !== null &&
+      expectedPlaybackId !== undefined
+    ) {
+      const current = await tx.playbackState.findUnique({
+        where: { barId: id },
+        select: {
+          status: true,
+          queueItemId: true
+        }
+      });
+
+      if (
+        !current ||
+        current.status !== 'PLAYING' ||
+        current.queueItemId === null ||
+        String(current.queueItemId) !== String(expectedPlaybackId)
+      ) {
+        return {
+          ignored: true,
+          reason: 'STALE_PLAYBACK'
+        };
+      }
+    }
 
     const rows = await tx.$queryRaw`
       DELETE FROM "QueueItem"

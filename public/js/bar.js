@@ -15,6 +15,9 @@ document.addEventListener('error', (event) => {
     let pendingVideo = null;   
     let notifTimer   = null;   
     let lastVideoId  = null;
+    let currentPlaybackId = null;
+    let advanceSentForPlaybackId = null;
+    let pendingVideoForce = false;
     let historialReproducidas = []; // 🔥 NUEVO: Historial local para Auto-DJ
     let isAutoDJ     = false;  
 
@@ -101,7 +104,7 @@ document.addEventListener('error', (event) => {
 
     socket.on('nueva_reproduccion', (cancion) => {
       isAutoDJ = false;
-      cargarVideo(cancion);
+      cargarVideo(cancion, true);
       mostrarNotificacion(cancion);
     });
 
@@ -113,10 +116,8 @@ document.addEventListener('error', (event) => {
       }
     });
 
-    socket.on('reconnect', () => {
-      if (barId) {
-        socket.emit('solicitar_estado', { barId });
-      }
+    socket.io.on('reconnect', (attempt) => {
+      console.log(`Socket reconectado (intento ${attempt}).`);
     });
 
     window.onYouTubeIframeAPIReady = function () {
@@ -130,8 +131,11 @@ document.addEventListener('error', (event) => {
     function onPlayerReady(event) {
       playerReady = true;
       if (pendingVideo) {
-        cargarVideo(pendingVideo);
+        const video = pendingVideo;
+        const force = pendingVideoForce;
         pendingVideo = null;
+        pendingVideoForce = false;
+        cargarVideo(video, force);
       } else if (pendingAutoDJ && !isEsclavo) {
         iniciarAutoDJ();
         pendingAutoDJ = false;
@@ -166,17 +170,84 @@ document.addEventListener('error', (event) => {
       }
     }
 
-    function onPlayerError(event) {
-      if (!isEsclavo) {
-        setTimeout(() => socket.emit('siguiente_cancion', { barId }), 2000);
-      }
+    function solicitarSiguienteUnaVez(motivo) {
+      if (isAutoDJ || isEsclavo || currentPlaybackId === null) return;
+
+      const playbackKey = String(currentPlaybackId);
+      if (advanceSentForPlaybackId === playbackKey) return;
+
+      advanceSentForPlaybackId = playbackKey;
+      socket.emit('siguiente_cancion', {
+        barId,
+        playbackId: currentPlaybackId,
+        motivo
+      });
     }
 
-    function cargarVideo(cancion) {
-      if (!cancion) return;
+    function onPlayerError(event) {
+      if (isEsclavo || isAutoDJ) return;
+
+      const failedPlaybackId = currentPlaybackId;
+      setTimeout(() => {
+        if (
+          failedPlaybackId !== null &&
+          String(currentPlaybackId) === String(failedPlaybackId)
+        ) {
+          solicitarSiguienteUnaVez(`player_error_${event.data}`);
+        }
+      }, 2000);
+    }
+
+    function cargarVideo(cancion, forzar = false) {
+      if (!cancion || !cancion.videoId) return;
+
       if (!playerReady || !player || typeof player.loadVideoById !== 'function') {
-        pendingVideo = cancion; return;
+        pendingVideo = cancion;
+        pendingVideoForce = pendingVideoForce || forzar;
+        return;
       }
+
+      const playbackId =
+        cancion.id !== undefined && cancion.id !== null
+          ? cancion.id
+          : cancion.videoId;
+      const mismoPlayback =
+        currentPlaybackId !== null &&
+        String(currentPlaybackId) === String(playbackId);
+
+      if (!forzar && mismoPlayback) {
+        let estadoActual = null;
+
+        if (typeof player.getPlayerState === 'function') {
+          try {
+            estadoActual = player.getPlayerState();
+          } catch (error) {
+            console.warn(
+              'No se pudo consultar el estado del reproductor.',
+              error
+            );
+          }
+        }
+
+        const estadosActivos = [
+          YT.PlayerState.PLAYING,
+          YT.PlayerState.PAUSED,
+          YT.PlayerState.BUFFERING,
+          YT.PlayerState.CUED
+        ];
+
+        if (
+          estadoActual === null ||
+          estadosActivos.indexOf(estadoActual) !== -1
+        ) {
+          actualizarNowPlayingBar(cancion);
+          mostrarIdleScreen(false);
+          return;
+        }
+      }
+
+      currentPlaybackId = playbackId;
+      advanceSentForPlaybackId = null;
       lastVideoId = cancion.videoId;
       player.loadVideoById({ videoId: cancion.videoId });
       actualizarNowPlayingBar(cancion);

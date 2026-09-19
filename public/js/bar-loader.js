@@ -189,10 +189,10 @@ window.BarLoader = (function () {
       seleccionar();
     }
 
+    // Cada conexión (incluida una reconexión) vuelve a seleccionar el bar.
+    // El servidor responde con estado_inicial, por lo que no se solicita el
+    // estado una segunda vez: hacerlo podía recargar el video en webOS.
     socket.on('connect', seleccionar);
-    socket.on('reconnect', () => {
-      socket.emit('solicitar_estado', { barId });
-    });
 
     socket.on('acceso_bloqueado', ({ mensaje }) => {
       mostrarErrorPantalla(

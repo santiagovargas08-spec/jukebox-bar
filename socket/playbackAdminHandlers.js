@@ -56,8 +56,27 @@ function registerPlaybackAdminHandlers({
 
     return false;
   }
-  async function reproducirSiguiente(id, logPrefix) {
-    const result = await advancePlayback(id);
+  async function reproducirSiguiente(
+    id,
+    logPrefix,
+    expectedPlaybackId = null
+  ) {
+    const result = await advancePlayback(
+      id,
+      { expectedPlaybackId }
+    );
+
+    if (result?.ignored) {
+      logInfo('Señal de avance obsoleta ignorada', {
+        event: 'playback_stale_advance_ignored',
+        source: logPrefix,
+        barId: id,
+        expectedPlaybackId,
+        reason: result.reason
+      });
+
+      return false;
+    }
 
     if (!result) {
       io.to(`bar:${id}`).emit('cola_actualizada', {
@@ -65,7 +84,7 @@ function registerPlaybackAdminHandlers({
         reproduciendo: null
       });
 
-      return;
+      return true;
     }
 
     const {
@@ -86,6 +105,7 @@ function registerPlaybackAdminHandlers({
     );
 
     await emitirEstadoBar(id);
+    return true;
   }
 
   socket.on('siguiente_cancion', async (payload) => {
@@ -110,7 +130,18 @@ function registerPlaybackAdminHandlers({
       const acceso = await verificarLicenciaSocket(socket, id);
       if (!acceso) return;
 
-      await reproducirSiguiente(id, 'REPRODUCCION');
+      const playbackId =
+        payload && typeof payload === 'object'
+          ? payload.playbackId
+          : null;
+
+      const advanced = await reproducirSiguiente(
+        id,
+        'REPRODUCCION',
+        playbackId
+      );
+
+      if (!advanced) return;
 
       await auditSocketAdminAction({
         socket,

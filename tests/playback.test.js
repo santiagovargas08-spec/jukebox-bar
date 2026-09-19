@@ -248,6 +248,64 @@ describe('playback', () => {
     assert.equal(queue[0].videoId, 'NextBB00001');
   });
 
+  it('ignora una señal de avance atrasada sin consumir la cola', async () => {
+    await queueService.clearQueue(bar.id);
+
+    await playbackService.setNowPlaying(bar.id, {
+      id: 600,
+      videoId: 'GuardA00001',
+      title: 'Actual protegida',
+      name: 'Cliente A'
+    });
+
+    await queueService.addToQueue(bar.id, {
+      videoId: 'GuardB00001',
+      title: 'Debe permanecer',
+      name: 'Cliente B'
+    });
+
+    const result = await playbackService.advancePlayback(
+      bar.id,
+      { expectedPlaybackId: 599 }
+    );
+
+    assert.equal(result.ignored, true);
+    assert.equal(result.reason, 'STALE_PLAYBACK');
+
+    const state = await playbackService.getPlaybackState(bar.id);
+    assert.equal(state.videoId, 'GuardA00001');
+
+    const queue = await queueService.getQueue(bar.id);
+    assert.equal(queue.length, 1);
+    assert.equal(queue[0].videoId, 'GuardB00001');
+  });
+
+  it('avanza cuando la señal corresponde a la reproducción vigente', async () => {
+    await queueService.clearQueue(bar.id);
+
+    await playbackService.setNowPlaying(bar.id, {
+      id: 700,
+      videoId: 'MatchA00001',
+      title: 'Actual válida',
+      name: 'Cliente A'
+    });
+
+    await queueService.addToQueue(bar.id, {
+      videoId: 'MatchB00001',
+      title: 'Siguiente válida',
+      name: 'Cliente B'
+    });
+
+    const result = await playbackService.advancePlayback(
+      bar.id,
+      { expectedPlaybackId: 700 }
+    );
+
+    assert.equal(result.ignored, undefined);
+    assert.equal(result.playback.videoId, 'MatchB00001');
+    assert.equal((await queueService.getQueue(bar.id)).length, 0);
+  });
+
   it('estado sobrevive desconexión de Prisma (simula reinicio)', async () => {
     await playbackService.setNowPlaying(bar.id, {
       id: 100,
