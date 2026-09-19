@@ -75,12 +75,13 @@ window.OperatorAuth = (function () {
     });
   }
 
-  function conectarSocket(socket, token) {
+  function conectarSocket(socket) {
     if (socket.connected) {
       return Promise.resolve();
     }
 
-    socket.auth = { operatorToken: token };
+    // La autenticación viaja únicamente en la cookie HttpOnly.
+    socket.auth = {};
 
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
@@ -110,86 +111,118 @@ window.OperatorAuth = (function () {
     });
   }
 
+  async function validarSesion(slug) {
+    const response = await fetch(
+      `/api/public/bars/${encodeURIComponent(slug)}/operator/session`,
+      {
+        method: 'GET',
+        credentials: 'same-origin',
+        headers: {
+          'Cache-Control': 'no-store'
+        }
+      }
+    );
+
+    if (!response.ok) return null;
+
+    const result = await response.json().catch(() => null);
+
+    return result?.ok
+      ? result.data
+      : null;
+  }
+
+  async function autenticarConCredenciales(slug, titulo) {
+    const credentials = await pedirCredenciales(titulo);
+
+    const response = await fetch(
+      `/api/public/bars/${encodeURIComponent(slug)}/operator/login`,
+      {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-store'
+        },
+        body: JSON.stringify(credentials)
+      }
+    );
+
+    const result = await response.json().catch(() => ({
+      ok: false,
+      error: 'Respuesta inválida del servidor.'
+    }));
+
+    if (!response.ok || !result.ok || !result.data?.admin) {
+      throw new Error(
+        result.error ||
+        'No se pudo iniciar sesión.'
+      );
+    }
+
+    return result.data.admin;
+  }
+
   async function iniciarSesionOperador({ slug, socket, titulo }) {
     if (!slug || !socket) {
-      throw new Error('No se pudo inicializar la sesión del operador.');
+      throw new Error(
+        'No se pudo inicializar la sesión del operador.'
+      );
     }
 
-    const storageKey = `jukebox_operator_${slug}`;
-    let token = sessionStorage.getItem(storageKey);
+    let admin = await validarSesion(slug);
 
-    if (token) {
-      try {
-        await conectarSocket(socket, token);
-        return token;
-      } catch (error) {
-        const unauthorized =
-          String(error?.message || '').includes('UNAUTHORIZED_OPERATOR');
+    if (!admin) {
+      admin = await autenticarConCredenciales(
+        slug,
+        titulo
+      );
+    }
 
-        if (!unauthorized) {
-          throw error;
-        }
+    try {
+      await conectarSocket(socket);
+    } catch (error) {
+      const unauthorized =
+        String(error?.message || '')
+          .includes('UNAUTHORIZED_OPERATOR');
 
-        sessionStorage.removeItem(storageKey);
-        socket.disconnect();
-        token = null;
+      if (!unauthorized) {
+        throw error;
       }
-    }
 
-    if (!token) {
-      const credentials = await pedirCredenciales(titulo);
-      const response = await fetch(
-        `/api/public/bars/${encodeURIComponent(slug)}/operator/login`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Cache-Control': 'no-store'
-          },
-          body: JSON.stringify(credentials)
-        }
+      socket.disconnect();
+
+      admin = await autenticarConCredenciales(
+        slug,
+        titulo
       );
 
-      const result = await response.json().catch(() => ({
-        ok: false,
-        error: 'Respuesta inválida del servidor.'
-      }));
-
-      if (!response.ok || !result.ok || !result.data?.token) {
-        throw new Error(result.error || 'No se pudo iniciar sesión.');
-      }
-
-      token = result.data.token;
-      sessionStorage.setItem(storageKey, token);
+      await conectarSocket(socket);
     }
 
-    await conectarSocket(socket, token);
-    return token;
+    return admin;
   }
 
   async function cerrarSesion({ slug, socket } = {}) {
     if (!slug) return;
 
-    const storageKey = `jukebox_operator_${slug}`;
-    const token = sessionStorage.getItem(storageKey);
-
     try {
-      if (token) {
-        await fetch(
-          `/api/public/bars/${encodeURIComponent(slug)}/operator/logout`,
-          {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Cache-Control': 'no-store'
-            }
+      await fetch(
+        `/api/public/bars/${encodeURIComponent(slug)}/operator/logout`,
+        {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: {
+            'Cache-Control': 'no-store'
           }
-        );
-      }
+        }
+      );
     } catch (error) {
-      console.warn('No se pudo revocar la sesión en el servidor:', error);
+      console.warn(
+        'No se pudo revocar la sesión en el servidor:',
+        error
+      );
     } finally {
-      sessionStorage.removeItem(storageKey);
       if (socket?.connected) socket.disconnect();
     }
   }
