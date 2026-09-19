@@ -18,13 +18,75 @@ function renderBars(bars){
 
   document.querySelectorAll('[data-edit]').forEach(btn=>btn.onclick=()=>editBar(btn.dataset.id,btn.dataset.name,btn.dataset.display,btn.dataset.welcome));
   document.querySelectorAll('[data-toggle]').forEach(btn=>btn.onclick=async()=>{try{await api(`/bars/${btn.dataset.toggle}/active`,{method:'PATCH',body:JSON.stringify({active:btn.dataset.active==='true'})});await load()}catch(e){alert(e.message)}});
-  document.querySelectorAll('[data-admin]').forEach(btn=>btn.onclick=async()=>{const email=prompt('Correo del BAR_ADMIN:');if(!email)return;const displayName=prompt('Nombre del administrador:','Administrador del bar');if(!displayName)return;const password=prompt('Contraseña (mínimo 12 caracteres):');if(!password)return;try{const a=await api(`/bars/${btn.dataset.admin}/admins`,{method:'POST',body:JSON.stringify({email,displayName,password})});alert(`BAR_ADMIN creado: ${a.email}`);await load()}catch(e){alert(e.message)}});
+  document.querySelectorAll('[data-admin]').forEach(btn=>btn.onclick=async()=>{
+    const values=await AdminDialog.ask('Crear BAR_ADMIN',[
+      {name:'email',label:'Correo',type:'email',required:true,autocomplete:'username'},
+      {name:'displayName',label:'Nombre del administrador',value:'Administrador del bar',required:true},
+      {name:'password',label:'Contraseña',type:'password',required:true,autocomplete:'new-password'}
+    ]);
+    if(!values)return;
+    try{
+      const a=await api(`/bars/${btn.dataset.admin}/admins`,{
+        method:'POST',
+        body:JSON.stringify(values)
+      });
+      alert(`BAR_ADMIN creado: ${a.email}`);
+      await load();
+    }catch(e){alert(e.message)}
+  });
   document.querySelectorAll('[data-license-action]').forEach(btn=>btn.onclick=()=>licenseAction(btn.dataset.id,btn.dataset.licenseAction));
   document.querySelectorAll('[data-payments]').forEach(btn=>btn.onclick=()=>loadPayments(btn.dataset.payments));
-  document.querySelectorAll('[data-copy]').forEach(btn=>btn.onclick=async()=>{try{await navigator.clipboard.writeText(btn.dataset.copy);alert('URL copiada.')}catch(e){prompt('Copia esta URL:',btn.dataset.copy)}});
+  document.querySelectorAll('[data-copy]').forEach(btn=>btn.onclick=async()=>{
+    try{
+      await navigator.clipboard.writeText(btn.dataset.copy);
+      alert('URL copiada.');
+    }catch(e){
+      const values=await AdminDialog.ask('Copiar URL',[
+        {name:'url',label:'URL',value:btn.dataset.copy}
+      ]);
+      if(values?.url){
+        try{await navigator.clipboard.writeText(values.url)}catch{}
+      }
+    }
+  });
 }
-async function editBar(id,name,displayName,welcomeMessage){const nextName=prompt('Nombre del bar:',name);if(nextName===null)return;const nextDisplay=prompt('Nombre mostrado:',displayName||'');if(nextDisplay===null)return;const nextWelcome=prompt('Mensaje de bienvenida:',welcomeMessage||'');if(nextWelcome===null)return;try{await api(`/bars/${id}`,{method:'PUT',body:JSON.stringify({name:nextName,displayName:nextDisplay,welcomeMessage:nextWelcome})});await load()}catch(e){alert(e.message)}}
-async function licenseAction(id,action){try{if(action==='suspend'){if(!confirm('¿Suspender la licencia de este bar?'))return;await api(`/bars/${id}/license/suspend`,{method:'POST'});}else if(action==='reactivate'){await api(`/bars/${id}/license/reactivate`,{method:'POST'});}else if(action==='activate'){const plan=(prompt('Plan: MONTHLY o QUARTERLY','MONTHLY')||'').trim().toUpperCase();if(!['MONTHLY','QUARTERLY'].includes(plan))throw new Error('Plan inválido. Usa MONTHLY o QUARTERLY.');const amount=prompt('Monto del pago:','0');if(!amount)return;const method=(prompt('Método: CASH o TRANSFER','TRANSFER')||'').trim().toUpperCase();if(!['CASH','TRANSFER'].includes(method))throw new Error('Método inválido.');const reference=prompt('Referencia (opcional):','')||'';const notes=prompt('Notas (opcional):','')||'';await api(`/bars/${id}/license/activate`,{method:'POST',body:JSON.stringify({plan,amount,method,reference,notes,currency:'USD'})});}await load();}catch(e){alert(e.message)}}
+async function editBar(id,name,displayName,welcomeMessage){
+  const values=await AdminDialog.ask('Editar bar',[
+    {name:'name',label:'Nombre del bar',value:name,required:true},
+    {name:'displayName',label:'Nombre mostrado',value:displayName||''},
+    {name:'welcomeMessage',label:'Mensaje de bienvenida',value:welcomeMessage||''}
+  ]);
+  if(!values)return;
+  try{
+    await api(`/bars/${id}`,{method:'PUT',body:JSON.stringify(values)});
+    await load();
+  }catch(e){alert(e.message)}
+}
+async function licenseAction(id,action){
+  try{
+    if(action==='suspend'){
+      if(!confirm('¿Suspender la licencia de este bar?'))return;
+      await api(`/bars/${id}/license/suspend`,{method:'POST'});
+    }else if(action==='reactivate'){
+      await api(`/bars/${id}/license/reactivate`,{method:'POST'});
+    }else if(action==='activate'){
+      const values=await AdminDialog.ask('Activar suscripción',[
+        {name:'plan',label:'Plan',type:'select',value:'MONTHLY',options:['MONTHLY','QUARTERLY']},
+        {name:'amount',label:'Monto del pago',type:'number',value:'0',min:0,step:'0.01',required:true},
+        {name:'currency',label:'Moneda',type:'select',value:'USD',options:['USD','COP']},
+        {name:'method',label:'Método',type:'select',value:'TRANSFER',options:['TRANSFER','CASH']},
+        {name:'reference',label:'Referencia',value:''},
+        {name:'notes',label:'Notas',value:''}
+      ]);
+      if(!values)return;
+      await api(`/bars/${id}/license/activate`,{
+        method:'POST',
+        body:JSON.stringify(values)
+      });
+    }
+    await load();
+  }catch(e){alert(e.message)}
+}
 async function loadPayments(id){const box=$(`payments-${id}`);if(!box)return;try{const payments=await api(`/bars/${id}/payments`);box.classList.remove('hidden');box.innerHTML=payments.length?payments.map(p=>`<div class="payment"><strong>${escapeHtml(p.amount)} ${escapeHtml(p.currency)}</strong> · ${escapeHtml(p.plan)} · ${escapeHtml(p.method)}<br><span class="muted">${escapeHtml(p.paidAt)}${p.reference?' · Ref: '+escapeHtml(p.reference):''}</span></div>`).join(''):'<div class="muted">No hay pagos registrados.</div>';}catch(e){alert(e.message)}}
 async function load(){const [s,bars,me]=await Promise.all([api('/dashboard'),api('/bars'),api('/me')]);renderStats(s);renderBars(bars);$('who').textContent=`Sesión: ${me.email} · SUPER_ADMIN`}
 $('loginForm').onsubmit=async e=>{e.preventDefault();$('loginError').textContent='';try{const d=await api('/login',{method:'POST',body:JSON.stringify({email:$('email').value,password:$('password').value})});sessionStorage.setItem(tokenKey,d.token);setLoggedIn(true);await load()}catch(err){$('loginError').textContent=err.message}};
