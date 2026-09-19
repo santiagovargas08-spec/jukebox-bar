@@ -14,7 +14,7 @@ const {
 const { authenticateOperator, createAdminUser, revokeOperatorTokens } = require('../services/operatorAuthService.js');
 const { authenticateMasterAdmin, revokeMasterAdminToken } = require('../services/masterAdminAuthService.js');
 const { requireMasterAdmin, MASTER_ADMIN_COOKIE } = require('../middleware/masterAdminAuth.js');
-const { requireOperatorHttp } = require('../middleware/operatorAuth.js');
+const { requireOperatorHttp, OPERATOR_COOKIE } = require('../middleware/operatorAuth.js');
 const { prisma } = require('../db.js');
 const { createBar, getBarById, listBars, updateBar } = require('../services/barService.js');
 const { buildBarUrls, getAppUrl } = require('../lib/barUrls.js');
@@ -34,6 +34,16 @@ function masterAdminCookieOptions() {
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict',
     path: '/api/public/master-admin',
+    maxAge: 12 * 60 * 60 * 1000
+  };
+}
+
+function operatorCookieOptions() {
+  return {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    path: '/',
     maxAge: 12 * 60 * 60 * 1000
   };
 }
@@ -274,18 +284,75 @@ router.get('/master-admin/bars/:id/urls', async (req, res) => {
 // OPERADORES DEL BAR
 // ============================================================
 
-router.post('/bars/:slug/operator/login', noStore, async (req, res) => {
+router.post('/bars/:slug/operator/login', noStore, requireTrustedOrigin, async (req, res) => {
   try {
-    const result = await authenticateOperator({ slug: req.params.slug, email: req.body?.email, password: req.body?.password, ip: req.ip });
-    if (!result) return res.status(401).json({ ok: false, error: 'Credenciales inválidas.' });
-    res.json({ ok: true, data: result });
+    const result = await authenticateOperator({
+      slug: req.params.slug,
+      email: req.body?.email,
+      password: req.body?.password,
+      ip: req.ip
+    });
+
+    if (!result) {
+      return res.status(401).json({
+        ok: false,
+        error: 'Credenciales inválidas.'
+      });
+    }
+
+    res.cookie(
+      OPERATOR_COOKIE,
+      result.token,
+      operatorCookieOptions()
+    );
+
+    res.json({
+      ok: true,
+      data: {
+        admin: result.admin,
+        expiresAt: result.expiresAt
+      }
+    });
   } catch (error) {
     console.error('[PUBLIC] Error iniciando sesión de operador:', error);
-    res.status(500).json({ ok: false, error: 'No se pudo iniciar sesión.' });
+    res.status(500).json({
+      ok: false,
+      error: 'No se pudo iniciar sesión.'
+    });
   }
 });
 
-router.post('/bars/:slug/operator/logout', noStore, requireOperatorHttp, async (req, res) => {
+router.get('/bars/:slug/operator/session', noStore, requireOperatorHttp, async (req, res) => {
+  try {
+    const bar = await getBarBySlug(req.params.slug);
+
+    if (!bar || bar.id !== req.operator.barId) {
+      return res.status(403).json({
+        ok: false,
+        error: 'La sesión no corresponde a este bar.'
+      });
+    }
+
+    res.json({
+      ok: true,
+      data: {
+        id: req.operator.id,
+        barId: req.operator.barId,
+        email: req.operator.email,
+        displayName: req.operator.displayName,
+        role: req.operator.role
+      }
+    });
+  } catch (error) {
+    console.error('[PUBLIC] Error consultando sesión de operador:', error);
+    res.status(500).json({
+      ok: false,
+      error: 'No se pudo validar la sesión.'
+    });
+  }
+});
+
+router.post('/bars/:slug/operator/logout', noStore, requireTrustedOrigin, requireOperatorHttp, async (req, res) => {
   try {
     const bar = await getBarBySlug(req.params.slug);
 
@@ -297,6 +364,15 @@ router.post('/bars/:slug/operator/logout', noStore, requireOperatorHttp, async (
     }
 
     await revokeOperatorTokens(req.operator.id);
+
+    res.clearCookie(
+      OPERATOR_COOKIE,
+      {
+        ...operatorCookieOptions(),
+        maxAge: undefined
+      }
+    );
+
     res.json({ ok: true });
   } catch (error) {
     console.error('[PUBLIC] Error cerrando sesión de operador:', error);
