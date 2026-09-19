@@ -111,6 +111,21 @@ describe('master admin HttpOnly session', () => {
     const sessionCookie =
       cookie.split(';')[0];
 
+
+    const malformedCookie =
+      `${sessionCookie}.extra`;
+
+    const malformedResponse = await fetch(
+      `${baseUrl}/api/public/master-admin/me`,
+      {
+        headers: {
+          Cookie: malformedCookie
+        }
+      }
+    );
+
+    assert.equal(malformedResponse.status, 401);
+
     const meResponse = await fetch(
       `${baseUrl}/api/public/master-admin/me`,
       {
