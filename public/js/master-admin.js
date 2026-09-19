@@ -38,7 +38,6 @@ async function api(path,options={}){
 
   return data.data;
 }
-function escapeHtml(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));}
 function renderStats(s){
   const container=$('stats');
   container.replaceChildren();
