@@ -39,7 +39,33 @@ async function api(path,options={}){
   return data.data;
 }
 function escapeHtml(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));}
-function renderStats(s){$('stats').innerHTML=Object.entries({Total:s.total,Activos:s.active,Inactivos:s.inactive,Pruebas:s.trial,'Licencias activas':s.activeLicense,Expiradas:s.expired,Suspendidas:s.suspended}).map(([k,v])=>`<div class="stat"><span class="muted">${k}</span><strong>${v}</strong></div>`).join('')}
+function renderStats(s){
+  const container=$('stats');
+  container.replaceChildren();
+
+  for(const [label,value] of Object.entries({
+    Total:s.total,
+    Activos:s.active,
+    Inactivos:s.inactive,
+    Pruebas:s.trial,
+    'Licencias activas':s.activeLicense,
+    Expiradas:s.expired,
+    Suspendidas:s.suspended
+  })){
+    const card=document.createElement('div');
+    card.className='stat';
+
+    const muted=document.createElement('span');
+    muted.className='muted';
+    muted.textContent=label;
+
+    const strong=document.createElement('strong');
+    strong.textContent=String(value??0);
+
+    card.append(muted,strong);
+    container.appendChild(card);
+  }
+}
 function licenseButtons(b){const status=b.license?.status||'NONE';if(status==='SUSPENDED')return `<button class="secondary" data-license-action="reactivate" data-id="${b.id}">Reactivar licencia</button>`;if(status==='ACTIVE')return `<button class="danger" data-license-action="suspend" data-id="${b.id}">Suspender licencia</button>`;return `<button data-license-action="activate" data-id="${b.id}">Activar suscripción</button>`;}
 function renderBars(bars){
   $('bars').innerHTML=bars.length?bars.map(b=>`<article class="bar">
@@ -125,7 +151,50 @@ async function licenseAction(id,action){
     await load();
   }catch(e){await AdminDialog.message('No se pudo actualizar la licencia',e.message)}
 }
-async function loadPayments(id){const box=$(`payments-${id}`);if(!box)return;try{const payments=await api(`/bars/${id}/payments`);box.classList.remove('hidden');box.innerHTML=payments.length?payments.map(p=>`<div class="payment"><strong>${escapeHtml(p.amount)} ${escapeHtml(p.currency)}</strong> · ${escapeHtml(p.plan)} · ${escapeHtml(p.method)}<br><span class="muted">${escapeHtml(p.paidAt)}${p.reference?' · Ref: '+escapeHtml(p.reference):''}</span></div>`).join(''):'<div class="muted">No hay pagos registrados.</div>';}catch(e){await AdminDialog.message('No se pudieron cargar los pagos',e.message)}}
+async function loadPayments(id){
+  const box=$(`payments-${id}`);
+  if(!box)return;
+
+  try{
+    const payments=await api(`/bars/${id}/payments`);
+    box.classList.remove('hidden');
+    box.replaceChildren();
+
+    if(!payments.length){
+      const empty=document.createElement('div');
+      empty.className='muted';
+      empty.textContent='No hay pagos registrados.';
+      box.appendChild(empty);
+      return;
+    }
+
+    for(const payment of payments){
+      const row=document.createElement('div');
+      row.className='payment';
+
+      const strong=document.createElement('strong');
+      strong.textContent=`${payment.amount} ${payment.currency}`;
+
+      const details=document.createTextNode(
+        ` · ${payment.plan} · ${payment.method}`
+      );
+
+      const br=document.createElement('br');
+      const meta=document.createElement('span');
+      meta.className='muted';
+      meta.textContent=
+        `${payment.paidAt}${payment.reference?` · Ref: ${payment.reference}`:''}`;
+
+      row.append(strong,details,br,meta);
+      box.appendChild(row);
+    }
+  }catch(e){
+    await AdminDialog.message(
+      'No se pudieron cargar los pagos',
+      e.message
+    );
+  }
+}
 function renderBarsPager(page){
   const total=Number(page.total)||0;
   const offset=Number(page.offset)||0;
@@ -163,21 +232,53 @@ function renderAudit(page){
   $('audit-prev').disabled=offset<=0;
   $('audit-next').disabled=offset+limit>=total;
 
-  $('audit-list').innerHTML=items.length
-    ?items.map(item=>`<article class="audit-item">
-      <div class="audit-main">
-        <strong>${escapeHtml(item.action)}</strong>
-        <span class="muted">· ${escapeHtml(item.createdAt)}</span>
-      </div>
-      <div class="audit-meta">
-        <span>Actor: ${escapeHtml(item.actorEmail||'—')}</span>
-        <span>Rol: ${escapeHtml(item.actorRole||'—')}</span>
-        <span>Bar: ${escapeHtml(item.barId??'—')}</span>
-        <span>Entidad: ${escapeHtml(item.entityType||'—')} ${escapeHtml(item.entityId||'')}</span>
-        <span>Request: ${escapeHtml(item.requestId||'—')}</span>
-      </div>
-    </article>`).join('')
-    :'<p class="muted">Todavía no hay eventos de auditoría.</p>';
+  const list=$('audit-list');
+  list.replaceChildren();
+
+  if(!items.length){
+    const empty=document.createElement('p');
+    empty.className='muted';
+    empty.textContent='Todavía no hay eventos de auditoría.';
+    list.appendChild(empty);
+    return;
+  }
+
+  for(const item of items){
+    const article=document.createElement('article');
+    article.className='audit-item';
+
+    const main=document.createElement('div');
+    main.className='audit-main';
+
+    const action=document.createElement('strong');
+    action.textContent=String(item.action||'');
+
+    const created=document.createElement('span');
+    created.className='muted';
+    created.textContent=`· ${String(item.createdAt||'')}`;
+
+    main.append(action,created);
+
+    const meta=document.createElement('div');
+    meta.className='audit-meta';
+
+    const values=[
+      `Actor: ${item.actorEmail||'—'}`,
+      `Rol: ${item.actorRole||'—'}`,
+      `Bar: ${item.barId??'—'}`,
+      `Entidad: ${item.entityType||'—'} ${item.entityId||''}`,
+      `Request: ${item.requestId||'—'}`
+    ];
+
+    for(const value of values){
+      const span=document.createElement('span');
+      span.textContent=String(value);
+      meta.appendChild(span);
+    }
+
+    article.append(main,meta);
+    list.appendChild(article);
+  }
 }
 
 async function loadAudit(){
