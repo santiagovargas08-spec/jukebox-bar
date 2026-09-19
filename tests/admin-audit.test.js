@@ -10,6 +10,7 @@ const {
 describe('admin audit', () => {
   let prisma;
   let auditAdminAction;
+  let listAdminAuditLogs;
   let normalizeDetails;
 
   before(async () => {
