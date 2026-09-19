@@ -20,7 +20,7 @@ describe('song request policy', () => {
       }
     };
 
-    assert.equal(normalizeSocketIp(socket), '203.0.113.10');
+    assert.equal(normalizeSocketIp(socket), '10.0.0.1');
   });
 
   it('usa handshake.address cuando no hay forwarded-for', () => {
