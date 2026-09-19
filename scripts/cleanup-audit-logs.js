@@ -2,27 +2,14 @@
 
 require('dotenv').config();
 
-const { prisma } = require('../db.js');
-
-const MIN_DAYS = 30;
-const MAX_DAYS = 3650;
-const DEFAULT_DAYS = 180;
-
-function parseRetentionDays(raw) {
-  const parsed = Number.parseInt(raw, 10);
-
-  if (!Number.isInteger(parsed)) {
-    return DEFAULT_DAYS;
-  }
-
-  return Math.min(
-    Math.max(parsed, MIN_DAYS),
-    MAX_DAYS
-  );
-}
+const {
+  parseAuditRetentionDays
+} = require('../lib/retention.js');
 
 async function main() {
-  const retentionDays = parseRetentionDays(
+  const { prisma } = require('../db.js');
+
+  const retentionDays = parseAuditRetentionDays(
     process.env.AUDIT_RETENTION_DAYS
   );
 
@@ -88,8 +75,5 @@ if (require.main === module) {
 }
 
 module.exports = {
-  parseRetentionDays,
-  MIN_DAYS,
-  MAX_DAYS,
-  DEFAULT_DAYS
+  main
 };
