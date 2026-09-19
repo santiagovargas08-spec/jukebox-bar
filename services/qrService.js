@@ -6,6 +6,7 @@ const QR_CACHE_TTL_MS = 60 * 60 * 1000;
 const MAX_QR_CACHE_ENTRIES = 500;
 
 const cache = new Map();
+const inFlight = new Map();
 
 function getCached(key) {
   const item = cache.get(key);
@@ -53,26 +54,43 @@ async function getClientQrPng(
     };
   }
 
-  const buffer = await generate(key, {
-    type: 'png',
-    width: 400,
-    margin: 2,
-    color: {
-      dark: '#00f0ff',
-      light: '#0a0a0f'
-    }
-  });
+  let pending = inFlight.get(key);
+  const shared = Boolean(pending);
 
-  setCached(key, buffer);
+  if (!pending) {
+    pending = Promise.resolve()
+      .then(() => generate(key, {
+        type: 'png',
+        width: 400,
+        margin: 2,
+        color: {
+          dark: '#00f0ff',
+          light: '#0a0a0f'
+        }
+      }))
+      .then((buffer) => {
+        setCached(key, buffer);
+        return buffer;
+      })
+      .finally(() => {
+        inFlight.delete(key);
+      });
+
+    inFlight.set(key, pending);
+  }
+
+  const buffer = await pending;
 
   return {
     buffer,
-    cached: false
+    cached: false,
+    shared
   };
 }
 
 function clearQrCache() {
   cache.clear();
+  inFlight.clear();
 }
 
 module.exports = {
