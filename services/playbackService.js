@@ -110,9 +110,43 @@ async function clearPlaybackState(barId) {
   return null;
 }
 
+async function clearPlaybackStateIfMatches(
+  barId,
+  videoId
+) {
+  const id = normalizarBarId(barId);
+  const normalizedVideoId =
+    String(videoId || '').trim();
+
+  if (!isValidYoutubeVideoId(normalizedVideoId)) {
+    return false;
+  }
+
+  const result = await prisma.playbackState.updateMany({
+    where: {
+      barId: id,
+      status: 'PLAYING',
+      videoId: normalizedVideoId
+    },
+    data: {
+      queueItemId: null,
+      videoId: null,
+      title: null,
+      name: null,
+      thumbnail: null,
+      startedAt: null,
+      status: 'IDLE'
+    }
+  });
+
+  return result.count === 1;
+}
+
+
 module.exports = {
   getPlaybackState,
   setNowPlaying,
   clearPlaybackState,
+  clearPlaybackStateIfMatches,
   toPlaybackPayload
 };
