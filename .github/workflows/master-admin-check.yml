@@ -29,6 +29,7 @@ jobs:
       - run: node --check services/barAccessService.js
       - run: node --check services/socketStateService.js
       - run: node --check lib/socketBar.js
+      - run: node --check lib/rateLimitStore.js
       - run: node --check lib/securityHeaders.js
       - run: node --check lib/configValidation.js
       - run: node --check public/js/operator-auth.js
@@ -37,7 +38,7 @@ jobs:
       - run: node --check public/js/cliente.js
       - run: node --check public/js/master-admin.js
       - run: node scripts/audit-public-html.js
-      - run: node --test tests/security.test.js tests/security-headers.test.js tests/youtube-search.test.js tests/song-request-policy.test.js tests/operator-auth-http.test.js tests/config-validation.test.js
+      - run: node --test tests/security.test.js tests/security-headers.test.js tests/youtube-search.test.js tests/song-request-policy.test.js tests/operator-auth-http.test.js tests/config-validation.test.js tests/rate-limit-store.test.js
       - run: node --check middleware/masterAdminAuth.js
       - run: node --check middleware/operatorAuth.js
       - run: node --check create-master-admin.js
