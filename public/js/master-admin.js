@@ -4,7 +4,17 @@ const BARS_PAGE_SIZE=25;
 const AUDIT_PAGE_SIZE=50;
 let barsOffset=0;
 let auditOffset=0;
+const licenseActionsInFlight=new Set();
 function setLoggedIn(value){$('login').classList.toggle('hidden',value);$('app').classList.toggle('hidden',!value)}
+function createIdempotencyKey(){
+  if(window.crypto?.randomUUID){
+    return window.crypto.randomUUID();
+  }
+
+  const bytes=new Uint8Array(16);
+  window.crypto.getRandomValues(bytes);
+  return Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('');
+}
 async function api(path,options={}){
   const headers={
     'Content-Type':'application/json',
@@ -311,6 +321,14 @@ async function editBar(id,name,displayName,welcomeMessage){
   }catch(e){await AdminDialog.message('No se pudo editar el bar',e.message)}
 }
 async function licenseAction(id,action){
+  const actionKey=String(id);
+
+  if(licenseActionsInFlight.has(actionKey)){
+    return;
+  }
+
+  licenseActionsInFlight.add(actionKey);
+
   try{
     if(action==='suspend'){
       if(!await AdminDialog.confirm(
@@ -318,9 +336,14 @@ async function licenseAction(id,action){
         '¿Seguro que deseas suspender la licencia de este bar?',
         { confirmText: 'Suspender', danger: true }
       ))return;
-      await api(`/bars/${id}/license/suspend`,{method:'POST'});
+
+      await api(`/bars/${id}/license/suspend`,{
+        method:'POST'
+      });
     }else if(action==='reactivate'){
-      await api(`/bars/${id}/license/reactivate`,{method:'POST'});
+      await api(`/bars/${id}/license/reactivate`,{
+        method:'POST'
+      });
     }else if(action==='activate'){
       const values=await AdminDialog.ask('Activar suscripción',[
         {name:'plan',label:'Plan',type:'select',value:'MONTHLY',options:['MONTHLY','QUARTERLY']},
@@ -330,14 +353,27 @@ async function licenseAction(id,action){
         {name:'reference',label:'Referencia',value:''},
         {name:'notes',label:'Notas',value:''}
       ]);
+
       if(!values)return;
+
       await api(`/bars/${id}/license/activate`,{
         method:'POST',
+        headers:{
+          'Idempotency-Key':createIdempotencyKey()
+        },
         body:JSON.stringify(values)
       });
     }
+
     await load();
-  }catch(e){await AdminDialog.message('No se pudo actualizar la licencia',e.message)}
+  }catch(e){
+    await AdminDialog.message(
+      'No se pudo actualizar la licencia',
+      e.message
+    );
+  }finally{
+    licenseActionsInFlight.delete(actionKey);
+  }
 }
 async function loadPayments(id){
   const box=$(`payments-${id}`);
