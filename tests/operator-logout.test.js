@@ -133,6 +133,34 @@ describe('operator logout HTTP', () => {
     );
 
     assert.equal(sessionAfter.status, 401);
+
+    const auditRows = await prisma.adminAuditLog.findMany({
+      where: {
+        barId: bar.id,
+        action: {
+          in: [
+            'session.operator.login',
+            'session.operator.logout'
+          ]
+        }
+      },
+      orderBy: {
+        createdAt: 'asc'
+      }
+    });
+
+    assert.deepEqual(
+      auditRows.map((row) => row.action),
+      [
+        'session.operator.login',
+        'session.operator.logout'
+      ]
+    );
+    assert.ok(
+      auditRows.every(
+        (row) => row.actorEmail === 'logout@test.local'
+      )
+    );
   });
 
   it('rechaza logout sin sesión', async () => {
