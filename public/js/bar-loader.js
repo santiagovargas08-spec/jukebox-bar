@@ -4,13 +4,23 @@ window.BarLoader = (function () {
 
   function obtenerSlugDesdeURL() {
     const params = new URLSearchParams(window.location.search);
-    const slug = params.get('bar');
+    const raw = params.get('bar');
 
-    if (!slug) {
+    if (!raw) {
       return null;
     }
 
-    return slug.trim().toLowerCase();
+    const slug = raw.trim().toLowerCase();
+
+    if (
+      slug.length === 0 ||
+      slug.length > 80 ||
+      !/^[a-z0-9](?:[a-z0-9-]{0,78}[a-z0-9])?$/.test(slug)
+    ) {
+      return null;
+    }
+
+    return slug;
   }
 
   function escapeHtml(str) {
@@ -31,15 +41,31 @@ window.BarLoader = (function () {
   }
 
   function mostrarErrorPantalla(mensaje, titulo) {
-    document.body.innerHTML = `
-      <main class="app-error-screen">
-        <div class="app-error-card">
-          <div class="app-error-icon" aria-hidden="true">🎵</div>
-          <h1 class="app-error-title">${escapeHtml(titulo || 'GENESIS 2.0')}</h1>
-          <p class="app-error-message">${escapeHtml(mensaje)}</p>
-        </div>
-      </main>
-    `;
+    const main = document.createElement('main');
+    main.className = 'app-error-screen';
+
+    const card = document.createElement('div');
+    card.className = 'app-error-card';
+
+    const icon = document.createElement('div');
+    icon.className = 'app-error-icon';
+    icon.setAttribute('aria-hidden', 'true');
+    icon.textContent = '🎵';
+
+    const heading = document.createElement('h1');
+    heading.className = 'app-error-title';
+    heading.textContent =
+      titulo || 'GENESIS 2.0';
+
+    const message = document.createElement('p');
+    message.className = 'app-error-message';
+    message.textContent =
+      mensaje || 'No fue posible cargar el bar.';
+
+    card.append(icon, heading, message);
+    main.appendChild(card);
+
+    document.body.replaceChildren(main);
   }
 
   function mensajeLicenciaInvalida(status) {
