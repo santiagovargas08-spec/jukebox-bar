@@ -43,6 +43,7 @@ const {
 
 const { logError, logInfo } = require('./lib/logger.js');
 const { securityHeaders } = require('./lib/securityHeaders.js');
+const { assertProductionConfig } = require('./lib/configValidation.js');
 const { prisma, pool } = require('./db.js');
 const { searchYoutube } = require('./services/youtubeSearchService.js');
 const { canRequestSong, isBlockedSong } = require('./services/songRequestPolicy.js');
@@ -1501,6 +1502,8 @@ io.on(
 // ============================================================
 
 if (require.main === module) {
+  assertProductionConfig();
+
   let shuttingDown = false;
 
   async function shutdown(reason, exitCode = 0) {
