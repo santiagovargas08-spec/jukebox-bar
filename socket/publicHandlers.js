@@ -11,6 +11,7 @@ const {
 
 const { searchYoutube } = require('../services/youtubeSearchService.js');
 const { canSearch } = require('../services/searchRequestPolicy.js');
+const { allowBarSelection, allowStateRequest } = require('../services/socketStateRequestPolicy.js');
 const {
   canRequestSong,
   isBlockedSong,
@@ -30,6 +31,13 @@ function registerPublicSocketHandlers({
 }) {
   socket.on('seleccionar_bar', async (payload) => {
     try {
+      if (!allowBarSelection(socket)) {
+        socket.emit('error_bar', {
+          mensaje:
+            'Demasiados cambios de bar. Intenta nuevamente en un momento.'
+        });
+        return;
+      }
       const barId =
         payload && typeof payload === 'object'
           ? payload.barId
@@ -85,6 +93,13 @@ function registerPublicSocketHandlers({
 
   socket.on('solicitar_estado', async (payload) => {
     try {
+      if (!allowStateRequest(socket)) {
+        socket.emit('error_bar', {
+          mensaje:
+            'Demasiadas solicitudes de estado. Intenta nuevamente en un momento.'
+        });
+        return;
+      }
       const barId =
         payload && typeof payload === 'object'
           ? payload.barId
