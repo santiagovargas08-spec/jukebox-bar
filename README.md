@@ -145,6 +145,17 @@ Variables en Render: `DATABASE_URL`, `OPERATOR_TOKEN_SECRET`, `MASTER_ADMIN_TOKE
 - `POST /api/public/bars/:slug/operator/logout` — revoca tokens del operador autenticado
 - `/api/commercial/*` — API administrativa legacy, deshabilitada por defecto
 
+## Cola y ordenamiento
+
+La cola usa `QueueItem.position` como orden explícito por bar. `createdAt` conserva únicamente el momento real de creación y **no se modifica al reordenar**. Las operaciones críticas usan bloqueo transaccional por bar para evitar carreras entre altas, reproducción y reordenamiento.
+
+## Sesiones administrativas
+
+- Operadores y SUPER_ADMIN usan cookies `HttpOnly`, `SameSite=Strict` y `Secure` en producción.
+- Las respuestas de autenticación no se cachean.
+- Las acciones sensibles verifican origen y Fetch Metadata.
+- Los tokens siguen siendo revocables mediante `tokenVersion`.
+
 ## Socket.IO (eventos)
 
 - `seleccionar_bar`, `solicitar_estado`, `buscar_canciones`, `agregar_cancion`
@@ -154,6 +165,10 @@ Variables en Render: `DATABASE_URL`, `OPERATOR_TOKEN_SECRET`, `MASTER_ADMIN_TOKE
 Los operadores autenticados quedan vinculados a `token.barId`; no pueden acceder a otro tenant.
 
 ## Producción comercial
+
+### Escalado horizontal
+
+Actualmente el rate limiting y la caché de búsquedas viven en memoria del proceso. Esto es correcto para **una sola instancia** del servicio. Antes de ejecutar varias instancias en paralelo, mueve estos estados a un almacén compartido como Redis y configura un adaptador compartido para Socket.IO.
 
 Para comercializar el servicio:
 
