@@ -1,6 +1,7 @@
 'use strict';
 
 const { prisma } = require('../db.js');
+const { acquireQueueLock } = require('../lib/advisoryLocks.js');
 const { sanitizeThumbnailUrl, isValidYoutubeVideoId } = require('../lib/urlValidation.js');
 
 const MAX_QUEUE_PER_BAR = 100;
@@ -45,7 +46,7 @@ async function addToQueue(barId, song, maxItems = MAX_QUEUE_PER_BAR) {
   const thumbnail = sanitizeThumbnailUrl(song.thumbnail);
 
   return prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(${id})`;
+    await acquireQueueLock(tx, id);
 
     const count = await tx.queueItem.count({
       where: { barId: id }
@@ -111,7 +112,7 @@ async function removeFromQueue(barId, queueItemId) {
   }
 
   return prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(${bar})`;
+    await acquireQueueLock(tx, bar);
 
     const result = await tx.queueItem.deleteMany({
       where: {
@@ -128,7 +129,7 @@ async function clearQueue(barId) {
   const id = normalizarBarId(barId);
 
   return prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(${id})`;
+    await acquireQueueLock(tx, id);
 
     const result = await tx.queueItem.deleteMany({
       where: {
@@ -161,7 +162,7 @@ async function reorderQueue(barId, orderedIds) {
 
   return prisma.$transaction(async (tx) => {
     // Serializa reordenamientos con altas/bajas concurrentes del mismo bar.
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(${id})`;
+    await acquireQueueLock(tx, id);
 
     const items = await tx.queueItem.findMany({
       where: {
@@ -210,7 +211,7 @@ async function takeNextFromQueue(barId) {
   const id = normalizarBarId(barId);
 
   return prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(${id})`;
+    await acquireQueueLock(tx, id);
 
     const rows = await tx.$queryRaw`
       DELETE FROM "QueueItem"
