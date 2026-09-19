@@ -327,6 +327,10 @@ document.addEventListener('error', (event) => {
           return;
         }
 
+        // Permite reintentar inmediatamente la misma consulta
+        // si el proveedor falló o respondió con timeout.
+        lastSearchQuery = '';
+
         mostrarError(
           mensaje
         );
