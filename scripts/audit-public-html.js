@@ -64,12 +64,6 @@ for (const fileName of htmlFiles) {
 }
 
 const jsDir = path.join(publicDir, 'js');
-const zeroInnerHtmlFiles = new Set([
-  'bar-loader.js',
-  'bar.js',
-  'master-admin.js',
-  'cliente.js'
-]);
 
 for (const fileName of fs.readdirSync(jsDir)) {
   if (!fileName.endsWith('.js')) continue;
@@ -87,12 +81,9 @@ for (const fileName of fs.readdirSync(jsDir)) {
     );
   }
 
-  if (
-    zeroInnerHtmlFiles.has(fileName) &&
-    /\.innerHTML\b/.test(content)
-  ) {
+  if (/\.innerHTML\b/.test(content)) {
     errors.push(
-      `js/${fileName}: no debe volver a usar innerHTML; usa APIs DOM seguras.`
+      `js/${fileName}: no debe usar innerHTML; usa APIs DOM seguras.`
     );
   }
 
