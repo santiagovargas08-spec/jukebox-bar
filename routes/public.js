@@ -18,7 +18,7 @@ const { createBar, getBarById, listBarsPage, updateBar } = require('../services/
 const { buildBarUrls, getAppUrl } = require('../lib/barUrls.js');
 const { requireTrustedOrigin } = require('../lib/originValidation.js');
 const { getClientQrPng } = require('../services/qrService.js');
-const { auditAdminAction } = require('../lib/adminAudit.js');
+const { auditAdminAction, listAdminAuditLogs } = require('../lib/adminAudit.js');
 const { logError } = require('../lib/logger.js');
 
 const router = express.Router();
@@ -129,6 +129,33 @@ router.get('/master-admin/dashboard', async (req, res) => {
   } catch (error) {
     logError('[MASTER_ADMIN] Error obteniendo dashboard:', { requestId: req.id || null, error: error?.message || String(error) });
     res.status(500).json({ ok: false, error: 'No se pudo obtener el dashboard.' });
+  }
+});
+
+router.get('/master-admin/audit', async (req, res) => {
+  try {
+    const page = await listAdminAuditLogs({
+      limit: req.query.limit,
+      offset: req.query.offset,
+      barId: req.query.barId,
+      action: req.query.action
+    });
+
+    res.json({
+      ok: true,
+      data: page
+    });
+  } catch (error) {
+    logError('Error consultando auditoría administrativa', {
+      event: 'admin_audit_list_error',
+      requestId: req.id || null,
+      error: error?.message || String(error)
+    });
+
+    res.status(500).json({
+      ok: false,
+      error: 'No se pudo obtener la auditoría.'
+    });
   }
 });
 
