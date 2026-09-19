@@ -5,6 +5,7 @@ const { sanitizeThumbnailUrl, isValidYoutubeVideoId } = require('../lib/urlValid
 
 const CACHE_TTL_MS = 60 * 60 * 1000;
 const MAX_CACHE_ENTRIES = 500;
+const SEARCH_TIMEOUT_MS = 8 * 1000;
 
 const cache = new Map();
 
@@ -67,7 +68,30 @@ function setCached(queryKey, videos) {
   }
 }
 
-async function searchYoutube(query) {
+function withTimeout(promise, timeoutMs = SEARCH_TIMEOUT_MS) {
+  let timer;
+
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => {
+      const error = new Error('YOUTUBE_SEARCH_TIMEOUT');
+      error.code = 'YOUTUBE_SEARCH_TIMEOUT';
+      reject(error);
+    }, timeoutMs);
+
+    if (timer.unref) timer.unref();
+  });
+
+  return Promise.race([promise, timeout])
+    .finally(() => clearTimeout(timer));
+}
+
+async function searchYoutube(
+  query,
+  {
+    searchFn = ytSearch,
+    timeoutMs = SEARCH_TIMEOUT_MS
+  } = {}
+) {
   const text = String(query || '').trim();
   if (!text) return { videos: [], cached: false };
 
@@ -82,7 +106,10 @@ async function searchYoutube(query) {
   }
 
   try {
-    const result = await ytSearch(text);
+    const result = await withTimeout(
+      Promise.resolve().then(() => searchFn(text)),
+      timeoutMs
+    );
 
     if (!result || !Array.isArray(result.videos)) {
       return {
@@ -119,5 +146,7 @@ function clearSearchCache() {
 module.exports = {
   searchYoutube,
   clearSearchCache,
-  normalizeYoutubeResult
+  normalizeYoutubeResult,
+  withTimeout,
+  SEARCH_TIMEOUT_MS
 };
