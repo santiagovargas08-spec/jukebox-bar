@@ -31,9 +31,17 @@ describe('admin audit', () => {
   after(async () => {
     await prisma.adminAuditLog.deleteMany({
       where: {
-        requestId: {
-          startsWith: 'req-audit-test-'
-        }
+        OR: [
+          {
+            requestId: {
+              startsWith: 'req-audit-test-'
+            }
+          },
+          {
+            actorId: 21,
+            action: 'queue.clear'
+          }
+        ]
       }
     });
 
