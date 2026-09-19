@@ -18,6 +18,7 @@ const { requireOperatorHttp } = require('../middleware/operatorAuth.js');
 const { prisma } = require('../db.js');
 const { createBar, getBarById, listBars, updateBar } = require('../services/barService.js');
 const { buildBarUrls, getAppUrl } = require('../lib/barUrls.js');
+const { requireTrustedOrigin } = require('../lib/originValidation.js');
 
 const router = express.Router();
 
@@ -41,7 +42,7 @@ function masterAdminCookieOptions() {
 // MASTER ADMIN / SUPER_ADMIN
 // ============================================================
 
-router.use('/master-admin', noStore);
+router.use('/master-admin', noStore, requireTrustedOrigin);
 
 router.post('/master-admin/login', async (req, res) => {
   try {
