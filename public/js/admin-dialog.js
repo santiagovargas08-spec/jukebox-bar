@@ -106,5 +106,115 @@ window.AdminDialog = (function () {
     });
   }
 
-  return { ask };
+  function confirmAction(
+    title,
+    message,
+    {
+      confirmText = 'Confirmar',
+      cancelText = 'Cancelar',
+      danger = false
+    } = {}
+  ) {
+    return new Promise((resolve) => {
+      const overlay = el('div', {
+        className: 'admin-dialog-overlay'
+      });
+      const card = el('div', {
+        className: 'admin-dialog-card'
+      });
+      const heading = el(
+        'h2',
+        { className: 'admin-dialog-title' },
+        title
+      );
+      const body = el(
+        'p',
+        { className: 'admin-dialog-message' },
+        message
+      );
+      const actions = el('div', {
+        className: 'admin-dialog-actions'
+      });
+      const cancel = el(
+        'button',
+        { type: 'button', className: 'secondary' },
+        cancelText
+      );
+      const confirmButton = el(
+        'button',
+        {
+          type: 'button',
+          className: danger ? 'danger' : ''
+        },
+        confirmText
+      );
+
+      const close = (result) => {
+        overlay.remove();
+        resolve(result);
+      };
+
+      cancel.addEventListener('click', () => close(false));
+      confirmButton.addEventListener('click', () => close(true));
+
+      overlay.addEventListener('mousedown', (event) => {
+        if (event.target === overlay) close(false);
+      });
+
+      actions.append(cancel, confirmButton);
+      card.append(heading, body, actions);
+      overlay.appendChild(card);
+      document.body.appendChild(overlay);
+
+      setTimeout(() => confirmButton.focus(), 0);
+    });
+  }
+
+  function message(title, message, buttonText = 'Aceptar') {
+    return new Promise((resolve) => {
+      const overlay = el('div', {
+        className: 'admin-dialog-overlay'
+      });
+      const card = el('div', {
+        className: 'admin-dialog-card'
+      });
+      const heading = el(
+        'h2',
+        { className: 'admin-dialog-title' },
+        title
+      );
+      const body = el(
+        'p',
+        { className: 'admin-dialog-message' },
+        message
+      );
+      const actions = el('div', {
+        className: 'admin-dialog-actions'
+      });
+      const button = el(
+        'button',
+        { type: 'button' },
+        buttonText
+      );
+
+      const close = () => {
+        overlay.remove();
+        resolve();
+      };
+
+      button.addEventListener('click', close);
+      overlay.addEventListener('mousedown', (event) => {
+        if (event.target === overlay) close();
+      });
+
+      actions.appendChild(button);
+      card.append(heading, body, actions);
+      overlay.appendChild(card);
+      document.body.appendChild(overlay);
+
+      setTimeout(() => button.focus(), 0);
+    });
+  }
+
+  return { ask, confirm: confirmAction, message };
 })();
