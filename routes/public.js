@@ -18,6 +18,7 @@ const { createBar, getBarById, listBarsPage, updateBar } = require('../services/
 const { buildBarUrls, getAppUrl } = require('../lib/barUrls.js');
 const { requireTrustedOrigin } = require('../lib/originValidation.js');
 const { getClientQrPng } = require('../services/qrService.js');
+const { getMasterDashboardStats } = require('../services/masterDashboardService.js');
 const { auditAdminAction, listAdminAuditLogs } = require('../lib/adminAudit.js');
 const { logError } = require('../lib/logger.js');
 
@@ -116,16 +117,8 @@ router.post('/master-admin/logout', async (req, res) => {
 
 router.get('/master-admin/dashboard', async (req, res) => {
   try {
-    const [total, active, inactive, trial, activeLicense, expired, suspended] = await Promise.all([
-      prisma.bar.count(),
-      prisma.bar.count({ where: { active: true } }),
-      prisma.bar.count({ where: { active: false } }),
-      prisma.license.count({ where: { status: 'TRIAL' } }),
-      prisma.license.count({ where: { status: 'ACTIVE' } }),
-      prisma.license.count({ where: { status: 'EXPIRED' } }),
-      prisma.license.count({ where: { status: 'SUSPENDED' } })
-    ]);
-    res.json({ ok: true, data: { total, active, inactive, trial, activeLicense, expired, suspended } });
+    const stats = await getMasterDashboardStats();
+    res.json({ ok: true, data: stats });
   } catch (error) {
     logError('[MASTER_ADMIN] Error obteniendo dashboard:', { requestId: req.id || null, error: error?.message || String(error) });
     res.status(500).json({ ok: false, error: 'No se pudo obtener el dashboard.' });
