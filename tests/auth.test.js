@@ -78,6 +78,16 @@ describe('auth', () => {
     assert.equal(result, null);
   });
 
+  it('rechaza password excesivamente largo antes de autenticar', async () => {
+    const result = await operatorAuthService.authenticateOperator({
+      slug: bar.slug,
+      email: 'operator@test.local',
+      password: 'x'.repeat(257)
+    });
+
+    assert.equal(result, null);
+  });
+
   it('SUPER_ADMIN no puede crearse como AdminUser de bar', async () => {
     await assert.rejects(
       operatorAuthService.createAdminUser({
