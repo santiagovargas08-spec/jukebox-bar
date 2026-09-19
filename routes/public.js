@@ -19,6 +19,7 @@ const { buildBarUrls, getAppUrl } = require('../lib/barUrls.js');
 const { requireTrustedOrigin } = require('../lib/originValidation.js');
 const { getClientQrPng } = require('../services/qrService.js');
 const { auditAdminAction } = require('../lib/adminAudit.js');
+const { logError } = require('../lib/logger.js');
 
 const router = express.Router();
 
@@ -83,7 +84,7 @@ router.post('/master-admin/login', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('[MASTER_ADMIN] Error iniciando sesión:', error);
+    logError('[MASTER_ADMIN] Error iniciando sesión:', { requestId: req.id || null, error: error?.message || String(error) });
     res.status(500).json({ ok: false, error: 'No se pudo iniciar sesión.' });
   }
 });
@@ -108,7 +109,7 @@ router.post('/master-admin/logout', async (req, res) => {
 
     res.json({ ok: true });
   } catch (error) {
-    console.error('[MASTER_ADMIN] Error cerrando sesión:', error);
+    logError('[MASTER_ADMIN] Error cerrando sesión:', { requestId: req.id || null, error: error?.message || String(error) });
     res.status(500).json({ ok: false, error: 'No se pudo cerrar la sesión.' });
   }
 });
@@ -126,7 +127,7 @@ router.get('/master-admin/dashboard', async (req, res) => {
     ]);
     res.json({ ok: true, data: { total, active, inactive, trial, activeLicense, expired, suspended } });
   } catch (error) {
-    console.error('[MASTER_ADMIN] Error obteniendo dashboard:', error);
+    logError('[MASTER_ADMIN] Error obteniendo dashboard:', { requestId: req.id || null, error: error?.message || String(error) });
     res.status(500).json({ ok: false, error: 'No se pudo obtener el dashboard.' });
   }
 });
@@ -149,7 +150,7 @@ router.get('/master-admin/bars', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('[MASTER_ADMIN] Error listando bares:', error);
+    logError('[MASTER_ADMIN] Error listando bares:', { requestId: req.id || null, error: error?.message || String(error) });
     res.status(500).json({ ok: false, error: 'No se pudieron obtener los bares.' });
   }
 });
@@ -160,7 +161,7 @@ router.get('/master-admin/bars/:id', async (req, res) => {
     if (!bar) return res.status(404).json({ ok: false, error: 'Bar no encontrado.' });
     res.json({ ok: true, data: { ...bar, urls: buildBarUrls(bar, req) } });
   } catch (error) {
-    console.error('[MASTER_ADMIN] Error obteniendo bar:', error);
+    logError('[MASTER_ADMIN] Error obteniendo bar:', { requestId: req.id || null, error: error?.message || String(error) });
     res.status(500).json({ ok: false, error: 'No se pudo obtener el bar.' });
   }
 });
@@ -182,7 +183,7 @@ router.post('/master-admin/bars', async (req, res) => {
 
     res.status(201).json({ ok: true, data: { ...bar, urls: buildBarUrls(bar, req) } });
   } catch (error) {
-    console.error('[MASTER_ADMIN] Error creando bar:', error);
+    logError('[MASTER_ADMIN] Error creando bar:', { requestId: req.id || null, error: error?.message || String(error) });
     res.status(400).json({ ok: false, error: error.message || 'No se pudo crear el bar.' });
   }
 });
@@ -209,7 +210,7 @@ router.post('/master-admin/bars/:id/admins', async (req, res) => {
 
     res.status(201).json({ ok: true, data: admin });
   } catch (error) {
-    console.error('[MASTER_ADMIN] Error creando administrador del bar:', error);
+    logError('[MASTER_ADMIN] Error creando administrador del bar:', { requestId: req.id || null, error: error?.message || String(error) });
     res.status(400).json({ ok: false, error: error.message || 'No se pudo crear el administrador.' });
   }
 });
@@ -231,7 +232,7 @@ router.put('/master-admin/bars/:id', async (req, res) => {
 
     res.json({ ok: true, data: { ...bar, urls: buildBarUrls(bar, req) } });
   } catch (error) {
-    console.error('[MASTER_ADMIN] Error actualizando bar:', error);
+    logError('[MASTER_ADMIN] Error actualizando bar:', { requestId: req.id || null, error: error?.message || String(error) });
     res.status(error.code === 'P2025' ? 404 : 400).json({ ok: false, error: error.message || 'No se pudo actualizar el bar.' });
   }
 });
@@ -252,7 +253,7 @@ router.patch('/master-admin/bars/:id/active', async (req, res) => {
 
     res.json({ ok: true, data: { ...bar, urls: buildBarUrls(bar, req) } });
   } catch (error) {
-    console.error('[MASTER_ADMIN] Error cambiando estado:', error);
+    logError('[MASTER_ADMIN] Error cambiando estado:', { requestId: req.id || null, error: error?.message || String(error) });
     res.status(error.code === 'P2025' ? 404 : 400).json({ ok: false, error: error.message || 'No se pudo cambiar el estado.' });
   }
 });
@@ -263,7 +264,7 @@ router.get('/master-admin/bars/:id/license', async (req, res) => {
     if (!bar) return res.status(404).json({ ok: false, error: 'Bar no encontrado.' });
     res.json({ ok: true, data: await getLicenseStatus(bar.id) });
   } catch (error) {
-    console.error('[MASTER_ADMIN] Error obteniendo licencia:', error);
+    logError('[MASTER_ADMIN] Error obteniendo licencia:', { requestId: req.id || null, error: error?.message || String(error) });
     res.status(500).json({ ok: false, error: 'No se pudo obtener la licencia.' });
   }
 });
@@ -301,7 +302,7 @@ router.post('/master-admin/bars/:id/license/activate', async (req, res) => {
 
     res.json({ ok: true, data: result });
   } catch (error) {
-    console.error('[MASTER_ADMIN] Error activando suscripción:', error);
+    logError('[MASTER_ADMIN] Error activando suscripción:', { requestId: req.id || null, error: error?.message || String(error) });
     res.status(400).json({ ok: false, error: error.message || 'No se pudo activar la suscripción.' });
   }
 });
@@ -322,7 +323,7 @@ router.post('/master-admin/bars/:id/license/suspend', async (req, res) => {
 
     res.json({ ok: true, data: license });
   } catch (error) {
-    console.error('[MASTER_ADMIN] Error suspendiendo licencia:', error);
+    logError('[MASTER_ADMIN] Error suspendiendo licencia:', { requestId: req.id || null, error: error?.message || String(error) });
     res.status(400).json({ ok: false, error: error.message || 'No se pudo suspender la licencia.' });
   }
 });
@@ -343,7 +344,7 @@ router.post('/master-admin/bars/:id/license/reactivate', async (req, res) => {
 
     res.json({ ok: true, data: license });
   } catch (error) {
-    console.error('[MASTER_ADMIN] Error reactivando licencia:', error);
+    logError('[MASTER_ADMIN] Error reactivando licencia:', { requestId: req.id || null, error: error?.message || String(error) });
     res.status(400).json({ ok: false, error: error.message || 'No se pudo reactivar la licencia.' });
   }
 });
@@ -354,7 +355,7 @@ router.get('/master-admin/bars/:id/payments', async (req, res) => {
     if (!bar) return res.status(404).json({ ok: false, error: 'Bar no encontrado.' });
     res.json({ ok: true, data: await getPaymentsByBarId(bar.id) });
   } catch (error) {
-    console.error('[MASTER_ADMIN] Error obteniendo pagos:', error);
+    logError('[MASTER_ADMIN] Error obteniendo pagos:', { requestId: req.id || null, error: error?.message || String(error) });
     res.status(500).json({ ok: false, error: 'No se pudieron obtener los pagos.' });
   }
 });
@@ -365,7 +366,7 @@ router.get('/master-admin/bars/:id/urls', async (req, res) => {
     if (!bar) return res.status(404).json({ ok: false, error: 'Bar no encontrado.' });
     res.json({ ok: true, data: buildBarUrls(bar, req) });
   } catch (error) {
-    console.error('[MASTER_ADMIN] Error construyendo URLs:', error);
+    logError('[MASTER_ADMIN] Error construyendo URLs:', { requestId: req.id || null, error: error?.message || String(error) });
     res.status(500).json({ ok: false, error: 'No se pudieron construir las URLs.' });
   }
 });
@@ -404,7 +405,7 @@ router.post('/bars/:slug/operator/login', noStore, requireTrustedOrigin, async (
       }
     });
   } catch (error) {
-    console.error('[PUBLIC] Error iniciando sesión de operador:', error);
+    logError('[PUBLIC] Error iniciando sesión de operador:', { requestId: req.id || null, error: error?.message || String(error) });
     res.status(500).json({
       ok: false,
       error: 'No se pudo iniciar sesión.'
@@ -434,7 +435,7 @@ router.get('/bars/:slug/operator/session', noStore, requireOperatorHttp, async (
       }
     });
   } catch (error) {
-    console.error('[PUBLIC] Error consultando sesión de operador:', error);
+    logError('[PUBLIC] Error consultando sesión de operador:', { requestId: req.id || null, error: error?.message || String(error) });
     res.status(500).json({
       ok: false,
       error: 'No se pudo validar la sesión.'
@@ -465,7 +466,7 @@ router.post('/bars/:slug/operator/logout', noStore, requireTrustedOrigin, requir
 
     res.json({ ok: true });
   } catch (error) {
-    console.error('[PUBLIC] Error cerrando sesión de operador:', error);
+    logError('[PUBLIC] Error cerrando sesión de operador:', { requestId: req.id || null, error: error?.message || String(error) });
     res.status(500).json({ ok: false, error: 'No se pudo cerrar la sesión.' });
   }
 });
@@ -478,7 +479,7 @@ router.get('/bars/:slug', async (req, res) => {
     if (!bar) return res.status(404).json({ ok: false, error: 'Bar no encontrado' });
     res.json({ ok: true, data: { id: bar.id, name: bar.name, slug: bar.slug, active: bar.active, settings: bar.settings ? { displayName: bar.settings.displayName, welcomeMessage: bar.settings.welcomeMessage, primaryColor: bar.settings.primaryColor, secondaryColor: bar.settings.secondaryColor, logoUrl: bar.settings.logoUrl } : null } });
   } catch (error) {
-    console.error('[PUBLIC] Error obteniendo bar:', error);
+    logError('[PUBLIC] Error obteniendo bar:', { requestId: req.id || null, error: error?.message || String(error) });
     res.status(500).json({ ok: false, error: 'No se pudo obtener el bar' });
   }
 });
@@ -497,7 +498,7 @@ router.get('/bars/:slug/license/status', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('[PUBLIC] Error obteniendo licencia:', error);
+    logError('[PUBLIC] Error obteniendo licencia:', { requestId: req.id || null, error: error?.message || String(error) });
     res.status(500).json({ ok: false, error: 'No se pudo obtener el estado de la licencia' });
   }
 });
@@ -512,7 +513,7 @@ router.get('/bars/:slug/qr', async (req, res) => {
     res.set('Cache-Control', 'public, max-age=3600');
     res.send(buffer);
   } catch (error) {
-    console.error('[PUBLIC] Error generando QR:', error);
+    logError('[PUBLIC] Error generando QR:', { requestId: req.id || null, error: error?.message || String(error) });
     res.status(500).json({ ok: false, error: 'No se pudo generar el QR' });
   }
 });
@@ -523,7 +524,7 @@ router.get('/bars/:slug/urls', async (req, res) => {
     if (!bar) return res.status(404).json({ ok: false, error: 'Bar no encontrado' });
     res.json({ ok: true, data: buildBarUrls(bar, req) });
   } catch (error) {
-    console.error('[PUBLIC] Error obteniendo URLs:', error);
+    logError('[PUBLIC] Error obteniendo URLs:', { requestId: req.id || null, error: error?.message || String(error) });
     res.status(500).json({ ok: false, error: 'No se pudieron obtener las URLs' });
   }
 });
