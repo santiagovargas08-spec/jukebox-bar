@@ -11,9 +11,10 @@ const {
   reactivateLicense,
   getPaymentsByBarId
 } = require('../services/licenseService.js');
-const { authenticateOperator, createAdminUser } = require('../services/operatorAuthService.js');
+const { authenticateOperator, createAdminUser, revokeOperatorTokens } = require('../services/operatorAuthService.js');
 const { authenticateMasterAdmin, revokeMasterAdminToken } = require('../services/masterAdminAuthService.js');
 const { requireMasterAdmin } = require('../middleware/masterAdminAuth.js');
+const { requireOperatorHttp } = require('../middleware/operatorAuth.js');
 const { prisma } = require('../db.js');
 const { createBar, getBarById, listBars, updateBar } = require('../services/barService.js');
 const { buildBarUrls, getAppUrl } = require('../lib/barUrls.js');
@@ -238,6 +239,25 @@ router.post('/bars/:slug/operator/login', noStore, async (req, res) => {
   } catch (error) {
     console.error('[PUBLIC] Error iniciando sesión de operador:', error);
     res.status(500).json({ ok: false, error: 'No se pudo iniciar sesión.' });
+  }
+});
+
+router.post('/bars/:slug/operator/logout', noStore, requireOperatorHttp, async (req, res) => {
+  try {
+    const bar = await getBarBySlug(req.params.slug);
+
+    if (!bar || bar.id !== req.operator.barId) {
+      return res.status(403).json({
+        ok: false,
+        error: 'La sesión no corresponde a este bar.'
+      });
+    }
+
+    await revokeOperatorTokens(req.operator.id);
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('[PUBLIC] Error cerrando sesión de operador:', error);
+    res.status(500).json({ ok: false, error: 'No se pudo cerrar la sesión.' });
   }
 });
 
