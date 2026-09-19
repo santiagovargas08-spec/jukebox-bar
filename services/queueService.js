@@ -22,9 +22,10 @@ async function getQueue(barId) {
     where: {
       barId: id
     },
-    orderBy: {
-      createdAt: 'asc'
-    }
+    orderBy: [
+      { position: 'asc' },
+      { id: 'asc' }
+    ]
   });
 }
 
@@ -54,6 +55,17 @@ async function addToQueue(barId, song, maxItems = MAX_QUEUE_PER_BAR) {
       throw new Error('QUEUE_FULL');
     }
 
+    const lastItem = await tx.queueItem.findFirst({
+      where: { barId: id },
+      orderBy: [
+        { position: 'desc' },
+        { id: 'desc' }
+      ],
+      select: { position: true }
+    });
+
+    const nextPosition = (lastItem?.position || 0) + 1;
+
     try {
       const item = await tx.queueItem.create({
         data: {
@@ -61,7 +73,8 @@ async function addToQueue(barId, song, maxItems = MAX_QUEUE_PER_BAR) {
           videoId,
           title: String(song.title).trim().slice(0, 100),
           name: String(song.name).trim().slice(0, 30),
-          thumbnail
+          thumbnail,
+          position: nextPosition
         }
       });
 
@@ -143,9 +156,10 @@ async function reorderQueue(barId, orderedIds) {
       where: {
         barId: id
       },
-      orderBy: {
-        createdAt: 'asc'
-      }
+      orderBy: [
+        { position: 'asc' },
+        { id: 'asc' }
+      ]
     });
 
     if (items.length !== ids.length) {
@@ -160,22 +174,23 @@ async function reorderQueue(barId, orderedIds) {
       }
     }
 
-    const base = Date.now();
-
     for (let index = 0; index < ids.length; index += 1) {
       await tx.queueItem.update({
         where: {
           id: ids[index]
         },
         data: {
-          createdAt: new Date(base + index * 1000)
+          position: index + 1
         }
       });
     }
 
     return tx.queueItem.findMany({
       where: { barId: id },
-      orderBy: { createdAt: 'asc' }
+      orderBy: [
+        { position: 'asc' },
+        { id: 'asc' }
+      ]
     });
   });
 }
@@ -192,7 +207,7 @@ async function takeNextFromQueue(barId) {
         SELECT "id"
         FROM "QueueItem"
         WHERE "barId" = ${id}
-        ORDER BY "createdAt" ASC
+        ORDER BY "position" ASC, "id" ASC
         LIMIT 1
         FOR UPDATE SKIP LOCKED
       )
