@@ -156,13 +156,17 @@ describe('health', () => {
     }
   });
 
-  it('assets estáticos usan caché de una hora', async () => {
+  it('JS/CSS sin hash usan caché corta y revalidable', async () => {
     const response = await getResponse('/style.css');
 
     assert.equal(response.status, 200);
     assert.match(
       String(response.headers['cache-control'] || ''),
-      /max-age=3600/i
+      /max-age=300/i
+    );
+    assert.match(
+      String(response.headers['cache-control'] || ''),
+      /must-revalidate/i
     );
   });
 });
