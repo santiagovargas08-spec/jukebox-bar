@@ -92,7 +92,7 @@ jobs:
           tests/request-id.test.js
           tests/http-access-log.test.js
           tests/logger.test.js
-          tests/admin-audit.test.js
+          tests/admin-audit.test.js tests/audit-retention.test.js
           tests/bar-access.test.js
           tests/error-handler.test.js
           tests/promise-timeout.test.js
