@@ -1,6 +1,7 @@
 'use strict';
 
 const { prisma } = require('../db.js');
+const { normalizeBarSlug } = require('../lib/barSlug.js');
 
 const TRIAL_DAYS = 14;
 const MAX_BAR_NAME_LENGTH = 120;
@@ -121,8 +122,7 @@ async function createBar({
 }
 
 async function getBarBySlug(slug) {
-  if (!slug || typeof slug !== 'string') return null;
-  const normalized = slug.trim().toLowerCase();
+  const normalized = normalizeBarSlug(slug);
   if (!normalized) return null;
 
   return prisma.bar.findUnique({
