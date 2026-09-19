@@ -49,9 +49,11 @@ Ver `.env.example`:
 |----------|-------------|
 | `DATABASE_URL` | Conexión PostgreSQL |
 | `DATABASE_SSL` | `true` en Render/producción |
-| `ADMIN_API_KEY` | Clave para `/api/commercial` |
+| `ENABLE_LEGACY_COMMERCIAL_API` | Habilita la API legacy; `false` por defecto |
+| `ADMIN_API_KEY` | Clave de la API legacy cuando está habilitada |
 | `OPERATOR_TOKEN_SECRET` | Secreto HMAC tokens operador (≥32 chars) |
-| `APP_URL` | URL pública (CORS, QR, links) |
+| `MASTER_ADMIN_TOKEN_SECRET` | Secreto independiente del SUPER_ADMIN (≥32 chars) |
+| `APP_URL` | Uno o más orígenes públicos HTTP(S), separados por coma; sin paths |
 | `PORT` | Puerto HTTP (Render lo asigna) |
 | `TEST_DATABASE_URL` | Base de datos separada para tests |
 
@@ -83,6 +85,14 @@ En bases nuevas, `npx prisma migrate deploy` aplica ambas migraciones en orden.
 ```bash
 npm run dev
 ```
+
+## Comprobaciones locales
+
+```bash
+npm run check
+```
+
+Este comando valida sintaxis de los módulos críticos y audita el HTML público para impedir scripts/eventos inline y recursos locales inexistentes.
 
 ## Producción
 
@@ -119,19 +129,21 @@ npm run test:db
 | Configuración | Valor |
 |---------------|-------|
 | Node | 20 |
-| Build | `npm install && npm run build` |
+| Build | `npm ci && npm run build` |
 | Start | `npx prisma migrate deploy && npm start` |
 | Health check | `/health` |
 | Database | PostgreSQL (plan pagado recomendado para comercialización) |
 
-Variables en Render: `DATABASE_URL`, `ADMIN_API_KEY`, `OPERATOR_TOKEN_SECRET`, `APP_URL`, `PORT`, `DATABASE_SSL=true`.
+Variables en Render: `DATABASE_URL`, `OPERATOR_TOKEN_SECRET`, `MASTER_ADMIN_TOKEN_SECRET`, `APP_URL`, `PORT`, `DATABASE_SSL=true`. La API `/api/commercial` permanece deshabilitada salvo que `ENABLE_LEGACY_COMMERCIAL_API=true`.
 
 ## Endpoints principales
 
-- `GET /health` — health check
+- `GET /health` — liveness check
+- `GET /ready` — readiness check con PostgreSQL
 - `GET /api/public/bars/:slug` — info pública del bar
 - `POST /api/public/bars/:slug/operator/login` — login operador
-- `GET /api/commercial/*` — administración (requiere `ADMIN_API_KEY`)
+- `POST /api/public/bars/:slug/operator/logout` — revoca tokens del operador autenticado
+- `/api/commercial/*` — API administrativa legacy, deshabilitada por defecto
 
 ## Socket.IO (eventos)
 
@@ -147,7 +159,7 @@ Para comercializar el servicio:
 
 - Usa PostgreSQL con backups y almacenamiento adecuado (no el tier free).
 - Configura monitoreo y alertas.
-- Rota `ADMIN_API_KEY` y `OPERATOR_TOKEN_SECRET` si pudieron exponerse.
+- Rota `OPERATOR_TOKEN_SECRET`, `MASTER_ADMIN_TOKEN_SECRET` y cualquier `ADMIN_API_KEY` legacy si pudieron exponerse.
 - Define `APP_URL` con la URL real del despliegue.
 
 ## Módulos
