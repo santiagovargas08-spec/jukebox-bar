@@ -180,6 +180,19 @@ Los logs estructurados incluyen `requestId`, método, ruta, estado y duración. 
 
 Render instala explícitamente las dependencias de desarrollo necesarias para Prisma durante el build y ejecuta `npx --no-install prisma migrate deploy` al iniciar, evitando descargas implícitas de paquetes en producción.
 
+
+### Retención de auditoría
+
+Los eventos administrativos se almacenan en `AdminAuditLog`. La limpieza es explícita y segura por defecto:
+
+```bash
+npm run maintenance:audit:plan
+AUDIT_RETENTION_DAYS=365 npm run maintenance:audit:plan
+AUDIT_RETENTION_DAYS=365 npm run maintenance:audit:apply
+```
+
+El comando sin `--apply` solo informa cuántas filas serían eliminadas. El rango permitido es de 30 a 3650 días y el valor por defecto es 180 días.
+
 ## Producción comercial
 
 ### Escalado horizontal
