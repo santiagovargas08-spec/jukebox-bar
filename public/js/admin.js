@@ -239,8 +239,17 @@ const btnLogout        = document.getElementById('btn-logout-operator');
     // ─────────────────────────────────────────────────────────
     //  VACIAR COLA COMPLETA
     // ─────────────────────────────────────────────────────────
-    btnVaciar.addEventListener('click', () => {
-      if (confirm("¿Estás seguro de que quieres borrar TODAS las canciones de la lista de espera?")) {
+    btnVaciar.addEventListener('click', async () => {
+      const confirmado = await AdminDialog.confirm(
+        'Vaciar lista de espera',
+        '¿Seguro que deseas borrar todas las canciones de la lista de espera?',
+        {
+          confirmText: 'Vaciar lista',
+          danger: true
+        }
+      );
+
+      if (confirmado) {
         socket.emit('admin_vaciar_cola', { barId });
       }
     });
