@@ -34,73 +34,72 @@ jobs:
       MASTER_ADMIN_TOKEN_SECRET: test-master-secret-0123456789-abcdefghi
     steps:
       - uses: actions/checkout@v5
+
       - uses: actions/setup-node@v5
         with:
           node-version: 20.x
           cache: npm
-      - run: node --check scripts/audit-secrets.js
-      - run: node scripts/audit-secrets.js
-      - run: node scripts/audit-deploy-config.js
-      - run: npm ci
+
+      - name: Audit repository secrets
+        run: node scripts/audit-secrets.js
+
+      - name: Audit deployment configuration
+        run: node scripts/audit-deploy-config.js
+
+      - name: Install locked dependencies
+        run: npm ci
+
       - name: Dependency audit (runtime)
-        run: node scripts/audit-dependencies.js
-      - run: npx prisma validate
-      - run: npx prisma generate
-      - name: Run test database migrations
+        run: npm run audit:dependencies
+
+      - name: Validate Prisma schema
+        run: npx prisma validate
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Apply test database migrations
         run: npx prisma migrate deploy
-      - run: node --check server.js
-      - run: node --check db.js
-      - run: node --check routes/public.js
-      - run: node --check services/barService.js
-      - run: node --check services/licenseService.js
-      - run: node --check services/queueService.js
-      - run: node --check services/historyService.js
-      - run: node --check services/masterAdminAuthService.js
-      - run: node --check services/operatorAuthService.js
-      - run: node --check services/youtubeSearchService.js
-      - run: node --check services/songRequestPolicy.js
-      - run: node --check services/searchRequestPolicy.js
-      - run: node --check services/socketConnectionPolicy.js
-      - run: node --check services/socketStateRequestPolicy.js
-      - run: node --check services/operatorActionPolicy.js
-      - run: node --check services/barAccessService.js
-      - run: node --check services/socketStateService.js
-      - run: node --check services/qrService.js
-      - run: node --check services/masterDashboardService.js
-      - run: node --check socket/playbackAdminHandlers.js
-      - run: node --check socket/publicHandlers.js
-      - run: node --check lib/socketBar.js
-      - run: node --check lib/rateLimitStore.js
-      - run: node --check lib/urlValidation.js
-      - run: node --check lib/securityHeaders.js
-      - run: node --check lib/logger.js
-      - run: node --check lib/adminAudit.js
-      - run: node --check lib/promiseTimeout.js
-      - run: node --check lib/serviceLifecycle.js
-      - run: node --check lib/configValidation.js
-      - run: node --check lib/barUrls.js
-      - run: node --check lib/barSlug.js
-      - run: node --check lib/cookies.js
-      - run: node --check lib/advisoryLocks.js
-      - run: node --check lib/originValidation.js
-      - run: node --check public/js/operator-auth.js
-      - run: node --check public/js/admin.js
-      - run: node --check public/js/bar.js
-      - run: node --check public/js/cliente.js
-      - run: node --check public/js/master-admin.js
-      - run: node --check public/js/admin-dialog.js
-      - run: node --check scripts/audit-dependencies.js
-      - run: node scripts/audit-public-html.js
-      - run: node --test tests/security.test.js tests/security-headers.test.js tests/youtube-search.test.js tests/song-request-policy.test.js tests/search-request-policy.test.js tests/socket-connection-policy.test.js tests/operator-action-policy.test.js tests/socket-state-request-policy.test.js tests/operator-auth-http.test.js tests/config-validation.test.js tests/rate-limit-store.test.js tests/bar-urls.test.js tests/bar-slug.test.js tests/cookies.test.js tests/advisory-locks.test.js tests/master-admin-cookie.test.js tests/origin-validation.test.js tests/qr-service.test.js tests/public-api-rate-limit.test.js tests/request-id.test.js tests/http-access-log.test.js tests/logger.test.js tests/admin-audit.test.js tests/bar-access.test.js tests/error-handler.test.js tests/promise-timeout.test.js tests/service-lifecycle.test.js tests/legacy-auth.test.js tests/license.test.js tests/master-dashboard-service.test.js
-      - run: node --check middleware/auth.js
-      - run: node --check middleware/masterAdminAuth.js
-      - run: node --check middleware/operatorAuth.js
-      - run: node --check middleware/publicApiRateLimit.js
-      - run: node --check middleware/requestId.js
-      - run: node --check middleware/httpAccessLog.js
-      - run: node --check middleware/apiCacheControl.js
-      - run: node --check middleware/errorHandler.js
-      - run: node --check create-master-admin.js
-      - run: node --check scripts/db-smoke.js
+
+      - name: Syntax check
+        run: npm run check:syntax
+
+      - name: Audit public frontend
+        run: npm run audit:public
+
+      - name: Focused security and unit tests
+        run: >-
+          node --test
+          tests/security.test.js
+          tests/security-headers.test.js
+          tests/youtube-search.test.js
+          tests/song-request-policy.test.js
+          tests/search-request-policy.test.js
+          tests/socket-connection-policy.test.js
+          tests/operator-action-policy.test.js
+          tests/socket-state-request-policy.test.js
+          tests/operator-auth-http.test.js
+          tests/config-validation.test.js
+          tests/rate-limit-store.test.js
+          tests/bar-urls.test.js
+          tests/bar-slug.test.js
+          tests/cookies.test.js
+          tests/advisory-locks.test.js
+          tests/master-admin-cookie.test.js
+          tests/origin-validation.test.js
+          tests/qr-service.test.js
+          tests/public-api-rate-limit.test.js
+          tests/request-id.test.js
+          tests/http-access-log.test.js
+          tests/logger.test.js
+          tests/admin-audit.test.js
+          tests/bar-access.test.js
+          tests/error-handler.test.js
+          tests/promise-timeout.test.js
+          tests/service-lifecycle.test.js
+          tests/legacy-auth.test.js
+          tests/license.test.js
+          tests/master-dashboard-service.test.js
+
       - name: Run full integration test suite
         run: timeout 180s npm test
