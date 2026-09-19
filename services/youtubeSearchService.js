@@ -7,7 +7,7 @@ const { logWarn } = require('../lib/logger.js');
 
 const CACHE_TTL_MS = 60 * 60 * 1000;
 const MAX_CACHE_ENTRIES = 500;
-const SEARCH_TIMEOUT_MS = 8 * 1000;
+const SEARCH_TIMEOUT_MS = 15 * 1000;
 const PROVIDER_FAILURE_THRESHOLD = 5;
 const PROVIDER_OPEN_MS = 30 * 1000;
 const MIN_VIDEO_DURATION_SECONDS = 45;
