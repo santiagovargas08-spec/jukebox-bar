@@ -13,13 +13,12 @@ const {
 } = require('../services/queueService.js');
 
 const {
-  addToHistory,
   getHistory
 } = require('../services/historyService.js');
 
 const {
   advancePlayback,
-  clearPlaybackStateIfMatches
+  completeCurrentAndAdvance
 } = require('../services/playbackService.js');
 
 const { HISTORIAL_MAX } = require('../services/socketStateService.js');
@@ -353,51 +352,23 @@ function registerPlaybackAdminHandlers({
       const acceso = await verificarLicenciaSocket(socket, id);
       if (!acceso) return;
 
-      const song = {
-        videoId: String(cancion.videoId).trim(),
-        title: String(
-          cancion.title ||
-          cancion.titulo ||
-          ''
-        ).trim(),
-        name: String(
-          cancion.name ||
-          cancion.nombre ||
-          'Cliente'
-        ).trim(),
-        thumbnail: cancion.thumbnail || null
-      };
+      const videoId =
+        String(cancion.videoId).trim();
 
-      if (!song.title) return;
-
-      const completedCurrent =
-        await clearPlaybackStateIfMatches(
+      const result =
+        await completeCurrentAndAdvance(
           id,
-          song.videoId
+          videoId
         );
 
-      if (!completedCurrent) {
+      if (!result.completed) {
         logInfo('Finalización de reproducción obsoleta ignorada', {
           event: 'playback_stale_completion_ignored',
           barId: id,
-          videoId: song.videoId
+          videoId,
+          reason: result.reason
         });
         return;
-      }
-
-      const ultimo = await getHistory(id, 1);
-
-      if (
-        ultimo.length > 0 &&
-        ultimo[0].videoId === song.videoId
-      ) {
-        logInfo('Historial duplicado ignorado', {
-          event: 'history_duplicate_ignored',
-          barId: id,
-          videoId: song.videoId
-        });
-      } else {
-        await addToHistory(id, song);
       }
 
       const historial = await getHistory(
@@ -412,20 +383,42 @@ function registerPlaybackAdminHandlers({
         }
       );
 
-      logInfo('Canción agregada al historial', {
-        event: 'history_song_added',
+      logInfo('Canción finalizada', {
+        event: 'history_song_completed',
         barId: id,
-        videoId: song.videoId
+        videoId: result.completedSong.videoId,
+        historyCreated: result.historyCreated
       });
 
-      await reproducirSiguiente(
-        id,
-        'FIN_REPRODUCCION'
-      );
+      if (result.playback) {
+        logInfo('Reproduciendo siguiente canción', {
+          event: 'playback_next',
+          source: 'FIN_REPRODUCCION',
+          barId: id,
+          videoId: result.item.videoId
+        });
+
+        io.to(`bar:${id}`).emit(
+          'nueva_reproduccion',
+          result.playback
+        );
+      } else {
+        io.to(`bar:${id}`).emit(
+          'cola_actualizada',
+          {
+            cola: [],
+            reproduciendo: null
+          }
+        );
+      }
+
+      await emitirEstadoBar(id);
     } catch (error) {
-      logError('[HISTORIAL] Error:', { error: error?.message || String(error) });
+      logError('[HISTORIAL] Error:', {
+        error: error?.message || String(error)
+      });
     }
-  });
+  });;
 }
 
 module.exports = {
