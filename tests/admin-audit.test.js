@@ -129,6 +129,25 @@ describe('admin audit', () => {
     );
   });
 
+  it('redacta metadatos sensibles antes de persistir', () => {
+    assert.deepEqual(
+      normalizeDetails({
+        safe: 'ok',
+        token: 'secret-token',
+        nested: {
+          apiKey: 'secret-key'
+        }
+      }),
+      {
+        safe: 'ok',
+        token: '[REDACTED]',
+        nested: {
+          apiKey: '[REDACTED]'
+        }
+      }
+    );
+  });
+
   it('normaliza detalles serializables', () => {
     assert.deepEqual(
       normalizeDetails({
