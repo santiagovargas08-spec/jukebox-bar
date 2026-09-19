@@ -2,9 +2,9 @@ name: Master Admin checks
 
 on:
   push:
-    branches: [comercializacion]
+    branches: [comercializacion, hardening-comercializacion]
   pull_request:
-    branches: [comercializacion]
+    branches: [comercializacion, hardening-comercializacion]
 
 permissions:
   contents: read
@@ -82,6 +82,7 @@ jobs:
           tests/socket-connection-policy.test.js
           tests/operator-action-policy.test.js
           tests/socket-state-request-policy.test.js
+          tests/socket-public-handlers.test.js
           tests/operator-auth-http.test.js
           tests/config-validation.test.js
           tests/rate-limit-store.test.js

@@ -43,6 +43,7 @@ function registerPublicSocketHandlers({
           ? payload.barId
           : payload;
 
+      const previousBarId = socket.data.barId;
       const id = obtenerBarIdAutorizado(socket, barId);
 
       if (!id) {
@@ -67,8 +68,8 @@ function registerPublicSocketHandlers({
 
       if (!acceso) return;
 
-      if (socket.data.barId) {
-        socket.leave(`bar:${socket.data.barId}`);
+      if (previousBarId && previousBarId !== id) {
+        socket.leave(`bar:${previousBarId}`);
       }
 
       socket.data.barId = id;
@@ -105,7 +106,7 @@ function registerPublicSocketHandlers({
           ? payload.barId
           : payload;
 
-      id = obtenerBarIdAutorizado(
+      const id = obtenerBarIdAutorizado(
         socket,
         barId
       );
@@ -244,7 +245,7 @@ function registerPublicSocketHandlers({
         cancion = payload;
       }
 
-      const id = obtenerBarIdAutorizado(
+      id = obtenerBarIdAutorizado(
         socket,
         barId
       );
