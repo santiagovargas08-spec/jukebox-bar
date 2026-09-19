@@ -2,6 +2,7 @@
 
 const { getActiveAdminFromToken } = require('../services/operatorAuthService.js');
 const { RateLimitStore } = require('../lib/rateLimitStore.js');
+const { logError } = require('../lib/logger.js');
 
 const OPERATOR_COOKIE = 'jukebox_operator';
 const AUTH_WINDOW_MS = 60 * 1000;
@@ -85,6 +86,13 @@ async function requireOperatorHttp(req, res, next) {
     const operator = await getActiveAdminFromToken(token);
 
     if (!operator) {
+      res.clearCookie(OPERATOR_COOKIE, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        path: '/'
+      });
+
       return res.status(401).json({
         ok: false,
         error: 'La sesión del operador no es válida o expiró.'
@@ -95,7 +103,11 @@ async function requireOperatorHttp(req, res, next) {
     req.operatorToken = token;
     next();
   } catch (error) {
-    console.error('[AUTH] Error validando operador HTTP:', error);
+    logError('Error validando operador HTTP', {
+      event: 'operator_auth_error',
+      requestId: req.id || null,
+      error: error?.message || String(error)
+    });
 
     res.status(500).json({
       ok: false,
