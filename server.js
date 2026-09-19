@@ -8,6 +8,7 @@ const { Server } = require('socket.io');
 const path = require('path');
 const publicRoutes = require('./routes/public.js');
 const { errorHandler } = require('./middleware/errorHandler.js');
+const { getOperatorTokenFromCookieHeader } = require('./middleware/operatorAuth.js');
 
 const {
   getActiveAdminFromToken
@@ -58,7 +59,12 @@ const HOST = '0.0.0.0';
 
 io.use(async (socket, next) => {
   try {
-    const token = socket.handshake.auth?.operatorToken;
+    const token =
+      socket.handshake.auth?.operatorToken ||
+      getOperatorTokenFromCookieHeader(
+        socket.handshake.headers?.cookie
+      );
+
     if (!token) return next();
     const operator = await getActiveAdminFromToken(token);
     if (!operator) return next(new Error('UNAUTHORIZED_OPERATOR'));
