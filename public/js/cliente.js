@@ -876,7 +876,7 @@ document.addEventListener('error', (event) => {
           'lq-title';
 
         title.textContent =
-          String(song.titulo || '');
+          String(song.titulo || song.title || '');
 
 
         const who =
@@ -886,7 +886,7 @@ document.addEventListener('error', (event) => {
           'lq-who';
 
         who.textContent =
-          `📍 ${String(song.nombre || '')} · ${String(song.timestamp || '')}`;
+          `📍 ${String(song.nombre || song.name || '')}`;
 
 
         info.append(
