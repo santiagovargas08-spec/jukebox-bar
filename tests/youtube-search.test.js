@@ -12,13 +12,13 @@ const {
 describe('youtube search service', () => {
   it('normaliza un resultado válido', () => {
     const result = normalizeYoutubeResult({
-      videoId: 'abc123',
+      videoId: 'abc123XYZ09',
       title: '  Canción demo  ',
       author: { name: '  Canal Demo ' },
-      thumbnail: 'https://i.ytimg.com/vi/abc123/hqdefault.jpg'
+      thumbnail: 'https://i.ytimg.com/vi/abc123XYZ09/hqdefault.jpg'
     });
 
-    assert.equal(result.videoId, 'abc123');
+    assert.equal(result.videoId, 'abc123XYZ09');
     assert.equal(result.title, 'Canción demo');
     assert.equal(result.author.name, 'Canal Demo');
     assert.match(result.thumbnail, /i\.ytimg\.com/);
@@ -30,7 +30,7 @@ describe('youtube search service', () => {
 
   it('usa valores seguros cuando faltan metadatos', () => {
     const result = normalizeYoutubeResult({
-      videoId: 'abc123',
+      videoId: 'abc123XYZ09',
       title: '',
       author: null,
       thumbnail: ''
