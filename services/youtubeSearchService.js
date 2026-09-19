@@ -113,7 +113,10 @@ async function searchYoutube(
           .map(normalizeYoutubeResult)
           .filter(Boolean);
 
-        setCached(key, videos);
+        if (videos.length > 0) {
+          setCached(key, videos);
+        }
+
         return videos;
       } catch (error) {
         logWarn('Error en búsqueda de YouTube', {
