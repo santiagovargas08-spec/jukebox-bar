@@ -5,7 +5,8 @@ const { requireTestDatabase } = require('./tests/helpers.js');
 requireTestDatabase();
 
 delete require.cache[require.resolve('./db.js')];
-const { prisma } = require('./db.js');
+const { prisma, pool } = require('./db.js');
+const { addToQueue } = require('./services/queueService.js');
 
 async function main() {
   let bar;
@@ -46,14 +47,16 @@ async function main() {
 
     console.log(`✓ Bar creado: ${bar.name} (id=${bar.id})`);
 
-    const cancion = await prisma.queueItem.create({
-      data: {
-        barId: bar.id,
-        videoId: `TEST_VIDEO_${Date.now()}`,
+    const queueResult = await addToQueue(
+      bar.id,
+      {
+        videoId: 'TestDb00001',
         title: 'Canción de prueba',
         name: 'Cliente Test'
       }
-    });
+    );
+
+    const cancion = queueResult.item;
 
     console.log(`✓ Cola: ${cancion.title}`);
 
@@ -79,7 +82,8 @@ async function main() {
     }
 
     await prisma.$disconnect();
+    await pool.end();
   }
 }
 
-main();
+void main();
