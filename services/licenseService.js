@@ -416,9 +416,12 @@ async function getLicenseStatus(barId) {
   return {
     ...license,
 
+    // Ya tenemos la licencia refrescada; reutilizar este registro evita
+    // una segunda consulta/refresh redundante por cada lectura de estado.
     puedeUsar:
-      await isLicenseValid(
-        barId
+      isLicenseRecordValid(
+        license,
+        ahora
       ),
 
     diasRestantes,
