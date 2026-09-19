@@ -110,26 +110,34 @@ async function removeFromQueue(barId, queueItemId) {
     throw new Error('queueItemId inválido');
   }
 
-  const result = await prisma.queueItem.deleteMany({
-    where: {
-      id: itemId,
-      barId: bar
-    }
-  });
+  return prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(${bar})`;
 
-  return result.count > 0;
+    const result = await tx.queueItem.deleteMany({
+      where: {
+        id: itemId,
+        barId: bar
+      }
+    });
+
+    return result.count > 0;
+  });
 }
 
 async function clearQueue(barId) {
   const id = normalizarBarId(barId);
 
-  const result = await prisma.queueItem.deleteMany({
-    where: {
-      barId: id
-    }
-  });
+  return prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(${id})`;
 
-  return result.count;
+    const result = await tx.queueItem.deleteMany({
+      where: {
+        barId: id
+      }
+    });
+
+    return result.count;
+  });
 }
 
 async function reorderQueue(barId, orderedIds) {
