@@ -172,7 +172,7 @@ router.post('/master-admin/bars', async (req, res) => {
     if (typeof name !== 'string' || !name.trim()) return res.status(400).json({ ok: false, error: 'El nombre del bar es obligatorio.' });
     const bar = await createBar({ name, slug, displayName, welcomeMessage });
 
-    auditAdminAction({
+    await auditAdminAction({
       req,
       action: 'bar.create',
       barId: bar.id,
@@ -196,7 +196,7 @@ router.post('/master-admin/bars/:id/admins', async (req, res) => {
     if (role !== 'BAR_ADMIN') return res.status(400).json({ ok: false, error: 'Desde Master Admin solo se crean administradores BAR_ADMIN.' });
     const admin = await createAdminUser({ barId: bar.id, email, displayName, password, role });
 
-    auditAdminAction({
+    await auditAdminAction({
       req,
       action: 'bar.admin.create',
       barId: bar.id,
@@ -219,7 +219,7 @@ router.put('/master-admin/bars/:id', async (req, res) => {
   try {
     const bar = await updateBar(req.params.id, req.body || {});
 
-    auditAdminAction({
+    await auditAdminAction({
       req,
       action: 'bar.update',
       barId: bar.id,
@@ -242,7 +242,7 @@ router.patch('/master-admin/bars/:id/active', async (req, res) => {
     if (typeof req.body?.active !== 'boolean') return res.status(400).json({ ok: false, error: 'active debe ser boolean.' });
     const bar = await updateBar(req.params.id, { active: req.body.active });
 
-    auditAdminAction({
+    await auditAdminAction({
       req,
       action: 'bar.active.update',
       barId: bar.id,
@@ -286,7 +286,7 @@ router.post('/master-admin/bars/:id/license/activate', async (req, res) => {
       createdBy: req.masterAdmin.email
     });
 
-    auditAdminAction({
+    await auditAdminAction({
       req,
       action: 'license.activate',
       barId: bar.id,
@@ -313,7 +313,7 @@ router.post('/master-admin/bars/:id/license/suspend', async (req, res) => {
     if (!bar) return res.status(404).json({ ok: false, error: 'Bar no encontrado.' });
     const license = await suspendLicense(bar.id);
 
-    auditAdminAction({
+    await auditAdminAction({
       req,
       action: 'license.suspend',
       barId: bar.id,
@@ -334,7 +334,7 @@ router.post('/master-admin/bars/:id/license/reactivate', async (req, res) => {
     if (!bar) return res.status(404).json({ ok: false, error: 'Bar no encontrado.' });
     const license = await reactivateLicense(bar.id);
 
-    auditAdminAction({
+    await auditAdminAction({
       req,
       action: 'license.reactivate',
       barId: bar.id,
