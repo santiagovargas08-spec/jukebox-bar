@@ -32,7 +32,7 @@ describe('queue', () => {
 
   it('agregar y eliminar canción', async () => {
     const added = await queueService.addToQueue(bar.id, {
-      videoId: 'q-1',
+      videoId: 'Queue000001',
       title: 'Test Song',
       name: 'Cliente'
     });
@@ -49,12 +49,12 @@ describe('queue', () => {
 
   it('rechaza IDs duplicados en reorder', async () => {
     await queueService.addToQueue(bar.id, {
-      videoId: 'q-a',
+      videoId: 'QueueA00001',
       title: 'A',
       name: 'Cliente'
     });
     await queueService.addToQueue(bar.id, {
-      videoId: 'q-b',
+      videoId: 'QueueB00001',
       title: 'B',
       name: 'Cliente'
     });
@@ -77,7 +77,7 @@ describe('queue', () => {
     const results = await Promise.allSettled(
       Array.from({ length: attempts }, (_, index) =>
         queueService.addToQueue(bar.id, {
-          videoId: `conc-${index}`,
+          videoId: `C${String(index).padStart(10, '0')}`,
           title: `Song ${index}`,
           name: 'Cliente'
         })
@@ -100,7 +100,7 @@ describe('queue', () => {
     await queueService.clearQueue(bar.id);
 
     await queueService.addToQueue(bar.id, {
-      videoId: 'take-single',
+      videoId: 'TakeS000001',
       title: 'Take Single',
       name: 'Cliente'
     });
