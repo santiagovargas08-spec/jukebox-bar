@@ -5,6 +5,38 @@ const { RateLimitStore } = require('../lib/rateLimitStore.js');
 const REQUEST_WINDOW_MS = 60 * 1000;
 const MAX_REQUESTS_PER_WINDOW = 3;
 const MAX_IP_REQUESTS_PER_WINDOW = 20;
+const OPERATOR_REQUESTER_NAME = '👑 DJ / Admin';
+
+function normalizeRequesterName(rawName, isOperator = false) {
+  if (isOperator) {
+    return OPERATOR_REQUESTER_NAME;
+  }
+
+  const value =
+    typeof rawName === 'string'
+      ? rawName.trim()
+      : '';
+
+  if (!value) {
+    return 'Cliente';
+  }
+
+  const normalizedReservedCheck = value
+    .normalize('NFKD')
+    .replace(/[^a-zA-Z0-9]+/g, ' ')
+    .trim()
+    .toLowerCase();
+
+  if (
+    normalizedReservedCheck === 'dj admin' ||
+    normalizedReservedCheck === 'admin' ||
+    normalizedReservedCheck === 'super admin'
+  ) {
+    return 'Cliente';
+  }
+
+  return value.slice(0, 30);
+}
 
 function normalizeSocketIp(socket) {
   const forwarded = socket?.handshake?.headers?.['x-forwarded-for'];
@@ -85,5 +117,7 @@ module.exports = {
   isBlockedSong: defaultPolicy.isBlockedSong,
   createSongRequestPolicy,
   normalizeSocketIp,
-  parseBlockedTerms
+  parseBlockedTerms,
+  normalizeRequesterName,
+  OPERATOR_REQUESTER_NAME
 };
