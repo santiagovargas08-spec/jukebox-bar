@@ -18,6 +18,7 @@ document.addEventListener('error', (event) => {
     const listaCola        = document.getElementById('lista-cola');
     const countCola        = document.getElementById('count-cola');
     const btnVaciar        = document.getElementById('btn-vaciar');
+const btnLogout        = document.getElementById('btn-logout-operator');
     
     const inputBuscarAdmin = document.getElementById('input-buscar-admin');
     const btnBuscarAdmin   = document.getElementById('btn-buscar-admin');
