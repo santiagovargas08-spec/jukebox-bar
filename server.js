@@ -8,7 +8,6 @@ const { Server } = require('socket.io');
 const path = require('path');
 const ytSearch = require('yt-search');
 
-const commercialRoutes = require('./routes/commercial.js');
 const publicRoutes = require('./routes/public.js');
 const { errorHandler } = require('./middleware/errorHandler.js');
 
@@ -57,6 +56,7 @@ const {
 const { sanitizeThumbnailUrl } = require('./lib/urlValidation.js');
 const { RateLimitStore } = require('./lib/rateLimitStore.js');
 const { logError, logInfo } = require('./lib/logger.js');
+const { securityHeaders } = require('./lib/securityHeaders.js');
 
 
 // ============================================================
@@ -179,43 +179,6 @@ function isBlockedSong(song) {
 // MIDDLEWARE
 // ============================================================
 
-function securityHeaders(req, res, next) {
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
-  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  res.setHeader(
-    'Permissions-Policy',
-    'camera=(), microphone=(), geolocation=(), payment=()'
-  );
-
-  // CSP compatible con la interfaz actual (todavía contiene estilos/scripts inline).
-  // Se podrá endurecer retirando 'unsafe-inline' cuando el frontend se modularice.
-  res.setHeader(
-    'Content-Security-Policy',
-    [
-      "default-src 'self'",
-      "base-uri 'self'",
-      "object-src 'none'",
-      "frame-ancestors 'self'",
-      "script-src 'self' 'unsafe-inline' https://www.youtube.com https://www.gstatic.com https://bernardo-castilho.github.io",
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      "font-src 'self' https://fonts.gstatic.com data:",
-      "img-src 'self' data: blob: https://i.ytimg.com https://img.youtube.com https://yt3.ggpht.com https://yt3.googleusercontent.com",
-      "frame-src https://www.youtube.com https://www.youtube-nocookie.com",
-      "connect-src 'self' ws: wss: https://www.youtube.com"
-    ].join('; ')
-  );
-
-  if (process.env.NODE_ENV === 'production') {
-    res.setHeader(
-      'Strict-Transport-Security',
-      'max-age=31536000; includeSubDomains'
-    );
-  }
-
-  next();
-}
-
 app.disable('x-powered-by');
 app.use(securityHeaders);
 app.use(express.json({ limit: '32kb' }));
@@ -242,13 +205,15 @@ app.use(
 
 
 // ============================================================
-// API COMERCIAL (protegida)
+// API COMERCIAL LEGACY (deshabilitada por defecto)
 // ============================================================
 
-app.use(
-  '/api/commercial',
-  commercialRoutes
-);
+if (process.env.ENABLE_LEGACY_COMMERCIAL_API === 'true') {
+  // Carga diferida: si la API legacy no se usa, no amplía la superficie activa.
+  // Mantener solo para integraciones externas que todavía dependan de ADMIN_API_KEY.
+  const commercialRoutes = require('./routes/commercial.js');
+  app.use('/api/commercial', commercialRoutes);
+}
 
 app.use(errorHandler);
 
