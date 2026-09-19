@@ -124,6 +124,7 @@ model SongHistory {
   bar       Bar      @relation(fields: [barId], references: [id], onDelete: Cascade)
 
   @@index([barId])
+  @@index([barId, playedAt])
   @@index([playedAt])
 }
 
@@ -144,6 +145,7 @@ model Payment {
   license   License       @relation(fields: [licenseId], references: [id], onDelete: Cascade)
 
   @@index([barId])
+  @@index([barId, paidAt])
   @@index([licenseId])
   @@index([paidAt])
   @@index([reference])
