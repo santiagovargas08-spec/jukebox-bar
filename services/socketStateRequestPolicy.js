@@ -4,7 +4,7 @@ const { RateLimitStore } = require('../lib/rateLimitStore.js');
 const { normalizeSocketIp } = require('./songRequestPolicy.js');
 
 const WINDOW_MS = 60 * 1000;
-const MAX_BAR_SELECTIONS_PER_IP = 60;
+const MAX_BAR_SELECTIONS_PER_IP = 300;
 const MAX_STATE_REQUESTS_PER_SOCKET = 120;
 
 function createSocketStateRequestPolicy() {
