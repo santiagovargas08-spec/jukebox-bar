@@ -25,6 +25,7 @@ const { prisma, pool } = require('./db.js');
 const { createSocketStateService } = require('./services/socketStateService.js');
 const { registerPlaybackAdminHandlers } = require('./socket/playbackAdminHandlers.js');
 const { registerPublicSocketHandlers } = require('./socket/publicHandlers.js');
+const { allowConnection } = require('./services/socketConnectionPolicy.js');
 
 
 // ============================================================
@@ -68,6 +69,9 @@ const HOST = '0.0.0.0';
 
 io.use(async (socket, next) => {
   try {
+    if (!allowConnection(socket)) {
+      return next(new Error('RATE_LIMITED'));
+    }
     const token =
       socket.handshake.auth?.operatorToken ||
       getOperatorTokenFromCookieHeader(
