@@ -93,6 +93,19 @@ describe('health', () => {
     );
   });
 
+  it('API inexistente responde JSON 404 con requestId', async () => {
+    const data = await getJson('/api/does-not-exist');
+
+    assert.equal(data.status, 404);
+    assert.equal(data.body.ok, false);
+    assert.equal(data.body.error, 'API_NOT_FOUND');
+    assert.ok(data.body.requestId);
+    assert.equal(
+      data.headers['x-request-id'],
+      data.body.requestId
+    );
+  });
+
   it('sirve las cuatro interfaces públicas con cabeceras de seguridad', async () => {
     const pages = [
       '/cliente.html',
