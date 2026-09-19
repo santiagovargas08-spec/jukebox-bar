@@ -77,6 +77,16 @@ router.post('/master-admin/login', async (req, res) => {
       masterAdminCookieOptions()
     );
 
+    await auditAdminAction({
+      req: {
+        ...req,
+        masterAdmin: result.admin
+      },
+      action: 'session.master.login',
+      entityType: 'masterAdmin',
+      entityId: String(result.admin.id)
+    });
+
     res.json({
       ok: true,
       data: {
@@ -98,6 +108,13 @@ router.get('/master-admin/me', (req, res) => {
 
 router.post('/master-admin/logout', async (req, res) => {
   try {
+    await auditAdminAction({
+      req,
+      action: 'session.master.logout',
+      entityType: 'masterAdmin',
+      entityId: String(req.masterAdmin.id)
+    });
+
     await revokeMasterAdminToken(req.masterAdmin.id);
 
     res.clearCookie(
@@ -425,6 +442,17 @@ router.post('/bars/:slug/operator/login', noStore, requireTrustedOrigin, async (
       operatorCookieOptions()
     );
 
+    await auditAdminAction({
+      req: {
+        ...req,
+        operator: result.admin
+      },
+      action: 'session.operator.login',
+      barId: result.admin.barId,
+      entityType: 'adminUser',
+      entityId: String(result.admin.id)
+    });
+
     res.json({
       ok: true,
       data: {
@@ -481,6 +509,14 @@ router.post('/bars/:slug/operator/logout', noStore, requireTrustedOrigin, requir
         error: 'La sesión no corresponde a este bar.'
       });
     }
+
+    await auditAdminAction({
+      req,
+      action: 'session.operator.logout',
+      barId: req.operator.barId,
+      entityType: 'adminUser',
+      entityId: String(req.operator.id)
+    });
 
     await revokeOperatorTokens(req.operator.id);
 
