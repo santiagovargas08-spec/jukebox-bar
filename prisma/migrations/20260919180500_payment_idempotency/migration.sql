@@ -4,6 +4,3 @@ ADD COLUMN "idempotencyKey" VARCHAR(128);
 
 CREATE UNIQUE INDEX "Payment_barId_idempotencyKey_key"
 ON "Payment"("barId", "idempotencyKey");
-
-CREATE INDEX "Payment_idempotencyKey_idx"
-ON "Payment"("idempotencyKey");
