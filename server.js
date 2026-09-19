@@ -44,6 +44,7 @@ const {
 
 const { logError, logInfo } = require('./lib/logger.js');
 const { securityHeaders } = require('./lib/securityHeaders.js');
+const { prisma, pool } = require('./db.js');
 const { searchYoutube } = require('./services/youtubeSearchService.js');
 const { validarAccesoBar } = require('./services/barAccessService.js');
 const { canRequestSong, isBlockedSong } = require('./services/songRequestPolicy.js');
@@ -104,6 +105,18 @@ app.use(express.json({ limit: '32kb' }));
 
 app.get('/health', (req, res) => {
   res.status(200).json({ ok: true });
+});
+
+app.get('/ready', async (req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.status(200).json({ ok: true, database: 'ready' });
+  } catch (error) {
+    logError('[READY] Base de datos no disponible', {
+      error: error?.message || String(error)
+    });
+    res.status(503).json({ ok: false, database: 'unavailable' });
+  }
 });
 
 app.use(
@@ -1685,53 +1698,88 @@ io.on(
 
 
 // ============================================================
-// MANEJO GLOBAL DE ERRORES
-// ============================================================
-
-process.on(
-  'uncaughtException',
-  (error) => {
-
-    console.error(
-      '[ERROR GLOBAL] uncaughtException:',
-      error
-    );
-  }
-);
-
-
-process.on(
-  'unhandledRejection',
-  (error) => {
-
-    console.error(
-      '[ERROR GLOBAL] unhandledRejection:',
-      error
-    );
-  }
-);
-
-
-// ============================================================
 // INICIAR SERVIDOR
 // ============================================================
 
 if (require.main === module) {
-  server.listen(
-    PORT,
-    HOST,
-    () => {
+  let shuttingDown = false;
 
-      console.log(`
+  async function shutdown(reason, exitCode = 0) {
+    if (shuttingDown) return;
+    shuttingDown = true;
+
+    logInfo('[SHUTDOWN] Cerrando servidor', { reason, exitCode });
+
+    const forceTimer = setTimeout(() => {
+      logError('[SHUTDOWN] Cierre forzado por timeout', { reason });
+      process.exit(1);
+    }, 10000);
+
+    forceTimer.unref();
+
+    try {
+      await new Promise((resolve) => {
+        if (!server.listening) {
+          resolve();
+          return;
+        }
+
+        server.close(() => resolve());
+      });
+
+      io.disconnectSockets(true);
+      await prisma.$disconnect();
+      await pool.end();
+
+      clearTimeout(forceTimer);
+      process.exit(exitCode);
+    } catch (error) {
+      clearTimeout(forceTimer);
+      logError('[SHUTDOWN] Error cerrando recursos', {
+        reason,
+        error: error?.message || String(error)
+      });
+      process.exit(1);
+    }
+  }
+
+  process.once('SIGTERM', () => {
+    void shutdown('SIGTERM', 0);
+  });
+
+  process.once('SIGINT', () => {
+    void shutdown('SIGINT', 0);
+  });
+
+  process.once('uncaughtException', (error) => {
+    logError('[ERROR GLOBAL] uncaughtException', {
+      error: error?.stack || error?.message || String(error)
+    });
+    void shutdown('uncaughtException', 1);
+  });
+
+  process.once('unhandledRejection', (error) => {
+    logError('[ERROR GLOBAL] unhandledRejection', {
+      error: error?.stack || error?.message || String(error)
+    });
+    void shutdown('unhandledRejection', 1);
+  });
+
+  server.listen(PORT, HOST, () => {
+    console.log(`
 ==============================================
  JUKEBOX DIGITAL — MULTI-BAR
 ==============================================
  Puerto: ${PORT}
- API: http://localhost:${PORT}/api/commercial
+ Health: http://localhost:${PORT}/health
+ Ready: http://localhost:${PORT}/ready
  Cliente: http://localhost:${PORT}/cliente.html?bar=slug
  Bar: http://localhost:${PORT}/bar.html?bar=slug
  Admin: http://localhost:${PORT}/admin.html?bar=slug
- Comercial: http://localhost:${PORT}/comercial.html
+ Master Admin: http://localhost:${PORT}/master-admin.html
+
+ API comercial legacy:
+   ${process.env.ENABLE_LEGACY_COMMERCIAL_API === 'true' ? '✓ Habilitada' : '✓ Deshabilitada por defecto'}
 
  PostgreSQL:
    ✓ Cola persistente
@@ -1751,14 +1799,12 @@ if (require.main === module) {
    ✓ Validación de licencia
 
  YouTube:
-   ✓ yt-search
+   ✓ Búsqueda aislada en servicio
    ✓ Caché de búsquedas
    ✓ Normalización de resultados
-   ✓ Protección contra errores del parser
 ==============================================
 `);
-    }
-  );
+  });
 }
 
 module.exports = {
