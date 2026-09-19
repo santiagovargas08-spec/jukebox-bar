@@ -1242,3 +1242,43 @@ button { cursor: pointer; font-family: inherit; border: none; }
   background: transparent;
   color: #fff;
 }
+
+
+/* ─── Pantalla de error compartida ─────────────────────────── */
+.app-error-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: #0a0a0f;
+  color: #fff;
+  font-family: Arial, sans-serif;
+  text-align: center;
+}
+
+.app-error-card {
+  width: 100%;
+  max-width: 420px;
+  padding: 32px 24px;
+  border: 1px solid rgba(0, 240, 255, 0.35);
+  border-radius: 18px;
+  background: rgba(15, 15, 25, 0.95);
+  box-shadow: 0 0 30px rgba(0, 240, 255, 0.12);
+}
+
+.app-error-icon {
+  margin-bottom: 18px;
+  font-size: 3rem;
+}
+
+.app-error-title {
+  margin: 0 0 12px;
+  color: #00f0ff;
+}
+
+.app-error-message {
+  margin: 0;
+  color: #ccc;
+  line-height: 1.6;
+}
