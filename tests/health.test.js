@@ -104,6 +104,20 @@ describe('health', () => {
       data.headers['x-request-id'],
       data.body.requestId
     );
+    assert.match(
+      String(data.headers['cache-control'] || ''),
+      /no-store/i
+    );
+  });
+
+  it('API 404 también usa no-store por defecto', async () => {
+    const response = await getResponse('/api/another-missing-route');
+
+    assert.equal(response.status, 404);
+    assert.match(
+      String(response.headers['cache-control'] || ''),
+      /no-store/i
+    );
   });
 
   it('sirve las cuatro interfaces públicas con cabeceras de seguridad', async () => {
