@@ -51,10 +51,10 @@ const {
   createSocketCorsOptions
 } = require('./lib/socketBar.js');
 
-const { RateLimitStore } = require('./lib/rateLimitStore.js');
 const { logError, logInfo } = require('./lib/logger.js');
 const { securityHeaders } = require('./lib/securityHeaders.js');
 const { searchYoutube } = require('./services/youtubeSearchService.js');
+const { canRequestSong, isBlockedSong } = require('./services/songRequestPolicy.js');
 
 
 // ============================================================
@@ -101,47 +101,6 @@ io.use(async (socket, next) => {
 // ============================================================
 
 const HISTORIAL_MAX = 10;
-
-const REQUEST_WINDOW_MS = 60 * 1000;
-const MAX_REQUESTS_PER_WINDOW = 3;
-const SEARCH_COOLDOWN_MS = 1500;
-const MAX_IP_REQUESTS_PER_WINDOW = 20;
-const blockedTerms = (process.env.BLOCKED_SONG_TERMS || '')
-  .split(',')
-  .map((term) => term.trim().toLowerCase())
-  .filter(Boolean);
-
-const requestLimits = new RateLimitStore(REQUEST_WINDOW_MS);
-const ipRequestLimits = new RateLimitStore(REQUEST_WINDOW_MS);
-
-function canRequestSong(socket, barId) {
-  const socketKey = `${socket.id}:${barId}`;
-  const socketLimit = requestLimits.hit(
-    socketKey,
-    REQUEST_WINDOW_MS,
-    MAX_REQUESTS_PER_WINDOW
-  );
-
-  if (!socketLimit.allowed) {
-    return false;
-  }
-
-  const ip = socket.handshake.address || 'unknown';
-  const ipLimit = ipRequestLimits.hit(
-    `ip:${ip}:${barId}`,
-    REQUEST_WINDOW_MS,
-    MAX_IP_REQUESTS_PER_WINDOW
-  );
-
-  return ipLimit.allowed;
-}
-
-function isBlockedSong(song) {
-  if (blockedTerms.length === 0) return false;
-  const text = `${song.title || ''} ${song.name || ''}`.toLowerCase();
-  return blockedTerms.some((term) => text.includes(term));
-}
-
 
 // ============================================================
 // MIDDLEWARE
