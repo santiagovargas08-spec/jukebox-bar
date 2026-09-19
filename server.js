@@ -88,7 +88,12 @@ io.use(async (socket, next) => {
     socket.data.operator = operator;
     next();
   } catch (error) {
-    console.error('[AUTH] Error validando operador Socket.IO:', error);
+    logError('Error validando operador Socket.IO', {
+      event: 'socket_operator_auth_error',
+      socketId: socket.id?.slice(0, 8) || null,
+      error: error?.message || String(error)
+    });
+
     next(new Error('UNAUTHORIZED_OPERATOR'));
   }
 });
