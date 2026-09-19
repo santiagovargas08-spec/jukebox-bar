@@ -69,18 +69,27 @@ async function main() {
   );
 }
 
-main()
-  .catch((error) => {
-    console.error(
-      JSON.stringify({
-        level: 'error',
-        message:
-          error?.message ||
-          String(error)
-      })
-    );
-    process.exitCode = 1;
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+if (require.main === module) {
+  main()
+    .catch((error) => {
+      console.error(
+        JSON.stringify({
+          level: 'error',
+          message:
+            error?.message ||
+            String(error)
+        })
+      );
+      process.exitCode = 1;
+    })
+    .finally(async () => {
+      await prisma.$disconnect();
+    });
+}
+
+module.exports = {
+  parseRetentionDays,
+  MIN_DAYS,
+  MAX_DAYS,
+  DEFAULT_DAYS
+};
