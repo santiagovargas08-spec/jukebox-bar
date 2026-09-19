@@ -57,3 +57,33 @@
     justify-content:space-between
   }
 }
+
+
+.audit-list{
+  display:grid;
+  gap:10px;
+  margin-top:14px
+}
+
+.audit-item{
+  padding:12px;
+  border:1px solid #26314a;
+  border-radius:10px;
+  background:#0a1020
+}
+
+.audit-main{
+  display:flex;
+  gap:8px;
+  align-items:center;
+  flex-wrap:wrap
+}
+
+.audit-meta{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-top:7px;
+  color:#9aa8c2;
+  font-size:.9rem
+}
