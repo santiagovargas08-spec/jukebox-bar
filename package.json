@@ -42,5 +42,10 @@
     "node": "20.x"
   },
   "author": "Tu Bar",
-  "license": "ISC"
+  "license": "ISC",
+  "overrides": {
+    "redstar": {
+      "minimatch": "3.1.5"
+    }
+  }
 }
