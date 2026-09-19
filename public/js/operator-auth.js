@@ -75,6 +75,41 @@ window.OperatorAuth = (function () {
     });
   }
 
+  function conectarSocket(socket, token) {
+    if (socket.connected) {
+      return Promise.resolve();
+    }
+
+    socket.auth = { operatorToken: token };
+
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        cleanup();
+        reject(new Error('No se pudo conectar con el servidor.'));
+      }, 8000);
+
+      const cleanup = () => {
+        clearTimeout(timeout);
+        socket.off('connect', onConnect);
+        socket.off('connect_error', onError);
+      };
+
+      const onConnect = () => {
+        cleanup();
+        resolve();
+      };
+
+      const onError = (error) => {
+        cleanup();
+        reject(error || new Error('No se pudo validar la sesión.'));
+      };
+
+      socket.once('connect', onConnect);
+      socket.once('connect_error', onError);
+      socket.connect();
+    });
+  }
+
   async function iniciarSesionOperador({ slug, socket, titulo }) {
     if (!slug || !socket) {
       throw new Error('No se pudo inicializar la sesión del operador.');
@@ -82,6 +117,24 @@ window.OperatorAuth = (function () {
 
     const storageKey = `jukebox_operator_${slug}`;
     let token = sessionStorage.getItem(storageKey);
+
+    if (token) {
+      try {
+        await conectarSocket(socket, token);
+        return token;
+      } catch (error) {
+        const unauthorized =
+          String(error?.message || '').includes('UNAUTHORIZED_OPERATOR');
+
+        if (!unauthorized) {
+          throw error;
+        }
+
+        sessionStorage.removeItem(storageKey);
+        socket.disconnect();
+        token = null;
+      }
+    }
 
     if (!token) {
       const credentials = await pedirCredenciales(titulo);
@@ -110,8 +163,7 @@ window.OperatorAuth = (function () {
       sessionStorage.setItem(storageKey, token);
     }
 
-    socket.auth = { operatorToken: token };
-    socket.connect();
+    await conectarSocket(socket, token);
     return token;
   }
 
