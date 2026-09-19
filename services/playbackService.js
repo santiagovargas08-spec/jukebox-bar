@@ -2,6 +2,7 @@
 
 const { prisma } = require('../db.js');
 const { sanitizeThumbnailUrl, isValidYoutubeVideoId } = require('../lib/urlValidation.js');
+const { acquireQueueLock } = require('../lib/advisoryLocks.js');
 
 function normalizarBarId(barId) {
   const id = Number(barId);
@@ -28,19 +29,7 @@ function toPlaybackPayload(state) {
   };
 }
 
-async function getPlaybackState(barId) {
-  const id = normalizarBarId(barId);
-
-  const state = await prisma.playbackState.findUnique({
-    where: { barId: id }
-  });
-
-  return toPlaybackPayload(state);
-}
-
-async function setNowPlaying(barId, song) {
-  const id = normalizarBarId(barId);
-
+function buildPlaybackData(song) {
   if (!song || !song.videoId) {
     throw new Error('Datos de reproducción incompletos');
   }
@@ -63,17 +52,31 @@ async function setNowPlaying(barId, song) {
     throw new Error('Título y nombre son obligatorios');
   }
 
-  const now = new Date();
-
-  const data = {
+  return {
     queueItemId: song.id ?? null,
     videoId,
     title: title.slice(0, 100),
     name: name.slice(0, 30),
     thumbnail: sanitizeThumbnailUrl(song.thumbnail),
-    startedAt: now,
+    startedAt: new Date(),
     status: 'PLAYING'
   };
+}
+
+
+async function getPlaybackState(barId) {
+  const id = normalizarBarId(barId);
+
+  const state = await prisma.playbackState.findUnique({
+    where: { barId: id }
+  });
+
+  return toPlaybackPayload(state);
+}
+
+async function setNowPlaying(barId, song) {
+  const id = normalizarBarId(barId);
+  const data = buildPlaybackData(song);
 
   const state = await prisma.playbackState.upsert({
     where: { barId: id },
@@ -85,6 +88,65 @@ async function setNowPlaying(barId, song) {
   });
 
   return toPlaybackPayload(state);
+}
+
+async function advancePlayback(barId) {
+  const id = normalizarBarId(barId);
+
+  return prisma.$transaction(async (tx) => {
+    await acquireQueueLock(tx, id);
+
+    const rows = await tx.$queryRaw`
+      DELETE FROM "QueueItem"
+      WHERE "id" IN (
+        SELECT "id"
+        FROM "QueueItem"
+        WHERE "barId" = ${id}
+        ORDER BY "position" ASC, "id" ASC
+        LIMIT 1
+        FOR UPDATE SKIP LOCKED
+      )
+      RETURNING *
+    `;
+
+    if (!Array.isArray(rows) || rows.length === 0) {
+      await tx.playbackState.upsert({
+        where: { barId: id },
+        create: {
+          barId: id,
+          status: 'IDLE'
+        },
+        update: {
+          queueItemId: null,
+          videoId: null,
+          title: null,
+          name: null,
+          thumbnail: null,
+          startedAt: null,
+          status: 'IDLE'
+        }
+      });
+
+      return null;
+    }
+
+    const nextSong = rows[0];
+    const data = buildPlaybackData(nextSong);
+
+    const state = await tx.playbackState.upsert({
+      where: { barId: id },
+      create: {
+        barId: id,
+        ...data
+      },
+      update: data
+    });
+
+    return {
+      item: nextSong,
+      playback: toPlaybackPayload(state)
+    };
+  });
 }
 
 async function clearPlaybackState(barId) {
@@ -146,7 +208,9 @@ async function clearPlaybackStateIfMatches(
 module.exports = {
   getPlaybackState,
   setNowPlaying,
+  advancePlayback,
   clearPlaybackState,
   clearPlaybackStateIfMatches,
-  toPlaybackPayload
+  toPlaybackPayload,
+  buildPlaybackData
 };
