@@ -17,6 +17,9 @@ const SEARCH_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const SEARCH_CACHE_MAX_ROWS = 500;
 const SEARCH_CACHE_RESULTS_PER_QUERY = 10;
 const SEARCH_CACHE_CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
+const APPROX_CACHE_SCAN_LIMIT = 80;
+const APPROX_MIN_TOKENS = 2;
+const APPROX_MIN_SCORE = 0.72;
 
 let lastCleanupAt = 0;
 
@@ -25,8 +28,25 @@ function normalizeSearchQuery(value) {
     .normalize('NFKD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
+    .slice(0, 160);
+}
+
+function tokenizeSearchQuery(value) {
+  return normalizeSearchQuery(value)
+    .split(' ')
+    .filter(
+      (token) =>
+        token.length >= 2
+    );
+}
+
+function canonicalSearchKey(value) {
+  return tokenizeSearchQuery(value)
+    .sort()
+    .join(' ')
     .slice(0, 160);
 }
 
@@ -47,6 +67,7 @@ function compactSearchResult(video) {
         : null,
     duration:
       video.duration?.timestamp ||
+      video.duration ||
       null
   };
 }
@@ -58,37 +79,199 @@ function compactSearchResults(videos) {
     .slice(0, SEARCH_CACHE_RESULTS_PER_QUERY);
 }
 
-async function getPersistentSearchCache(query) {
-  const queryKey = normalizeSearchQuery(query);
+function approximateQueryScore(
+  query,
+  candidate
+) {
+  const queryTokens =
+    [...new Set(
+      tokenizeSearchQuery(query)
+    )];
 
-  if (!queryKey) {
+  const candidateTokens =
+    [...new Set(
+      tokenizeSearchQuery(candidate)
+    )];
+
+  if (
+    queryTokens.length <
+      APPROX_MIN_TOKENS ||
+    candidateTokens.length === 0
+  ) {
+    return 0;
+  }
+
+  const candidateSet =
+    new Set(candidateTokens);
+
+  const matched =
+    queryTokens.filter(
+      (token) =>
+        candidateSet.has(token)
+    ).length;
+
+  if (matched < 2) {
+    return 0;
+  }
+
+  const coverage =
+    matched /
+    queryTokens.length;
+
+  const union =
+    new Set([
+      ...queryTokens,
+      ...candidateTokens
+    ]).size;
+
+  const jaccard =
+    union > 0
+      ? matched / union
+      : 0;
+
+  return (
+    coverage * 0.7 +
+    jaccard * 0.3
+  );
+}
+
+async function findExactPersistentCache(
+  query
+) {
+  const canonical =
+    canonicalSearchKey(query);
+
+  const legacy =
+    normalizeSearchQuery(query);
+
+  if (!canonical) {
+    return null;
+  }
+
+  let cached =
+    await getPrisma().searchCache.findUnique({
+      where: {
+        queryKey: canonical
+      }
+    });
+
+  if (
+    !cached &&
+    legacy &&
+    legacy !== canonical
+  ) {
+    cached =
+      await getPrisma().searchCache.findUnique({
+        where: {
+          queryKey: legacy
+        }
+      });
+  }
+
+  return cached;
+}
+
+async function getPersistentSearchCache(query) {
+  const normalized =
+    normalizeSearchQuery(query);
+
+  if (!normalized) {
     return null;
   }
 
   try {
-    const cached =
-      await getPrisma().searchCache.findUnique({
-        where: { queryKey }
+    const now = Date.now();
+
+    const exact =
+      await findExactPersistentCache(
+        query
+      );
+
+    if (exact) {
+      if (
+        exact.expiresAt.getTime() <=
+        now
+      ) {
+        getPrisma().searchCache.delete({
+          where: {
+            queryKey:
+              exact.queryKey
+          }
+        }).catch(() => {});
+      } else {
+        return {
+          videos:
+            Array.isArray(exact.results)
+              ? exact.results
+              : [],
+          matchType: 'exact'
+        };
+      }
+    }
+
+    const queryTokens =
+      tokenizeSearchQuery(query);
+
+    if (
+      queryTokens.length <
+      APPROX_MIN_TOKENS
+    ) {
+      return null;
+    }
+
+    const candidates =
+      await getPrisma().searchCache.findMany({
+        where: {
+          expiresAt: {
+            gt: new Date(now)
+          }
+        },
+        orderBy: {
+          updatedAt: 'desc'
+        },
+        take:
+          APPROX_CACHE_SCAN_LIMIT,
+        select: {
+          query: true,
+          results: true
+        }
       });
 
-    if (!cached) {
-      return null;
+    let best = null;
+
+    for (const candidate of candidates) {
+      const score =
+        approximateQueryScore(
+          query,
+          candidate.query
+        );
+
+      if (
+        score >=
+          APPROX_MIN_SCORE &&
+        (!best || score > best.score)
+      ) {
+        best = {
+          score,
+          results:
+            candidate.results
+        };
+      }
     }
 
     if (
-      cached.expiresAt.getTime() <=
-      Date.now()
+      best &&
+      Array.isArray(best.results)
     ) {
-      getPrisma().searchCache.delete({
-        where: { queryKey }
-      }).catch(() => {});
-
-      return null;
+      return {
+        videos:
+          best.results,
+        matchType:
+          'approximate'
+      };
     }
 
-    return Array.isArray(cached.results)
-      ? cached.results
-      : null;
+    return null;
   } catch (error) {
     logWarn('No se pudo leer el cache persistente de busqueda', {
       event: 'search_cache_read_error',
@@ -170,7 +353,7 @@ async function setPersistentSearchCache(
   videos
 ) {
   const queryKey =
-    normalizeSearchQuery(query);
+    canonicalSearchKey(query);
 
   const results =
     compactSearchResults(videos);
@@ -226,8 +409,13 @@ module.exports = {
   setPersistentSearchCache,
   cleanupPersistentSearchCache,
   normalizeSearchQuery,
+  tokenizeSearchQuery,
+  canonicalSearchKey,
+  approximateQueryScore,
   compactSearchResults,
   SEARCH_CACHE_TTL_MS,
   SEARCH_CACHE_MAX_ROWS,
-  SEARCH_CACHE_RESULTS_PER_QUERY
+  SEARCH_CACHE_RESULTS_PER_QUERY,
+  APPROX_CACHE_SCAN_LIMIT,
+  APPROX_MIN_SCORE
 };
