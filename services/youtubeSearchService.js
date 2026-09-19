@@ -5,14 +5,23 @@ const { logWarn } = require('../lib/logger.js');
 const {
   getPersistentSearchCache,
   setPersistentSearchCache,
-  normalizeSearchQuery
+  normalizeSearchQuery,
+  canonicalSearchKey
 } = require('./searchCacheService.js');
+const {
+  warmKnownSongs,
+  searchKnownSongs,
+  rememberKnownSong
+} = require('./knownSongCatalogService.js');
 
 const CACHE_TTL_MS = 60 * 60 * 1000;
+const NEGATIVE_CACHE_TTL_MS = 2 * 60 * 1000;
 const MAX_CACHE_ENTRIES = 500;
+const MAX_NEGATIVE_CACHE_ENTRIES = 200;
 const MAX_SEARCH_RESULTS = 25;
 
 const cache = new Map();
+const negativeCache = new Map();
 const inFlight = new Map();
 
 function getCached(queryKey) {
@@ -37,8 +46,60 @@ function setCached(queryKey, videos) {
   });
 
   if (cache.size > MAX_CACHE_ENTRIES) {
-    const oldestKey = cache.keys().next().value;
+    const oldestKey =
+      cache.keys().next().value;
+
     cache.delete(oldestKey);
+  }
+}
+
+function hasNegativeCache(queryKey) {
+  const cachedAt =
+    negativeCache.get(queryKey);
+
+  if (!cachedAt) {
+    return false;
+  }
+
+  if (
+    Date.now() - cachedAt >=
+    NEGATIVE_CACHE_TTL_MS
+  ) {
+    negativeCache.delete(queryKey);
+    return false;
+  }
+
+  return true;
+}
+
+function setNegativeCache(queryKey) {
+  negativeCache.set(
+    queryKey,
+    Date.now()
+  );
+
+  if (
+    negativeCache.size >
+    MAX_NEGATIVE_CACHE_ENTRIES
+  ) {
+    const oldestKey =
+      negativeCache.keys()
+        .next().value;
+
+    negativeCache.delete(
+      oldestKey
+    );
+  }
+}
+
+function rememberSearchResults(videos) {
+  for (
+    const video of
+    Array.isArray(videos)
+      ? videos.slice(0, 10)
+      : []
+  ) {
+    rememberKnownSong(video, 1);
   }
 }
 
@@ -46,10 +107,12 @@ async function searchYoutube(
   query,
   {
     searchFn = ytSearch,
-    usePersistentCache = true
+    usePersistentCache = true,
+    useKnownSongs = true
   } = {}
 ) {
-  const text = String(query || '').trim();
+  const text =
+    String(query || '').trim();
 
   if (!text) {
     return {
@@ -59,8 +122,12 @@ async function searchYoutube(
     };
   }
 
-  const key = normalizeSearchQuery(text);
-  const cachedVideos = getCached(key);
+  const key =
+    canonicalSearchKey(text) ||
+    normalizeSearchQuery(text);
+
+  const cachedVideos =
+    getCached(key);
 
   if (cachedVideos) {
     return {
@@ -71,55 +138,133 @@ async function searchYoutube(
     };
   }
 
-  const persistentVideos =
+  const persistent =
     usePersistentCache
       ? await getPersistentSearchCache(text)
       : null;
 
   if (
-    Array.isArray(persistentVideos) &&
-    persistentVideos.length > 0
+    persistent &&
+    Array.isArray(persistent.videos) &&
+    persistent.videos.length > 0
   ) {
     setCached(
       key,
-      persistentVideos
+      persistent.videos
     );
 
+    rememberSearchResults(
+      persistent.videos
+    );
+
+    if (
+      persistent.matchType ===
+      'approximate'
+    ) {
+      void setPersistentSearchCache(
+        text,
+        persistent.videos
+      );
+    }
+
     return {
-      videos: persistentVideos,
+      videos:
+        persistent.videos,
       cached: true,
-      cacheLayer: 'database',
+      cacheLayer:
+        persistent.matchType ===
+        'approximate'
+          ? 'database-approx'
+          : 'database',
       status: 'OK'
     };
   }
 
-  let pending = inFlight.get(key);
+  if (useKnownSongs) {
+    await warmKnownSongs();
+
+    const knownVideos =
+      searchKnownSongs(
+        text,
+        10
+      );
+
+    if (
+      knownVideos.length > 0
+    ) {
+      setCached(
+        key,
+        knownVideos
+      );
+
+      if (usePersistentCache) {
+        void setPersistentSearchCache(
+          text,
+          knownVideos
+        );
+      }
+
+      return {
+        videos: knownVideos,
+        cached: true,
+        cacheLayer: 'history',
+        status: 'OK'
+      };
+    }
+  }
+
+  if (hasNegativeCache(key)) {
+    return {
+      videos: [],
+      cached: true,
+      cacheLayer:
+        'negative-memory',
+      status: 'NO_RESULTS'
+    };
+  }
+
+  let pending =
+    inFlight.get(key);
 
   if (!pending) {
     pending = (async () => {
-      const startedAt = Date.now();
+      const startedAt =
+        Date.now();
 
       try {
-        // Mismo enfoque del proyecto original:
-        // consulta directa a yt-search sin timeout artificial,
-        // circuit breaker, ranking ni filtros previos.
-        const result = await searchFn(text);
+        // Se conserva el mismo motor de búsqueda del proyecto original.
+        const result =
+          await searchFn(text);
 
         const videos =
-          result && Array.isArray(result.videos)
-            ? result.videos.slice(0, MAX_SEARCH_RESULTS)
+          result &&
+          Array.isArray(
+            result.videos
+          )
+            ? result.videos.slice(
+                0,
+                MAX_SEARCH_RESULTS
+              )
             : [];
 
         if (videos.length > 0) {
-          setCached(key, videos);
+          setCached(
+            key,
+            videos
+          );
 
-          // Guardado asíncrono: no retrasa la respuesta al cliente.
+          rememberSearchResults(
+            videos
+          );
+
           if (usePersistentCache) {
             void setPersistentSearchCache(
               text,
               videos
             );
           }
+        } else {
+          setNegativeCache(key);
         }
 
         return {
@@ -130,34 +275,46 @@ async function searchYoutube(
               ? 'OK'
               : 'NO_RESULTS',
           elapsedMs:
-            Date.now() - startedAt
+            Date.now() -
+            startedAt
         };
       } catch (error) {
-        logWarn('Error en búsqueda directa de YouTube', {
-          event: 'youtube_search_provider_error',
-          error:
-            error?.message ||
-            String(error),
-          elapsedMs:
-            Date.now() - startedAt
-        });
+        logWarn(
+          'Error en búsqueda directa de YouTube',
+          {
+            event:
+              'youtube_search_provider_error',
+            error:
+              error?.message ||
+              String(error),
+            elapsedMs:
+              Date.now() -
+              startedAt
+          }
+        );
 
         return {
           videos: [],
           cacheLayer: 'youtube',
-          status: 'PROVIDER_ERROR',
+          status:
+            'PROVIDER_ERROR',
           elapsedMs:
-            Date.now() - startedAt
+            Date.now() -
+            startedAt
         };
       } finally {
         inFlight.delete(key);
       }
     })();
 
-    inFlight.set(key, pending);
+    inFlight.set(
+      key,
+      pending
+    );
   }
 
-  const result = await pending;
+  const result =
+    await pending;
 
   return {
     videos: result.videos,
@@ -166,12 +323,14 @@ async function searchYoutube(
       result.cacheLayer ||
       'youtube',
     status: result.status,
-    elapsedMs: result.elapsedMs || 0
+    elapsedMs:
+      result.elapsedMs || 0
   };
 }
 
 function clearSearchCache() {
   cache.clear();
+  negativeCache.clear();
   inFlight.clear();
 }
 
@@ -179,6 +338,8 @@ module.exports = {
   searchYoutube,
   clearSearchCache,
   CACHE_TTL_MS,
+  NEGATIVE_CACHE_TTL_MS,
   MAX_CACHE_ENTRIES,
+  MAX_NEGATIVE_CACHE_ENTRIES,
   MAX_SEARCH_RESULTS
 };
