@@ -1,6 +1,7 @@
 'use strict';
 
 const { prisma } = require('../db.js');
+const { acquireLicenseLock } = require('../lib/advisoryLocks.js');
 const { logInfo } = require('../lib/logger.js');
 
 
@@ -558,7 +559,7 @@ async function activateSubscription({
   const resultado =
     await prisma.$transaction(
       async (tx) => {
-        await tx.$executeRaw`SELECT pg_advisory_xact_lock(${id})`;
+        await acquireLicenseLock(tx, id);
 
         const licenseActual = await tx.license.findUnique({
           where: { barId: id }
@@ -688,7 +689,7 @@ async function suspendLicense(barId) {
 
 
   return prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(${id})`;
+    await acquireLicenseLock(tx, id);
 
     const license =
       await tx.license.findUnique({
@@ -731,7 +732,7 @@ async function reactivateLicense(barId) {
   }
 
   return prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(${id})`;
+    await acquireLicenseLock(tx, id);
 
     const license =
       await tx.license.findUnique({
