@@ -1,4 +1,12 @@
     'use strict';
+// Oculta thumbnails rotos sin usar manejadores inline (compatible con CSP estricta).
+document.addEventListener('error', (event) => {
+  const target = event.target;
+  if (target instanceof HTMLImageElement && target.matches('.admin-thumb, .queue-thumb, .result-thumb, .live-queue-thumb')) {
+    target.style.display = 'none';
+  }
+}, true);
+
 
 
     // ============================================================
@@ -448,7 +456,6 @@
                   src="${escapeHtml(thumb)}"
                   alt="${escapeHtml(titulo)}"
                   loading="lazy"
-                  onerror="this.style.display='none'"
                 >
               `
 
