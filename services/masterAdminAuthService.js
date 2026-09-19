@@ -24,8 +24,12 @@ function normalizeEmail(email) {
 }
 
 function hashPassword(password, salt = crypto.randomBytes(16).toString('base64url')) {
-  if (typeof password !== 'string' || password.length < 12) {
-    throw new Error('La contraseña debe tener al menos 12 caracteres.');
+  if (
+    typeof password !== 'string' ||
+    password.length < 12 ||
+    password.length > 256
+  ) {
+    throw new Error('La contraseña debe tener entre 12 y 256 caracteres.');
   }
   const hash = crypto.scryptSync(password, salt, 64).toString('base64url');
   return `scrypt$${salt}$${hash}`;
@@ -101,7 +105,12 @@ function checkLoginRateLimit(email, ip = 'unknown') {
 
 async function createMasterAdmin({ email, displayName, password }) {
   const normalizedEmail = normalizeEmail(email);
-  if (!/^\S+@\S+\.\S+$/.test(normalizedEmail)) throw new Error('Correo electrónico inválido.');
+  if (
+    normalizedEmail.length > 254 ||
+    !/^\S+@\S+\.\S+$/.test(normalizedEmail)
+  ) {
+    throw new Error('Correo electrónico inválido.');
+  }
   if (typeof displayName !== 'string' || !displayName.trim()) throw new Error('El nombre es obligatorio.');
   return prisma.masterAdmin.create({
     data: {
@@ -115,6 +124,17 @@ async function createMasterAdmin({ email, displayName, password }) {
 
 async function authenticateMasterAdmin({ email, password, ip = 'unknown' }) {
   const normalizedEmail = normalizeEmail(email);
+
+  if (
+    normalizedEmail.length === 0 ||
+    normalizedEmail.length > 254 ||
+    typeof password !== 'string' ||
+    password.length === 0 ||
+    password.length > 256
+  ) {
+    return null;
+  }
+
   if (!checkLoginRateLimit(normalizedEmail, ip)) return null;
 
   const admin = await prisma.masterAdmin.findUnique({
