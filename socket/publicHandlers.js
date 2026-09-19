@@ -197,10 +197,12 @@ function registerPublicSocketHandlers({
         query: texto
       });
     } catch (error) {
-      console.error(
-        '[BUSQUEDA] Error buscando canciones:',
-        error
-      );
+      logError('Error buscando canciones', {
+        event: 'youtube_search_error',
+        socketId: clienteId,
+        barId: id,
+        error: error?.message || String(error)
+      });
 
       socket.emit('error_busqueda', {
         mensaje:
@@ -335,10 +337,12 @@ function registerPublicSocketHandlers({
         return;
       }
 
-      console.error(
-        '[COLA] Error agregando canción:',
-        error
-      );
+      logError('Error agregando canción', {
+        event: 'queue_song_add_error',
+        socketId: clienteId,
+        barId: id,
+        error: error?.message || String(error)
+      });
 
       socket.emit('error_cancion', {
         mensaje: 'No se pudo agregar la canción.'
