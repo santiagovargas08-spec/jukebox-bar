@@ -10,6 +10,7 @@ const publicRoutes = require('./routes/public.js');
 const { errorHandler } = require('./middleware/errorHandler.js');
 const { publicApiRateLimit } = require('./middleware/publicApiRateLimit.js');
 const { requestId } = require('./middleware/requestId.js');
+const { httpAccessLog } = require('./middleware/httpAccessLog.js');
 const { getOperatorTokenFromCookieHeader } = require('./middleware/operatorAuth.js');
 
 const {
@@ -98,6 +99,7 @@ io.use(async (socket, next) => {
 
 app.disable('x-powered-by');
 app.use(requestId);
+app.use(httpAccessLog);
 app.use(securityHeaders);
 app.use(express.json({ limit: '32kb' }));
 
@@ -180,9 +182,12 @@ io.on(
       socket.id.slice(0, 8);
 
 
-    console.log(
-      `[+] Conectado [${clienteId}] · Total: ${io.engine.clientsCount} cliente(s)`
-    );
+    logInfo('Socket conectado', {
+      event: 'socket_connected',
+      socketId: clienteId,
+      clients: io.engine.clientsCount,
+      operator: Boolean(socket.data.operator)
+    });
 
 
     registerPublicSocketHandlers({
@@ -210,9 +215,11 @@ io.on(
       'disconnect',
       () => {
 
-        console.log(
-          `[-] Desconectado [${clienteId}]`
-        );
+        logInfo('Socket desconectado', {
+          event: 'socket_disconnected',
+          socketId: clienteId,
+          clients: io.engine.clientsCount
+        });
       }
     );
   }
