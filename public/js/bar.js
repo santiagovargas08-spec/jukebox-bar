@@ -154,9 +154,9 @@ document.addEventListener('error', (event) => {
             });
           }
         }
-        if (!isAutoDJ && !isEsclavo) {
-          socket.emit('siguiente_cancion', { barId });
-        }
+        // El servidor avanza a la siguiente canción después de
+        // confirmar que este video era realmente el que estaba reproduciéndose.
+        // Evita carreras entre "cancion_terminada" y "siguiente_cancion".
       } else if (event.data === YT.PlayerState.PLAYING) {
         mostrarIdleScreen(false);
         if (isAutoDJ && player.getVideoData) {
