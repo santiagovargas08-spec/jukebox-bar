@@ -173,6 +173,18 @@ describe('health', () => {
         /no-cache/i,
         page
       );
+
+      if (
+        page === '/admin.html' ||
+        page === '/master-admin.html' ||
+        page === '/bar.html'
+      ) {
+        assert.match(
+          String(response.headers['x-robots-tag'] || ''),
+          /noindex/i,
+          page
+        );
+      }
     }
   });
 
