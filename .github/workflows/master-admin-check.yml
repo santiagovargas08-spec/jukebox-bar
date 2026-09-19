@@ -24,6 +24,7 @@ jobs:
       - run: node --check services/licenseService.js
       - run: node --check services/masterAdminAuthService.js
       - run: node --check services/operatorAuthService.js
+      - run: node --check services/youtubeSearchService.js
       - run: node --check lib/socketBar.js
       - run: node --check lib/securityHeaders.js
       - run: node --check public/js/operator-auth.js
@@ -31,6 +32,6 @@ jobs:
       - run: node --check public/js/bar.js
       - run: node --check public/js/cliente.js
       - run: node --check public/js/master-admin.js
-      - run: node --test tests/security.test.js tests/security-headers.test.js
+      - run: node --test tests/security.test.js tests/security-headers.test.js tests/youtube-search.test.js
       - run: node --check middleware/masterAdminAuth.js
       - run: node --check create-master-admin.js
