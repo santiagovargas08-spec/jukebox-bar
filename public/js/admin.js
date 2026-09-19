@@ -1,4 +1,12 @@
     'use strict';
+// Oculta thumbnails rotos sin usar manejadores inline (compatible con CSP estricta).
+document.addEventListener('error', (event) => {
+  const target = event.target;
+  if (target instanceof HTMLImageElement && target.matches('.admin-thumb, .queue-thumb, .result-thumb, .live-queue-thumb')) {
+    target.style.display = 'none';
+  }
+}, true);
+
 
     let barId = null;
     let barActual = null;
@@ -26,7 +34,7 @@
       if (reproduciendo) {
         const thumbSrc = DomSafe.safeThumbnailAttr(reproduciendo.thumbnail);
         const thumbHtml = thumbSrc
-          ? `<img class="admin-thumb" src="${thumbSrc}" alt="" loading="lazy" onerror="this.style.display='none'">`
+          ? `<img class="admin-thumb" src="${thumbSrc}" alt="" loading="lazy">`
           : `<div class="admin-thumb" style="display:flex;align-items:center;justify-content:center;font-size:2rem;">🎵</div>`;
 
         boxReproduciendo.innerHTML = `
@@ -182,7 +190,7 @@
         adminResults.innerHTML = items.slice(0, 5).map((item) => {
           const thumbSrc = DomSafe.safeThumbnailAttr(item.thumbnail);
           const thumbHtml = thumbSrc
-            ? `<img class="admin-thumb" src="${thumbSrc}" alt="" loading="lazy" onerror="this.style.display='none'">`
+            ? `<img class="admin-thumb" src="${thumbSrc}" alt="" loading="lazy">`
             : `<div class="admin-thumb" style="display:flex;align-items:center;justify-content:center;">🎵</div>`;
 
           return `
