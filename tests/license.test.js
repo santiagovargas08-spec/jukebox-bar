@@ -130,6 +130,42 @@ describe('license', () => {
     );
   });
 
+  it('isLicenseRecordValid evalúa fechas sin consultar la base de datos', () => {
+    const now = new Date('2026-09-19T12:00:00Z');
+
+    assert.equal(
+      licenseService.isLicenseRecordValid({
+        status: 'TRIAL',
+        trialEndsAt: new Date('2026-09-20T12:00:00Z')
+      }, now),
+      true
+    );
+
+    assert.equal(
+      licenseService.isLicenseRecordValid({
+        status: 'TRIAL',
+        trialEndsAt: new Date('2026-09-18T12:00:00Z')
+      }, now),
+      false
+    );
+
+    assert.equal(
+      licenseService.isLicenseRecordValid({
+        status: 'ACTIVE',
+        expiresAt: new Date('2026-10-19T12:00:00Z')
+      }, now),
+      true
+    );
+
+    assert.equal(
+      licenseService.isLicenseRecordValid({
+        status: 'SUSPENDED',
+        expiresAt: new Date('2026-10-19T12:00:00Z')
+      }, now),
+      false
+    );
+  });
+
   it('TRIAL vigente permite uso', async () => {
     const trialBar = await createTestBar(prisma, { slug: uniqueSlug('trial-bar') });
     const valid = await licenseService.isLicenseValid(trialBar.id);
