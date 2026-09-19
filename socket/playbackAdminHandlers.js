@@ -144,6 +144,7 @@ function registerPlaybackAdminHandlers({
       }
 
       if (!requireOperatorSocket(socket, id)) return;
+      if (!enforceOperatorActionLimit(id)) return;
 
       const acceso = await verificarLicenciaSocket(socket, id);
       if (!acceso) return;
@@ -176,6 +177,7 @@ function registerPlaybackAdminHandlers({
       }
 
       if (!requireOperatorSocket(socket, id)) return;
+      if (!enforceOperatorActionLimit(id)) return;
 
       const acceso = await verificarLicenciaSocket(socket, id);
       if (!acceso) return;
@@ -327,6 +329,7 @@ function registerPlaybackAdminHandlers({
 
       if (!id || !cancion?.videoId) return;
       if (!requireOperatorSocket(socket, id)) return;
+      if (!enforceOperatorActionLimit(id)) return;
 
       const acceso = await verificarLicenciaSocket(socket, id);
       if (!acceso) return;
