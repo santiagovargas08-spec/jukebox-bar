@@ -162,11 +162,13 @@ async function searchYoutube(
           .map(normalizeYoutubeResult)
           .filter(Boolean);
 
+        // Una respuesta válida del proveedor, incluso sin resultados,
+        // demuestra que el servicio sigue disponible. Solo errores, timeouts
+        // o respuestas malformadas cuentan como fallo del proveedor.
+        resetProviderCircuit();
+
         if (videos.length > 0) {
           setCached(key, videos);
-          resetProviderCircuit();
-        } else {
-          recordProviderFailure();
         }
 
         return videos;
