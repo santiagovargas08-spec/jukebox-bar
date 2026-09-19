@@ -25,3 +25,9 @@ ON "AdminAuditLog"("actorEmail", "createdAt");
 
 CREATE INDEX "AdminAuditLog_action_createdAt_idx"
 ON "AdminAuditLog"("action", "createdAt");
+
+CREATE INDEX "AdminAuditLog_requestId_idx"
+ON "AdminAuditLog"("requestId");
+
+CREATE INDEX "AdminAuditLog_entityType_entityId_idx"
+ON "AdminAuditLog"("entityType", "entityId");
