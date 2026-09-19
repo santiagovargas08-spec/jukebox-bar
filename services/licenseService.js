@@ -19,6 +19,21 @@ const PLAN_MONTHS = {
 const MAX_PAYMENT_AMOUNT = 99999999.99;
 const MAX_PAYMENT_NOTES_LENGTH = 1000;
 
+const PAYMENT_SAFE_SELECT = {
+  id: true,
+  barId: true,
+  licenseId: true,
+  amount: true,
+  currency: true,
+  plan: true,
+  method: true,
+  reference: true,
+  createdBy: true,
+  paidAt: true,
+  notes: true,
+  createdAt: true
+};
+
 
 // ============================================================
 // UTILIDADES
@@ -164,7 +179,8 @@ async function getLicenseByBarId(barId) {
         orderBy: {
           paidAt: 'desc'
         },
-        take: 50
+        take: 50,
+        select: PAYMENT_SAFE_SELECT
       }
     }
   });
@@ -609,7 +625,8 @@ async function activateSubscription({
                 barId: id,
                 idempotencyKey:
                   normalizedIdempotencyKey
-              }
+              },
+              select: PAYMENT_SAFE_SELECT
             });
 
           if (existingPayment) {
@@ -698,7 +715,9 @@ async function activateSubscription({
 
               notes:
                 notesNormalizadas
-            }
+            },
+            select:
+              PAYMENT_SAFE_SELECT
           });
 
 
@@ -869,7 +888,10 @@ async function getPaymentsByBarId(barId, limit = 100) {
       paidAt: 'desc'
     },
 
-    take: safeLimit
+    take: safeLimit,
+
+    select:
+      PAYMENT_SAFE_SELECT
   });
 }
 
@@ -908,6 +930,8 @@ module.exports = {
 
   getPaymentsByBarId,
 
-  normalizeIdempotencyKey
+  normalizeIdempotencyKey,
+
+  PAYMENT_SAFE_SELECT
 
 };
