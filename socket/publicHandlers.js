@@ -224,6 +224,7 @@ function registerPublicSocketHandlers({
       const {
         videos,
         cached,
+        cacheLayer,
         status,
         elapsedMs
       } = await searchYoutube(texto);
@@ -233,6 +234,7 @@ function registerPublicSocketHandlers({
         socketId: clienteId,
         barId: id,
         cached,
+        cacheLayer,
         results: videos.length,
         queryLength: texto.length,
         status,
