@@ -205,6 +205,49 @@ describe('playback', () => {
     assert.equal((await queueService.getQueue(bar.id)).length, 0);
   });
 
+  it('evento de finalización duplicado no salta dos canciones', async () => {
+    await queueService.clearQueue(bar.id);
+
+    await playbackService.setNowPlaying(bar.id, {
+      id: 500,
+      videoId: 'FinishA0001',
+      title: 'Finalizada',
+      name: 'Cliente A'
+    });
+
+    await queueService.addToQueue(bar.id, {
+      videoId: 'NextAA00001',
+      title: 'Siguiente A',
+      name: 'Cliente B'
+    });
+    await queueService.addToQueue(bar.id, {
+      videoId: 'NextBB00001',
+      title: 'Siguiente B',
+      name: 'Cliente C'
+    });
+
+    const first = await playbackService.completeCurrentAndAdvance(
+      bar.id,
+      'FinishA0001'
+    );
+    const duplicate = await playbackService.completeCurrentAndAdvance(
+      bar.id,
+      'FinishA0001'
+    );
+
+    assert.equal(first.completed, true);
+    assert.equal(first.playback.videoId, 'NextAA00001');
+    assert.equal(duplicate.completed, false);
+    assert.equal(duplicate.reason, 'STALE_COMPLETION');
+
+    const state = await playbackService.getPlaybackState(bar.id);
+    assert.equal(state.videoId, 'NextAA00001');
+
+    const queue = await queueService.getQueue(bar.id);
+    assert.equal(queue.length, 1);
+    assert.equal(queue[0].videoId, 'NextBB00001');
+  });
+
   it('estado sobrevive desconexión de Prisma (simula reinicio)', async () => {
     await playbackService.setNowPlaying(bar.id, {
       id: 100,
