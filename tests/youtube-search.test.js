@@ -68,6 +68,21 @@ describe('youtube search service', () => {
     assert.equal(calls, 2);
   });
 
+  it('resultados vacíos no abren el circuit breaker', async () => {
+    clearSearchCache();
+
+    const searchFn = async () => ({ videos: [] });
+
+    for (let index = 0; index < PROVIDER_FAILURE_THRESHOLD + 2; index += 1) {
+      await searchYoutube(
+        `consulta vacía ${index}`,
+        { searchFn, timeoutMs: 100 }
+      );
+    }
+
+    assert.equal(isProviderCircuitOpen(), false);
+  });
+
   it('coalesce búsquedas idénticas concurrentes', async () => {
     clearSearchCache();
 
