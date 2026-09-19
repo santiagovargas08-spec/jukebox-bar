@@ -9,7 +9,7 @@
     "build": "prisma generate",
     "postinstall": "prisma generate",
     "test": "node -e \"if(!process.env.TEST_DATABASE_URL){console.error('TEST_DATABASE_URL is required for tests.\\nTests will not use DATABASE_URL.');process.exit(1)}\" && node --test",
-    "test:db": "node scripts/test-db.js",
+    "test:db": "node scripts/db-smoke.js",
     "test:migrate": "prisma migrate deploy",
     "db:migrate": "prisma migrate deploy",
     "db:migrate:dev": "prisma migrate dev",
