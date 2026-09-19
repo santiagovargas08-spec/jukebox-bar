@@ -331,6 +331,10 @@ router.post('/master-admin/bars/:id/license/activate', async (req, res) => {
       }
     });
 
+    if (result.idempotent) {
+      res.set('Idempotency-Replayed', 'true');
+    }
+
     res.json({ ok: true, data: result });
   } catch (error) {
     logError('[MASTER_ADMIN] Error activando suscripción:', { requestId: req.id || null, error: error?.message || String(error) });
