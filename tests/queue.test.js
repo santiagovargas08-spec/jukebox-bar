@@ -30,6 +30,17 @@ describe('queue', () => {
     await prisma.$disconnect();
   });
 
+  it('rechaza videoId malformado', async () => {
+    await assert.rejects(
+      () => queueService.addToQueue(bar.id, {
+        videoId: '../invalid',
+        title: 'Inválida',
+        name: 'Cliente'
+      }),
+      /videoId inválido/
+    );
+  });
+
   it('agregar y eliminar canción', async () => {
     const added = await queueService.addToQueue(bar.id, {
       videoId: 'Queue000001',
