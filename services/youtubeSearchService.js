@@ -3,6 +3,7 @@
 const ytSearch = require('yt-search');
 const { sanitizeThumbnailUrl, isValidYoutubeVideoId } = require('../lib/urlValidation.js');
 const { withTimeout } = require('../lib/promiseTimeout.js');
+const { logWarn } = require('../lib/logger.js');
 
 const CACHE_TTL_MS = 60 * 60 * 1000;
 const MAX_CACHE_ENTRIES = 500;
@@ -118,7 +119,11 @@ async function searchYoutube(
       cached: false
     };
   } catch (error) {
-    console.error('[YOUTUBE] Error buscando:', error);
+    logWarn('Error en búsqueda de YouTube', {
+      event: 'youtube_search_provider_error',
+      code: error?.code || null,
+      error: error?.message || String(error)
+    });
 
     return {
       videos: [],
