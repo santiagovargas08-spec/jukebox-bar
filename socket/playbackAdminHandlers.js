@@ -25,6 +25,7 @@ const {
 const { HISTORIAL_MAX } = require('../services/socketStateService.js');
 const { logError, logInfo } = require('../lib/logger.js');
 const { auditSocketAdminAction } = require('../lib/adminAudit.js');
+const { allowOperatorAction } = require('../services/operatorActionPolicy.js');
 
 function registerPlaybackAdminHandlers({
   socket,
@@ -32,6 +33,30 @@ function registerPlaybackAdminHandlers({
   verificarLicenciaSocket,
   emitirEstadoBar
 }) {
+  function enforceOperatorActionLimit(
+    id,
+    {
+      destructive = false,
+      event = 'error_autorizacion'
+    } = {}
+  ) {
+    if (
+      allowOperatorAction(
+        socket,
+        id,
+        { destructive }
+      )
+    ) {
+      return true;
+    }
+
+    socket.emit(event, {
+      mensaje:
+        'Demasiadas acciones administrativas. Intenta nuevamente en un momento.'
+    });
+
+    return false;
+  }
   async function reproducirSiguiente(id, logPrefix) {
     const siguiente = await takeNextFromQueue(id);
 
@@ -86,6 +111,7 @@ function registerPlaybackAdminHandlers({
       }
 
       if (!requireOperatorSocket(socket, id)) return;
+      if (!enforceOperatorActionLimit(id)) return;
 
       const acceso = await verificarLicenciaSocket(socket, id);
       if (!acceso) return;
@@ -197,6 +223,7 @@ function registerPlaybackAdminHandlers({
       }
 
       if (!requireOperatorSocket(socket, id)) return;
+      if (!enforceOperatorActionLimit(id, { destructive: true })) return;
 
       const acceso = await verificarLicenciaSocket(socket, id);
       if (!acceso) return;
@@ -240,6 +267,7 @@ function registerPlaybackAdminHandlers({
       }
 
       if (!requireOperatorSocket(socket, id)) return;
+      if (!enforceOperatorActionLimit(id, { event: 'error_cola' })) return;
 
       const acceso = await verificarLicenciaSocket(socket, id);
       if (!acceso) return;
