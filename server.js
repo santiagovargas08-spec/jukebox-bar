@@ -76,8 +76,10 @@ io.use(async (socket, next) => {
     if (!allowConnection(socket)) {
       return next(new Error('RATE_LIMITED'));
     }
+    // La sesión de operador viaja únicamente en cookie HttpOnly.
+    // No aceptar tokens enviados por JavaScript en handshake.auth reduce
+    // exposición accidental y mantiene una sola fuente de autenticación.
     const token =
-      socket.handshake.auth?.operatorToken ||
       getOperatorTokenFromCookieHeader(
         socket.handshake.headers?.cookie
       );
