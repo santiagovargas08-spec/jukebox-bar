@@ -67,7 +67,7 @@ describe('playback', () => {
   it('estado sobrevive desconexión de Prisma (simula reinicio)', async () => {
     await playbackService.setNowPlaying(bar.id, {
       id: 100,
-      videoId: 'Persist00001',
+      videoId: 'Persist0001',
       title: 'Persist',
       name: 'DJ'
     });
@@ -81,6 +81,6 @@ describe('playback', () => {
     playbackService = require('../services/playbackService.js');
 
     const restored = await playbackService.getPlaybackState(bar.id);
-    assert.equal(restored.videoId, 'Persist00001');
+    assert.equal(restored.videoId, 'Persist0001');
   });
 });
