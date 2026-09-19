@@ -26,7 +26,7 @@ const router = express.Router();
 
 router.post('/master-admin/login', async (req, res) => {
   try {
-    const result = await authenticateMasterAdmin({ email: req.body?.email, password: req.body?.password });
+    const result = await authenticateMasterAdmin({ email: req.body?.email, password: req.body?.password, ip: req.ip });
     if (!result) return res.status(401).json({ ok: false, error: 'Credenciales inválidas.' });
     res.json({ ok: true, data: result });
   } catch (error) {
@@ -224,7 +224,7 @@ router.get('/master-admin/bars/:id/urls', async (req, res) => {
 
 router.post('/bars/:slug/operator/login', async (req, res) => {
   try {
-    const result = await authenticateOperator({ slug: req.params.slug, email: req.body?.email, password: req.body?.password });
+    const result = await authenticateOperator({ slug: req.params.slug, email: req.body?.email, password: req.body?.password, ip: req.ip });
     if (!result) return res.status(401).json({ ok: false, error: 'Credenciales inválidas.' });
     res.json({ ok: true, data: result });
   } catch (error) {
