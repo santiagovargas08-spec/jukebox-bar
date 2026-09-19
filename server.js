@@ -239,6 +239,14 @@ if (require.main === module) {
     forceTimer.unref();
 
     try {
+      // Primero expulsamos los sockets activos; de lo contrario server.close()
+      // puede quedarse esperando conexiones WebSocket de larga duración.
+      io.disconnectSockets(true);
+
+      if (typeof server.closeIdleConnections === 'function') {
+        server.closeIdleConnections();
+      }
+
       await new Promise((resolve) => {
         if (!server.listening) {
           resolve();
@@ -248,7 +256,6 @@ if (require.main === module) {
         server.close(() => resolve());
       });
 
-      io.disconnectSockets(true);
       await prisma.$disconnect();
       await pool.end();
 
