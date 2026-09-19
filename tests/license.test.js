@@ -109,6 +109,38 @@ describe('license', () => {
     );
   });
 
+  it('no expone idempotencyKey en respuestas de pago', async () => {
+    const privacyBar = await createTestBar(prisma, {
+      slug: uniqueSlug('license-idempotency-privacy')
+    });
+
+    const result = await licenseService.activateSubscription({
+      barId: privacyBar.id,
+      plan: 'MONTHLY',
+      amount: 30,
+      method: 'TRANSFER',
+      idempotencyKey: 'privacy-payment-key-001'
+    });
+
+    assert.equal(result.payment.idempotencyKey, undefined);
+
+    const payments = await licenseService.getPaymentsByBarId(
+      privacyBar.id
+    );
+
+    assert.equal(payments.length, 1);
+    assert.equal(payments[0].idempotencyKey, undefined);
+
+    const license = await licenseService.getLicenseByBarId(
+      privacyBar.id
+    );
+
+    assert.equal(license.payments.length, 1);
+    assert.equal(license.payments[0].idempotencyKey, undefined);
+
+    await deleteTestBar(prisma, privacyBar.id);
+  });
+
   it('activación simultánea no duplica licencias activas', async () => {
     const concurrentBar = await createTestBar(prisma, {
       slug: uniqueSlug('license-concurrent')
