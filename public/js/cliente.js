@@ -72,6 +72,9 @@ document.addEventListener('error', (event) => {
     // ============================================================
 
     const cacheBusquedas = {};
+    let searchRequestCounter = 0;
+    let activeSearchRequestId = '';
+    let lastSearchQuery = '';
 
 
     // ============================================================
@@ -269,7 +272,14 @@ document.addEventListener('error', (event) => {
 
     socket.on(
       'resultados_busqueda',
-      ({ items, query }) => {
+      ({ items, query, requestId }) => {
+
+        if (
+          requestId &&
+          requestId !== activeSearchRequestId
+        ) {
+          return;
+        }
 
         const clave =
           String(query || '')
@@ -300,12 +310,22 @@ document.addEventListener('error', (event) => {
 
     socket.on(
       'error_busqueda',
-      ({ mensaje }) => {
+      ({ mensaje, requestId, codigo }) => {
+
+        if (
+          requestId &&
+          requestId !== activeSearchRequestId
+        ) {
+          return;
+        }
 
         mostrarLoading(
           false
         );
 
+        if (codigo === 'COOLDOWN') {
+          return;
+        }
 
         mostrarError(
           mensaje
@@ -336,6 +356,13 @@ document.addEventListener('error', (event) => {
 
       const queryLower =
         query.toLowerCase();
+
+      if (
+        queryLower === lastSearchQuery &&
+        !cacheBusquedas[queryLower]
+      ) {
+        return;
+      }
 
 
       // ----------------------------------------------------------
@@ -381,9 +408,18 @@ document.addEventListener('error', (event) => {
       );
 
 
+      searchRequestCounter += 1;
+      activeSearchRequestId =
+        `client-${searchRequestCounter}`;
+      lastSearchQuery = queryLower;
+
       socket.emit(
         'buscar_canciones',
-        query
+        {
+          query,
+          requestId:
+            activeSearchRequestId
+        }
       );
 
     }
@@ -1029,7 +1065,7 @@ document.addEventListener('error', (event) => {
                 );
 
               },
-              300
+              800
             );
 
         }
