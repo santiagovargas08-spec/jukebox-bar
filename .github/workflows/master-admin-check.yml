@@ -84,5 +84,6 @@ jobs:
       - run: node --check middleware/publicApiRateLimit.js
       - run: node --check middleware/requestId.js
       - run: node --check create-master-admin.js
+      - run: node --check scripts/db-smoke.js
       - name: Run full integration test suite
         run: timeout 180s npm test
