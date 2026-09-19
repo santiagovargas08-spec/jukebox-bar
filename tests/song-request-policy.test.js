@@ -6,7 +6,9 @@ const assert = require('node:assert/strict');
 const {
   createSongRequestPolicy,
   normalizeSocketIp,
-  parseBlockedTerms
+  parseBlockedTerms,
+  normalizeRequesterName,
+  OPERATOR_REQUESTER_NAME
 } = require('../services/songRequestPolicy.js');
 
 describe('song request policy', () => {
@@ -60,6 +62,28 @@ describe('song request policy', () => {
         name: 'Mesa 4'
       }),
       false
+    );
+  });
+
+  it('impide suplantar el nombre del operador desde un cliente público', () => {
+    assert.equal(
+      normalizeRequesterName('👑 DJ / Admin', false),
+      'Cliente'
+    );
+    assert.equal(
+      normalizeRequesterName('Admin', false),
+      'Cliente'
+    );
+    assert.equal(
+      normalizeRequesterName('Mesa 12', false),
+      'Mesa 12'
+    );
+  });
+
+  it('el operador autenticado recibe el nombre reservado del DJ', () => {
+    assert.equal(
+      normalizeRequesterName('cualquier texto', true),
+      OPERATOR_REQUESTER_NAME
     );
   });
 
