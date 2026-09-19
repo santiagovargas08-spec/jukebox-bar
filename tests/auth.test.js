@@ -146,6 +146,20 @@ describe('auth', () => {
     assert.equal(admin, null);
   });
 
+  it('token con segmento adicional es rechazado', async () => {
+    const login = await operatorAuthService.authenticateOperator({
+      slug: bar.slug,
+      email: 'operator@test.local',
+      password: 'password-test-12'
+    });
+
+    const admin = await operatorAuthService.getActiveAdminFromToken(
+      `${login.token}.extra`
+    );
+
+    assert.equal(admin, null);
+  });
+
   it('token de otro bar es rechazado', async () => {
     const otherBar = await createTestBar(prisma, { slug: uniqueSlug('other-bar') });
     const secret = process.env.OPERATOR_TOKEN_SECRET;
