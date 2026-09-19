@@ -95,6 +95,30 @@ function normalizarMetodoPago(method) {
 }
 
 
+function normalizeIdempotencyKey(value) {
+  if (value === null || value === undefined || value === '') {
+    return null;
+  }
+
+  if (typeof value !== 'string') {
+    throw new Error('Idempotency-Key inválida.');
+  }
+
+  const normalized = value.trim();
+
+  if (
+    normalized.length < 8 ||
+    normalized.length > 128 ||
+    !/^[A-Za-z0-9._:-]+$/.test(normalized)
+  ) {
+    throw new Error(
+      'Idempotency-Key debe tener entre 8 y 128 caracteres seguros.'
+    );
+  }
+
+  return normalized;
+}
+
 function normalizarMonto(amount) {
   const numero =
     Number(amount);
@@ -443,7 +467,8 @@ async function activateSubscription({
   notes = null,
   reference = null,
   currency = 'USD',
-  createdBy = null
+  createdBy = null,
+  idempotencyKey = null
 }) {
 
   const id =
@@ -497,6 +522,11 @@ async function activateSubscription({
       'La moneda debe usar un código ISO de 3 letras.'
     );
   }
+
+  const normalizedIdempotencyKey =
+    normalizeIdempotencyKey(
+      idempotencyKey
+    );
 
   const notesNormalizadas =
     notes && String(notes).trim()
@@ -572,6 +602,25 @@ async function activateSubscription({
           throw new Error('El bar no tiene licencia.');
         }
 
+        if (normalizedIdempotencyKey) {
+          const existingPayment =
+            await tx.payment.findFirst({
+              where: {
+                barId: id,
+                idempotencyKey:
+                  normalizedIdempotencyKey
+              }
+            });
+
+          if (existingPayment) {
+            return {
+              license: licenseActual,
+              payment: existingPayment,
+              idempotent: true
+            };
+          }
+        }
+
         let inicioSuscripcionTx = ahora;
 
         if (
@@ -636,6 +685,9 @@ async function activateSubscription({
                   ? String(reference).trim().slice(0, 120)
                   : null,
 
+              idempotencyKey:
+                normalizedIdempotencyKey,
+
               createdBy:
                 createdBy && String(createdBy).trim()
                   ? String(createdBy).trim().slice(0, 120)
@@ -654,7 +706,10 @@ async function activateSubscription({
           license:
             licenciaActualizada,
 
-          payment
+          payment,
+
+          idempotent:
+            false
         };
       }
     );
@@ -666,6 +721,7 @@ async function activateSubscription({
     plan: planNormalizado,
     expiresAt: resultado.license.expiresAt.toISOString(),
     paymentId: resultado.payment.id,
+    idempotent: Boolean(resultado.idempotent),
     method: metodoNormalizado,
     currency: currencyNormalizada
   });
@@ -850,6 +906,8 @@ module.exports = {
 
   reactivateLicense,
 
-  getPaymentsByBarId
+  getPaymentsByBarId,
+
+  normalizeIdempotencyKey
 
 };
