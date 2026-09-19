@@ -67,7 +67,8 @@ const jsDir = path.join(publicDir, 'js');
 const zeroInnerHtmlFiles = new Set([
   'bar-loader.js',
   'bar.js',
-  'master-admin.js'
+  'master-admin.js',
+  'cliente.js'
 ]);
 
 for (const fileName of fs.readdirSync(jsDir)) {
