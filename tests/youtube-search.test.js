@@ -29,6 +29,7 @@ describe('youtube search service', () => {
     const result = await searchYoutube(
       'artista canción',
       {
+        usePersistentCache: false,
         searchFn: async () => ({
           videos: source
         })
@@ -77,12 +78,12 @@ describe('youtube search service', () => {
 
     const first = await searchYoutube(
       'misma búsqueda',
-      { searchFn }
+      { searchFn, usePersistentCache: false }
     );
 
     const second = await searchYoutube(
       'misma búsqueda',
-      { searchFn }
+      { searchFn, usePersistentCache: false }
     );
 
     assert.equal(calls, 1);
@@ -121,11 +122,11 @@ describe('youtube search service', () => {
       await Promise.all([
         searchYoutube(
           'consulta concurrente',
-          { searchFn }
+          { searchFn, usePersistentCache: false }
         ),
         searchYoutube(
           'consulta concurrente',
-          { searchFn }
+          { searchFn, usePersistentCache: false }
         )
       ]);
 
@@ -140,6 +141,7 @@ describe('youtube search service', () => {
     const result = await searchYoutube(
       'sin resultados',
       {
+        usePersistentCache: false,
         searchFn: async () => ({
           videos: []
         })
@@ -166,6 +168,7 @@ describe('youtube search service', () => {
     const result = await searchYoutube(
       'error proveedor',
       {
+        usePersistentCache: false,
         searchFn: async () => {
           throw new Error(
             'fallo yt-search'
@@ -193,6 +196,7 @@ describe('youtube search service', () => {
     const result = await searchYoutube(
       '   ',
       {
+        usePersistentCache: false,
         searchFn: async () => {
           calls += 1;
           return {
