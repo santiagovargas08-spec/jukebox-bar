@@ -72,6 +72,32 @@ describe('bar service', () => {
     assert.equal(result.id, bar.id);
   });
 
+  it('colisión de slug largo mantiene ambos slugs dentro de 80 caracteres', async () => {
+    const requestedSlug = 'a'.repeat(80);
+
+    const first = await barService.createBar({
+      name: 'Bar Long Slug A',
+      slug: requestedSlug
+    });
+    const second = await barService.createBar({
+      name: 'Bar Long Slug B',
+      slug: requestedSlug
+    });
+
+    try {
+      assert.equal(first.slug.length, 80);
+      assert.ok(second.slug.length <= 80);
+      assert.notEqual(first.slug, second.slug);
+      assert.match(second.slug, /-2$/);
+
+      const found = await barService.getBarBySlug(second.slug);
+      assert.equal(found.id, second.id);
+    } finally {
+      await deleteTestBar(prisma, first.id);
+      await deleteTestBar(prisma, second.id);
+    }
+  });
+
   it('pagina la lista de bares con total y límites seguros', async () => {
     const extra = await createTestBar(prisma, {
       slug: uniqueSlug('bar-service-page')
