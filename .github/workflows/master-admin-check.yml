@@ -32,6 +32,7 @@ jobs:
       - run: node --check services/barAccessService.js
       - run: node --check services/socketStateService.js
       - run: node --check socket/playbackAdminHandlers.js
+      - run: node --check socket/publicHandlers.js
       - run: node --check lib/socketBar.js
       - run: node --check lib/rateLimitStore.js
       - run: node --check lib/securityHeaders.js
