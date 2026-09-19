@@ -257,20 +257,12 @@ const btnLogout        = document.getElementById('btn-logout-operator');
     // ─────────────────────────────────────────────────────────
     let searchRequestCounterAdmin = 0;
     let activeSearchRequestIdAdmin = '';
-    let searchFallbackTimerAdmin = null;
 
-    function finalizarBusquedaAdmin() {
-      if (searchFallbackTimerAdmin) {
-        clearTimeout(searchFallbackTimerAdmin);
-        searchFallbackTimerAdmin = null;
-      }
-    }
+    function finalizarBusquedaAdmin() {}
 
     function emitirBusquedaAdmin(query) {
       const q = String(query || '').trim();
       if (!q) return;
-
-      finalizarBusquedaAdmin();
 
       searchRequestCounterAdmin += 1;
       activeSearchRequestIdAdmin =
@@ -282,23 +274,6 @@ const btnLogout        = document.getElementById('btn-logout-operator');
       mostrarMensajeResultados(
         'Buscando en YouTube... ⏳'
       );
-
-      searchFallbackTimerAdmin =
-        setTimeout(() => {
-          if (
-            requestId !==
-            activeSearchRequestIdAdmin
-          ) {
-            return;
-          }
-
-          mostrarMensajeResultados(
-            'La búsqueda tardó demasiado. Intenta nuevamente.',
-            'empty-msg-error'
-          );
-
-          searchFallbackTimerAdmin = null;
-        }, 17000);
 
       socket.emit('buscar_canciones', {
         query: q,
