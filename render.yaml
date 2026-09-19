@@ -20,6 +20,8 @@ services:
         value: "false"
       - key: ENABLE_LEGACY_COMMERCIAL_API
         value: "false"
+      - key: ENABLE_BEARER_ADMIN_AUTH
+        value: "false"
       - key: OPERATOR_TOKEN_SECRET
         generateValue: true
       - key: MASTER_ADMIN_TOKEN_SECRET
