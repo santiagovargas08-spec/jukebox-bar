@@ -148,6 +148,19 @@ app.use(
       setHeaders(res, filePath) {
         if (filePath.endsWith('.html')) {
           res.setHeader('Cache-Control', 'no-cache');
+          return;
+        }
+
+        if (
+          filePath.endsWith('.js') ||
+          filePath.endsWith('.css')
+        ) {
+          // JS/CSS no llevan hash en el nombre; un TTL corto reduce el riesgo
+          // de mezclar HTML nuevo con código estático antiguo tras un deploy.
+          res.setHeader(
+            'Cache-Control',
+            'public, max-age=300, must-revalidate'
+          );
         }
       }
     }
