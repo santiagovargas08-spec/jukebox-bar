@@ -231,6 +231,10 @@ async function authenticateOperator({ slug, email, password, ip = 'unknown' }) {
     return null;
   }
 
+  // Un inicio de sesión válido no debe consumir el presupuesto de intentos
+  // de la cuenta durante el resto de la ventana.
+  loginAttempts.reset(getLoginKey(slug, normalizedEmail));
+
   return {
     token: createToken(admin),
     admin: {
