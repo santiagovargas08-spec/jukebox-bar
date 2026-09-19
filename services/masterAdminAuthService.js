@@ -7,7 +7,9 @@ const { RateLimitStore } = require('../lib/rateLimitStore.js');
 const TOKEN_TTL_MS = 12 * 60 * 60 * 1000;
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 const MAX_LOGIN_ATTEMPTS = 10;
+const MAX_IP_LOGIN_ATTEMPTS = 30;
 const loginAttempts = new RateLimitStore(LOGIN_WINDOW_MS);
+const ipLoginAttempts = new RateLimitStore(LOGIN_WINDOW_MS);
 
 function getSecret() {
   const secret = process.env.MASTER_ADMIN_TOKEN_SECRET;
@@ -77,8 +79,23 @@ function verifyToken(token) {
   }
 }
 
-function checkLoginRateLimit(email) {
-  return loginAttempts.hit(`master:${normalizeEmail(email)}`, LOGIN_WINDOW_MS, MAX_LOGIN_ATTEMPTS).allowed;
+function normalizeIp(ip) {
+  if (typeof ip !== 'string' || !ip.trim()) return 'unknown';
+  return ip.split(',')[0].trim().slice(0, 120);
+}
+
+function checkLoginRateLimit(email, ip = 'unknown') {
+  const accountLimit = loginAttempts.hit(
+    `master:${normalizeEmail(email)}`,
+    LOGIN_WINDOW_MS,
+    MAX_LOGIN_ATTEMPTS
+  );
+  const ipLimit = ipLoginAttempts.hit(
+    `master-ip:${normalizeIp(ip)}`,
+    LOGIN_WINDOW_MS,
+    MAX_IP_LOGIN_ATTEMPTS
+  );
+  return accountLimit.allowed && ipLimit.allowed;
 }
 
 async function createMasterAdmin({ email, displayName, password }) {
@@ -95,9 +112,9 @@ async function createMasterAdmin({ email, displayName, password }) {
   });
 }
 
-async function authenticateMasterAdmin({ email, password }) {
+async function authenticateMasterAdmin({ email, password, ip = 'unknown' }) {
   const normalizedEmail = normalizeEmail(email);
-  if (!checkLoginRateLimit(normalizedEmail)) return null;
+  if (!checkLoginRateLimit(normalizedEmail, ip)) return null;
 
   const admin = await prisma.masterAdmin.findUnique({
     where: { email: normalizedEmail },
