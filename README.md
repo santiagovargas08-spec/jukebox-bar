@@ -131,7 +131,7 @@ npm run test:db
 | Node | 20 |
 | Build | `npm ci && npm run build` |
 | Start | `npx prisma migrate deploy && npm start` |
-| Health check | `/health` |
+| Health check | `/ready` (incluye PostgreSQL) |
 | Database | PostgreSQL (plan pagado recomendado para comercialización) |
 
 Variables en Render: `DATABASE_URL`, `OPERATOR_TOKEN_SECRET`, `MASTER_ADMIN_TOKEN_SECRET`, `APP_URL`, `PORT`, `DATABASE_SSL=true`. La API `/api/commercial` permanece deshabilitada salvo que `ENABLE_LEGACY_COMMERCIAL_API=true`.
