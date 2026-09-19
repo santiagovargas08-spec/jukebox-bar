@@ -39,6 +39,25 @@ describe('qr service', () => {
     assert.equal(second.buffer.toString(), 'qr-demo');
   });
 
+  it('coalesce generación concurrente para la misma URL', async () => {
+    let calls = 0;
+
+    const generate = async () => {
+      calls += 1;
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      return Buffer.from('qr-concurrente');
+    };
+
+    const [first, second] = await Promise.all([
+      getClientQrPng('https://example.com/cliente.html?bar=concurrente', { generate }),
+      getClientQrPng('https://example.com/cliente.html?bar=concurrente', { generate })
+    ]);
+
+    assert.equal(calls, 1);
+    assert.equal(first.buffer.toString(), 'qr-concurrente');
+    assert.equal(second.buffer.toString(), 'qr-concurrente');
+  });
+
   it('rechaza URL vacía', async () => {
     await assert.rejects(
       () => getClientQrPng(''),
