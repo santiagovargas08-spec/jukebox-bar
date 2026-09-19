@@ -10,6 +10,9 @@ const MAX_CACHE_ENTRIES = 500;
 const SEARCH_TIMEOUT_MS = 8 * 1000;
 const PROVIDER_FAILURE_THRESHOLD = 5;
 const PROVIDER_OPEN_MS = 30 * 1000;
+const MIN_VIDEO_DURATION_SECONDS = 45;
+const MAX_VIDEO_DURATION_SECONDS = 15 * 60;
+const MAX_SEARCH_RESULTS = 12;
 
 const cache = new Map();
 const inFlight = new Map();
@@ -54,6 +57,38 @@ function recordProviderFailure(now = Date.now()) {
   }
 }
 
+function getVideoDurationSeconds(video) {
+  const seconds = Number(video?.duration?.seconds);
+
+  if (Number.isFinite(seconds) && seconds > 0) {
+    return Math.round(seconds);
+  }
+
+  return null;
+}
+
+function isAcceptableYoutubeResult(video) {
+  if (!video) return false;
+
+  if (video.live === true || video.isLive === true) {
+    return false;
+  }
+
+  const durationSeconds = getVideoDurationSeconds(video);
+
+  if (
+    durationSeconds !== null &&
+    (
+      durationSeconds < MIN_VIDEO_DURATION_SECONDS ||
+      durationSeconds > MAX_VIDEO_DURATION_SECONDS
+    )
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
 function normalizeYoutubeResult(video) {
   if (!video) return null;
 
@@ -81,11 +116,15 @@ function normalizeYoutubeResult(video) {
       ? video.thumbnail.trim()
       : String(video.thumbnail ?? '').trim();
 
+  const durationSeconds = getVideoDurationSeconds(video);
+
   return {
     videoId,
     title,
     author: { name: author },
-    thumbnail: sanitizeThumbnailUrl(thumbnail)
+    thumbnail: sanitizeThumbnailUrl(thumbnail),
+    durationSeconds,
+    duration: video?.duration?.timestamp || null
   };
 }
 
@@ -159,9 +198,10 @@ async function searchYoutube(
         }
 
         const videos = result.videos
-          .slice(0, 25)
+          .filter(isAcceptableYoutubeResult)
           .map(normalizeYoutubeResult)
-          .filter(Boolean);
+          .filter(Boolean)
+          .slice(0, MAX_SEARCH_RESULTS);
 
         // Una respuesta válida del proveedor, incluso sin resultados,
         // demuestra que el servicio sigue disponible. Solo errores, timeouts
@@ -209,10 +249,15 @@ module.exports = {
   searchYoutube,
   clearSearchCache,
   normalizeYoutubeResult,
+  isAcceptableYoutubeResult,
+  getVideoDurationSeconds,
   resetProviderCircuit,
   isProviderCircuitOpen,
   recordProviderFailure,
   SEARCH_TIMEOUT_MS,
   PROVIDER_FAILURE_THRESHOLD,
-  PROVIDER_OPEN_MS
+  PROVIDER_OPEN_MS,
+  MIN_VIDEO_DURATION_SECONDS,
+  MAX_VIDEO_DURATION_SECONDS,
+  MAX_SEARCH_RESULTS
 };

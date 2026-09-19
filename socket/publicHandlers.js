@@ -9,6 +9,10 @@ const {
   addToQueue
 } = require('../services/queueService.js');
 
+const {
+  startPlaybackIfIdle
+} = require('../services/playbackService.js');
+
 const { getBarBySlug } = require('../services/barService.js');
 
 const { searchYoutube } = require('../services/youtubeSearchService.js');
@@ -362,6 +366,15 @@ function registerPublicSocketHandlers({
       socket.emit('cancion_confirmada', {
         titulo: result.item.title
       });
+
+      const playbackStart = await startPlaybackIfIdle(id);
+
+      if (playbackStart.started && playbackStart.playback) {
+        socket.to(`bar:${id}`).emit(
+          'nueva_reproduccion',
+          playbackStart.playback
+        );
+      }
 
       await emitirEstadoBar(id);
     } catch (error) {

@@ -90,6 +90,69 @@ async function setNowPlaying(barId, song) {
   return toPlaybackPayload(state);
 }
 
+async function startPlaybackIfIdle(barId) {
+  const id = normalizarBarId(barId);
+
+  return prisma.$transaction(async (tx) => {
+    await acquireQueueLock(tx, id);
+
+    const current = await tx.playbackState.findUnique({
+      where: { barId: id }
+    });
+
+    if (
+      current &&
+      current.status === 'PLAYING' &&
+      current.videoId
+    ) {
+      return {
+        started: false,
+        playback: toPlaybackPayload(current),
+        item: null
+      };
+    }
+
+    const rows = await tx.$queryRaw`
+      DELETE FROM "QueueItem"
+      WHERE "id" IN (
+        SELECT "id"
+        FROM "QueueItem"
+        WHERE "barId" = ${id}
+        ORDER BY "position" ASC, "id" ASC
+        LIMIT 1
+        FOR UPDATE SKIP LOCKED
+      )
+      RETURNING *
+    `;
+
+    if (!Array.isArray(rows) || rows.length === 0) {
+      return {
+        started: false,
+        playback: null,
+        item: null
+      };
+    }
+
+    const nextSong = rows[0];
+    const data = buildPlaybackData(nextSong);
+
+    const state = await tx.playbackState.upsert({
+      where: { barId: id },
+      create: {
+        barId: id,
+        ...data
+      },
+      update: data
+    });
+
+    return {
+      started: true,
+      item: nextSong,
+      playback: toPlaybackPayload(state)
+    };
+  });
+}
+
 async function advancePlayback(
   barId,
   { expectedPlaybackId = null } = {}
@@ -359,6 +422,7 @@ async function clearPlaybackStateIfMatches(
 module.exports = {
   getPlaybackState,
   setNowPlaying,
+  startPlaybackIfIdle,
   advancePlayback,
   completeCurrentAndAdvance,
   clearPlaybackState,
