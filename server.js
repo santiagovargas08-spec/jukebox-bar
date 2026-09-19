@@ -159,6 +159,18 @@ app.use(
       setHeaders(res, filePath) {
         if (filePath.endsWith('.html')) {
           res.setHeader('Cache-Control', 'no-cache');
+
+          if (
+            filePath.endsWith('admin.html') ||
+            filePath.endsWith('master-admin.html') ||
+            filePath.endsWith('bar.html')
+          ) {
+            res.setHeader(
+              'X-Robots-Tag',
+              'noindex, nofollow, noarchive'
+            );
+          }
+
           return;
         }
 
