@@ -1,7 +1,7 @@
 'use strict';
 
 const { prisma } = require('../db.js');
-const { sanitizeThumbnailUrl } = require('../lib/urlValidation.js');
+const { sanitizeThumbnailUrl, isValidYoutubeVideoId } = require('../lib/urlValidation.js');
 
 function normalizarBarId(barId) {
   const id = Number(barId);
@@ -20,10 +20,16 @@ async function addToHistory(barId, song) {
     throw new Error('Datos de canción incompletos');
   }
 
+  const videoId = String(song.videoId).trim();
+
+  if (!isValidYoutubeVideoId(videoId)) {
+    throw new Error('videoId inválido');
+  }
+
   return prisma.songHistory.create({
     data: {
       barId: id,
-      videoId: String(song.videoId).trim(),
+      videoId,
       title: String(song.title).trim().slice(0, 100),
       name: String(song.name).trim().slice(0, 30),
       thumbnail: sanitizeThumbnailUrl(song.thumbnail),
