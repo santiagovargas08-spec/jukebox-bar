@@ -6,7 +6,11 @@ const assert = require('node:assert/strict');
 const {
   searchYoutube,
   clearSearchCache,
-  normalizeYoutubeResult
+  normalizeYoutubeResult,
+  resetProviderCircuit,
+  isProviderCircuitOpen,
+  recordProviderFailure,
+  PROVIDER_FAILURE_THRESHOLD
 } = require('../services/youtubeSearchService.js');
 
 describe('youtube search service', () => {
@@ -110,6 +114,63 @@ describe('youtube search service', () => {
       videos: [],
       cached: false
     });
+  });
+
+  it('abre el circuit breaker tras fallos consecutivos del proveedor', async () => {
+    clearSearchCache();
+    resetProviderCircuit();
+
+    for (let index = 0; index < PROVIDER_FAILURE_THRESHOLD; index += 1) {
+      recordProviderFailure();
+    }
+
+    assert.equal(isProviderCircuitOpen(), true);
+
+    let calls = 0;
+    const result = await searchYoutube(
+      'consulta mientras circuito está abierto',
+      {
+        searchFn: async () => {
+          calls += 1;
+          return { videos: [] };
+        },
+        timeoutMs: 100
+      }
+    );
+
+    assert.deepEqual(result, {
+      videos: [],
+      cached: false
+    });
+    assert.equal(calls, 0);
+  });
+
+  it('una búsqueda exitosa reinicia el estado del circuit breaker', async () => {
+    clearSearchCache();
+
+    for (let index = 0; index < PROVIDER_FAILURE_THRESHOLD - 1; index += 1) {
+      recordProviderFailure();
+    }
+
+    const result = await searchYoutube(
+      'consulta recuperada',
+      {
+        searchFn: async () => ({
+          videos: [
+            {
+              videoId: 'abc123XYZ09',
+              title: 'Recuperada',
+              author: { name: 'Canal' },
+              thumbnail: 'https://i.ytimg.com/vi/abc123XYZ09/hqdefault.jpg'
+            }
+          ]
+        }),
+        timeoutMs: 100
+      }
+    );
+
+    assert.equal(result.videos.length, 1);
+    assert.equal(isProviderCircuitOpen(), false);
   });
 
   it('una búsqueda vacía no llama a YouTube y devuelve cero resultados', async () => {
