@@ -14,6 +14,7 @@ describe('playback', () => {
   let prisma;
   let bar;
   let playbackService;
+  let queueService;
 
   before(async () => {
     requireTestDatabase();
@@ -21,6 +22,7 @@ describe('playback', () => {
     delete require.cache[require.resolve('../db.js')];
     ({ prisma } = require('../db.js'));
     playbackService = require('../services/playbackService.js');
+    queueService = require('../services/queueService.js');
 
     bar = await createTestBar(prisma, { slug: uniqueSlug('playback-bar') });
   });
@@ -55,6 +57,46 @@ describe('playback', () => {
         name: 'DJ'
       }),
       /videoId inválido/
+    );
+  });
+
+  it('advancePlayback mueve cola y reproducción en una sola operación', async () => {
+    await queueService.clearQueue(bar.id);
+    await playbackService.clearPlaybackState(bar.id);
+
+    await queueService.addToQueue(bar.id, {
+      videoId: 'Atomic00001',
+      title: 'Atomic Song',
+      name: 'Cliente'
+    });
+
+    const result = await playbackService.advancePlayback(bar.id);
+
+    assert.ok(result);
+    assert.equal(result.item.videoId, 'Atomic00001');
+    assert.equal(result.playback.videoId, 'Atomic00001');
+    assert.equal((await queueService.getQueue(bar.id)).length, 0);
+
+    const state = await playbackService.getPlaybackState(bar.id);
+    assert.equal(state.videoId, 'Atomic00001');
+  });
+
+  it('advancePlayback deja idle cuando la cola está vacía', async () => {
+    await queueService.clearQueue(bar.id);
+
+    await playbackService.setNowPlaying(bar.id, {
+      id: 300,
+      videoId: 'IdleNow0001',
+      title: 'Idle Next',
+      name: 'DJ'
+    });
+
+    const result = await playbackService.advancePlayback(bar.id);
+
+    assert.equal(result, null);
+    assert.equal(
+      await playbackService.getPlaybackState(bar.id),
+      null
     );
   });
 
