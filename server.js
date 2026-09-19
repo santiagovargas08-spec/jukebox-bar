@@ -11,6 +11,7 @@ const { errorHandler } = require('./middleware/errorHandler.js');
 const { publicApiRateLimit } = require('./middleware/publicApiRateLimit.js');
 const { requestId } = require('./middleware/requestId.js');
 const { httpAccessLog } = require('./middleware/httpAccessLog.js');
+const { apiNoStore } = require('./middleware/apiCacheControl.js');
 const { getOperatorTokenFromCookieHeader } = require('./middleware/operatorAuth.js');
 
 const {
@@ -157,6 +158,8 @@ app.use(
 // ============================================================
 // API PÚBLICA
 // ============================================================
+
+app.use('/api', apiNoStore);
 
 app.use(
   '/api/public',
