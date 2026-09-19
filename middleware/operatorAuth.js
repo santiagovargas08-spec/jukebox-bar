@@ -24,13 +24,26 @@ function getBearerToken(req) {
   return token;
 }
 
-function getOperatorToken(req) {
+function isBearerAdminAuthEnabled() {
   return (
-    getBearerToken(req) ||
+    process.env.ENABLE_BEARER_ADMIN_AUTH === 'true'
+  );
+}
+
+function getOperatorToken(req) {
+  const cookieToken =
     getCookieValueFromHeader(
       req.headers.cookie,
       OPERATOR_COOKIE
-    )
+    );
+
+  if (!isBearerAdminAuthEnabled()) {
+    return cookieToken;
+  }
+
+  return (
+    getBearerToken(req) ||
+    cookieToken
   );
 }
 
@@ -109,6 +122,7 @@ module.exports = {
   getBearerToken,
   getOperatorToken,
   getOperatorTokenFromCookieHeader,
+  isBearerAdminAuthEnabled,
   requireOperatorHttp,
   AUTH_WINDOW_MS,
   MAX_AUTH_CHECKS_PER_IP
