@@ -20,6 +20,7 @@ describe('admin audit', () => {
 
     ({
       auditAdminAction,
+      listAdminAuditLogs,
       normalizeDetails
     } = require('../lib/adminAudit.js'));
   });
@@ -76,6 +77,56 @@ describe('admin audit', () => {
     assert.deepEqual(row.details, {
       fields: ['name']
     });
+  });
+
+  it('lista auditoría paginada y permite filtrar por acción', async () => {
+    const base = Date.now();
+
+    await auditAdminAction({
+      req: {
+        id: `req-audit-test-${base}-1`,
+        masterAdmin: {
+          id: 8,
+          email: 'audit@example.com'
+        }
+      },
+      action: 'license.activate',
+      barId: 9,
+      entityType: 'license',
+      entityId: '91'
+    });
+
+    await auditAdminAction({
+      req: {
+        id: `req-audit-test-${base}-2`,
+        masterAdmin: {
+          id: 8,
+          email: 'audit@example.com'
+        }
+      },
+      action: 'bar.update',
+      barId: 9,
+      entityType: 'bar',
+      entityId: '9'
+    });
+
+    const page = await listAdminAuditLogs({
+      action: 'license.activate',
+      barId: 9,
+      limit: 10,
+      offset: 0
+    });
+
+    assert.ok(page.total >= 1);
+    assert.equal(page.limit, 10);
+    assert.equal(page.offset, 0);
+    assert.ok(
+      page.items.every(
+        (item) =>
+          item.action === 'license.activate' &&
+          item.barId === 9
+      )
+    );
   });
 
   it('normaliza detalles serializables', () => {
