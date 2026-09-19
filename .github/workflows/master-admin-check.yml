@@ -40,6 +40,7 @@ jobs:
           cache: npm
       - run: node --check scripts/audit-secrets.js
       - run: node scripts/audit-secrets.js
+      - run: node scripts/audit-deploy-config.js
       - run: npm ci
       - name: Dependency audit (runtime)
         run: node scripts/audit-dependencies.js
