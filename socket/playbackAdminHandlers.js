@@ -418,7 +418,7 @@ function registerPlaybackAdminHandlers({
         error: error?.message || String(error)
       });
     }
-  });;
+  });
 }
 
 module.exports = {
