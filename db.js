@@ -25,6 +25,12 @@ const pool = new Pool({
 
   idleTimeoutMillis: 30000,
 
+  // Evita que procesos de test queden 30 s esperando a que el pool libere
+  // conexiones inactivas. En producción se mantiene el comportamiento normal.
+  allowExitOnIdle:
+    process.env.NODE_ENV === 'test' ||
+    Boolean(process.env.TEST_DATABASE_URL),
+
   connectionTimeoutMillis: 10000
 });
 
