@@ -45,7 +45,8 @@ function setCached(queryKey, videos) {
 async function searchYoutube(
   query,
   {
-    searchFn = ytSearch
+    searchFn = ytSearch,
+    usePersistentCache = true
   } = {}
 ) {
   const text = String(query || '').trim();
@@ -71,7 +72,9 @@ async function searchYoutube(
   }
 
   const persistentVideos =
-    await getPersistentSearchCache(text);
+    usePersistentCache
+      ? await getPersistentSearchCache(text)
+      : null;
 
   if (
     Array.isArray(persistentVideos) &&
@@ -111,10 +114,12 @@ async function searchYoutube(
           setCached(key, videos);
 
           // Guardado asíncrono: no retrasa la respuesta al cliente.
-          void setPersistentSearchCache(
-            text,
-            videos
-          );
+          if (usePersistentCache) {
+            void setPersistentSearchCache(
+              text,
+              videos
+            );
+          }
         }
 
         return {
