@@ -75,6 +75,10 @@ describe('health', () => {
 
     assert.equal(data.status, 200);
     assert.equal(data.body.ok, true);
+    assert.match(
+      String(data.headers['cache-control'] || ''),
+      /no-store/i
+    );
   });
 
   it('GET /ready responde 200 cuando PostgreSQL está disponible', async () => {
@@ -83,6 +87,10 @@ describe('health', () => {
     assert.equal(data.status, 200);
     assert.equal(data.body.ok, true);
     assert.equal(data.body.database, 'ready');
+    assert.match(
+      String(data.headers['cache-control'] || ''),
+      /no-store/i
+    );
   });
 
   it('sirve las cuatro interfaces públicas con cabeceras de seguridad', async () => {
