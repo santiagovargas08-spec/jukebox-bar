@@ -43,6 +43,12 @@ describe('security headers', () => {
     assert.equal(called, true);
     assert.equal(headers['x-content-type-options'], 'nosniff');
     assert.equal(headers['x-frame-options'], 'SAMEORIGIN');
+    assert.equal(headers['x-dns-prefetch-control'], 'off');
+    assert.equal(
+      headers['x-permitted-cross-domain-policies'],
+      'none'
+    );
+    assert.equal(headers['x-xss-protection'], '0');
     assert.equal(
       headers['cross-origin-opener-policy'],
       'same-origin-allow-popups'
