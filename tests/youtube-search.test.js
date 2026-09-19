@@ -41,6 +41,23 @@ describe('youtube search service', () => {
     assert.equal(result.thumbnail, null);
   });
 
+  it('corta búsquedas bloqueadas por timeout', async () => {
+    clearSearchCache();
+
+    const result = await searchYoutube(
+      'consulta que se queda esperando',
+      {
+        searchFn: () => new Promise(() => {}),
+        timeoutMs: 15
+      }
+    );
+
+    assert.deepEqual(result, {
+      videos: [],
+      cached: false
+    });
+  });
+
   it('una búsqueda vacía no llama a YouTube y devuelve cero resultados', async () => {
     clearSearchCache();
     const result = await searchYoutube('   ');
