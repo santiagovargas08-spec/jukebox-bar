@@ -133,7 +133,8 @@ async function getLicenseByBarId(barId) {
       payments: {
         orderBy: {
           paidAt: 'desc'
-        }
+        },
+        take: 50
       }
     }
   });
@@ -784,7 +785,7 @@ async function reactivateLicense(barId) {
 // OBTENER HISTORIAL DE PAGOS
 // ============================================================
 
-async function getPaymentsByBarId(barId) {
+async function getPaymentsByBarId(barId, limit = 100) {
 
   const id =
     normalizarBarId(barId);
@@ -794,6 +795,11 @@ async function getPaymentsByBarId(barId) {
   }
 
 
+  const safeLimit = Math.min(
+    Math.max(Number(limit) || 100, 1),
+    200
+  );
+
   return prisma.payment.findMany({
     where: {
       barId: id
@@ -801,7 +807,9 @@ async function getPaymentsByBarId(barId) {
 
     orderBy: {
       paidAt: 'desc'
-    }
+    },
+
+    take: safeLimit
   });
 }
 
