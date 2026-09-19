@@ -8,8 +8,10 @@ const { logWarn } = require('../lib/logger.js');
 const TOKEN_TTL_MS = 12 * 60 * 60 * 1000;
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 const MAX_LOGIN_ATTEMPTS = 10;
+const MAX_IP_LOGIN_ATTEMPTS = 30;
 
 const loginAttempts = new RateLimitStore(LOGIN_WINDOW_MS);
+const ipLoginAttempts = new RateLimitStore(LOGIN_WINDOW_MS);
 
 function getSecret() {
   const secret = process.env.OPERATOR_TOKEN_SECRET;
@@ -121,14 +123,25 @@ function getLoginKey(slug, email) {
   return `${String(slug || '').trim().toLowerCase()}:${normalizeEmail(email)}`;
 }
 
-function checkLoginRateLimit(slug, email) {
-  const result = loginAttempts.hit(
+function normalizeIp(ip) {
+  if (typeof ip !== 'string' || !ip.trim()) return 'unknown';
+  return ip.split(',')[0].trim().slice(0, 120);
+}
+
+function checkLoginRateLimit(slug, email, ip = 'unknown') {
+  const accountLimit = loginAttempts.hit(
     getLoginKey(slug, email),
     LOGIN_WINDOW_MS,
     MAX_LOGIN_ATTEMPTS
   );
 
-  return result.allowed;
+  const ipLimit = ipLoginAttempts.hit(
+    `operator-ip:${normalizeIp(ip)}`,
+    LOGIN_WINDOW_MS,
+    MAX_IP_LOGIN_ATTEMPTS
+  );
+
+  return accountLimit.allowed && ipLimit.allowed;
 }
 
 async function createAdminUser({ barId, email, displayName, password, role = 'OPERATOR' }) {
@@ -174,10 +187,10 @@ async function createAdminUser({ barId, email, displayName, password, role = 'OP
   });
 }
 
-async function authenticateOperator({ slug, email, password }) {
+async function authenticateOperator({ slug, email, password, ip = 'unknown' }) {
   const normalizedEmail = normalizeEmail(email);
 
-  if (!checkLoginRateLimit(slug, normalizedEmail)) {
+  if (!checkLoginRateLimit(slug, normalizedEmail, ip)) {
     logWarn('Login bloqueado por rate limit', {
       event: 'operator_login_rate_limited',
       slug: String(slug || '').trim().toLowerCase()
