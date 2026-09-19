@@ -29,7 +29,7 @@ describe('youtube search service', () => {
     const result = await searchYoutube(
       'artista canción',
       {
-        usePersistentCache: false,
+        usePersistentCache: false, useKnownSongs: false,
         searchFn: async () => ({
           videos: source
         })
@@ -78,12 +78,12 @@ describe('youtube search service', () => {
 
     const first = await searchYoutube(
       'misma búsqueda',
-      { searchFn, usePersistentCache: false }
+      { searchFn, usePersistentCache: false, useKnownSongs: false }
     );
 
     const second = await searchYoutube(
       'misma búsqueda',
-      { searchFn, usePersistentCache: false }
+      { searchFn, usePersistentCache: false, useKnownSongs: false }
     );
 
     assert.equal(calls, 1);
@@ -122,11 +122,11 @@ describe('youtube search service', () => {
       await Promise.all([
         searchYoutube(
           'consulta concurrente',
-          { searchFn, usePersistentCache: false }
+          { searchFn, usePersistentCache: false, useKnownSongs: false }
         ),
         searchYoutube(
           'consulta concurrente',
-          { searchFn, usePersistentCache: false }
+          { searchFn, usePersistentCache: false, useKnownSongs: false }
         )
       ]);
 
@@ -141,7 +141,7 @@ describe('youtube search service', () => {
     const result = await searchYoutube(
       'sin resultados',
       {
-        usePersistentCache: false,
+        usePersistentCache: false, useKnownSongs: false,
         searchFn: async () => ({
           videos: []
         })
@@ -168,7 +168,7 @@ describe('youtube search service', () => {
     const result = await searchYoutube(
       'error proveedor',
       {
-        usePersistentCache: false,
+        usePersistentCache: false, useKnownSongs: false,
         searchFn: async () => {
           throw new Error(
             'fallo yt-search'
@@ -196,7 +196,7 @@ describe('youtube search service', () => {
     const result = await searchYoutube(
       '   ',
       {
-        usePersistentCache: false,
+        usePersistentCache: false, useKnownSongs: false,
         searchFn: async () => {
           calls += 1;
           return {
