@@ -3,7 +3,39 @@ const $=id=>document.getElementById(id);
 const BARS_PAGE_SIZE=25;
 let barsOffset=0;
 function setLoggedIn(value){$('login').classList.toggle('hidden',value);$('app').classList.toggle('hidden',!value)}
-async function api(path,options={}){const headers={'Content-Type':'application/json',...(options.headers||{})};const r=await fetch(`/api/public/master-admin${path}`,{...options,headers,credentials:'same-origin'});const data=await r.json().catch(()=>({ok:false,error:'Respuesta inválida'}));if(!r.ok||!data.ok)throw new Error(data.error||'Error de servidor');return data.data}
+async function api(path,options={}){
+  const headers={
+    'Content-Type':'application/json',
+    ...(options.headers||{})
+  };
+  const response=await fetch(
+    `/api/public/master-admin${path}`,
+    {
+      ...options,
+      headers,
+      credentials:'same-origin'
+    }
+  );
+  const data=await response.json().catch(()=>({
+    ok:false,
+    error:'Respuesta inválida'
+  }));
+
+  if(!response.ok||!data.ok){
+    const error=new Error(
+      data.error||'Error de servidor'
+    );
+    error.status=response.status;
+
+    if(response.status===401){
+      setLoggedIn(false);
+    }
+
+    throw error;
+  }
+
+  return data.data;
+}
 function escapeHtml(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));}
 function renderStats(s){$('stats').innerHTML=Object.entries({Total:s.total,Activos:s.active,Inactivos:s.inactive,Pruebas:s.trial,'Licencias activas':s.activeLicense,Expiradas:s.expired,Suspendidas:s.suspended}).map(([k,v])=>`<div class="stat"><span class="muted">${k}</span><strong>${v}</strong></div>`).join('')}
 function licenseButtons(b){const status=b.license?.status||'NONE';if(status==='SUSPENDED')return `<button class="secondary" data-license-action="reactivate" data-id="${b.id}">Reactivar licencia</button>`;if(status==='ACTIVE')return `<button class="danger" data-license-action="suspend" data-id="${b.id}">Suspender licencia</button>`;return `<button data-license-action="activate" data-id="${b.id}">Activar suscripción</button>`;}
@@ -130,4 +162,20 @@ $('createForm').onsubmit=async e=>{e.preventDefault();$('createMessage').textCon
 $('bars-prev').onclick=async()=>{if(barsOffset<=0)return;barsOffset=Math.max(0,barsOffset-BARS_PAGE_SIZE);try{await loadBars()}catch(e){await AdminDialog.message('No se pudieron cargar los bares',e.message)}};
 $('bars-next').onclick=async()=>{barsOffset+=BARS_PAGE_SIZE;try{await loadBars()}catch(e){barsOffset=Math.max(0,barsOffset-BARS_PAGE_SIZE);await AdminDialog.message('No se pudieron cargar los bares',e.message)}};
 $('logout').onclick=async()=>{try{await api('/logout',{method:'POST'})}catch(e){console.warn('No se pudo revocar la sesión en servidor:',e.message)}finally{setLoggedIn(false)}};
-(async()=>{try{await load();setLoggedIn(true)}catch(e){setLoggedIn(false)}})();
+(async()=>{
+  try{
+    await load();
+    setLoggedIn(true);
+  }catch(e){
+    if(e.status===401){
+      setLoggedIn(false);
+      return;
+    }
+
+    setLoggedIn(true);
+    await AdminDialog.message(
+      'No se pudo cargar el panel',
+      e.message||'Error de conexión.'
+    );
+  }
+})();
