@@ -75,7 +75,20 @@ const DUMMY_PASSWORD_HASH =
     )
     .toString('base64url');
 
-function verifyPassword(password, storedHash) {
+function deriveScryptKey(password, salt) {
+  return new Promise((resolve, reject) => {
+    crypto.scrypt(password, salt, 64, (error, derivedKey) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+
+      resolve(derivedKey);
+    });
+  });
+}
+
+async function verifyPassword(password, storedHash) {
   if (
     typeof password !== 'string' ||
     typeof storedHash !== 'string'
@@ -94,12 +107,16 @@ function verifyPassword(password, storedHash) {
     return false;
   }
 
-  const actual = crypto
-    .scryptSync(password, salt, 64)
-    .toString('base64url');
+  const actualBuffer =
+    await deriveScryptKey(password, salt);
 
-  const actualBuffer = Buffer.from(actual);
-  const expectedBuffer = Buffer.from(expected);
+  let expectedBuffer;
+
+  try {
+    expectedBuffer = Buffer.from(expected, 'base64url');
+  } catch {
+    return false;
+  }
 
   if (
     actualBuffer.length !==
@@ -373,7 +390,7 @@ async function authenticateOperator({
     DUMMY_PASSWORD_HASH;
 
   const passwordValid =
-    verifyPassword(
+    await verifyPassword(
       password,
       passwordHash
     );
