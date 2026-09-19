@@ -1,1 +1,15 @@
     :root{font-family:Arial,sans-serif;color:#f5f7fb;background:#080a10}*{box-sizing:border-box}body{margin:0;background:linear-gradient(135deg,#080a10,#10152a);min-height:100vh}.wrap{max-width:1250px;margin:auto;padding:24px}.card{background:#111726;border:1px solid #26314a;border-radius:14px;padding:20px;margin-bottom:18px;box-shadow:0 12px 35px #0005}h1,h2{margin-top:0}input,button,select{font:inherit;border-radius:8px;padding:11px 13px;border:1px solid #34415d}input,select{background:#0a0f1c;color:#fff;width:100%}button{background:#16d9ff;color:#041018;font-weight:700;cursor:pointer}button.secondary{background:#202b42;color:#fff}button.danger{background:#ff5b79;color:#21000a}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}.stat{padding:16px;background:#0b1220;border-radius:10px}.stat strong{display:block;font-size:28px;margin-top:5px}.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}.actions{display:flex;gap:8px}.hidden{display:none}.muted{color:#9aa8c2}.error{color:#ff7d96}.ok{color:#66e3a4}.bar{border:1px solid #293651;border-radius:12px;padding:16px;margin-top:12px;background:#0c1322}.bar-head{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}.urls{display:grid;gap:6px;margin-top:10px}.urls a{color:#62ddff;word-break:break-all}.qr{width:150px;height:150px;background:#fff;padding:5px}.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.badge{padding:4px 8px;border-radius:99px;background:#23314a}.table-actions{display:flex;gap:6px;flex-wrap:wrap}.license-box{margin-top:14px;padding:12px;border-radius:10px;background:#0a1020;border:1px solid #273654}.license-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.payment-list{margin-top:10px;max-height:220px;overflow:auto}.payment{padding:8px 0;border-bottom:1px solid #26314a}@media(max-width:600px){.wrap{padding:12px}}
+
+.admin-dialog-overlay{
+  position:fixed;inset:0;z-index:6000;display:flex;align-items:center;justify-content:center;
+  padding:20px;background:#05070ed9;backdrop-filter:blur(8px)
+}
+.admin-dialog-card{
+  width:min(100%,520px);background:#111726;border:1px solid #34415d;border-radius:14px;
+  padding:20px;box-shadow:0 20px 60px #0009
+}
+.admin-dialog-title{margin:0 0 16px}
+.admin-dialog-body{display:grid;gap:12px}
+.admin-dialog-label{display:grid;gap:6px}
+.admin-dialog-input{width:100%}
+.admin-dialog-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
