@@ -23,6 +23,21 @@ describe('RateLimitStore', () => {
     assert.equal(store.reset('demo'), true);
     assert.equal(store.hit('demo', 1000, 1).allowed, true);
   });
+  it('reutiliza una clave expirada sin conservar el contador anterior', () => {
+    const store = new RateLimitStore(1000);
+
+    store.entries.set('expired', {
+      hits: 10,
+      expiresAt: Date.now() - 1
+    });
+
+    const result = store.hit('expired', 1000, 2);
+
+    assert.equal(result.allowed, true);
+    assert.equal(result.remaining, 1);
+    assert.equal(store.entries.get('expired').hits, 1);
+  });
+
   it('limita el número de entradas en memoria', () => {
     const store = new RateLimitStore(60000, 3);
 
