@@ -80,6 +80,16 @@ for (const fileName of fs.readdirSync(jsDir)) {
       `js/${fileName}: genera ${markupStyleAttributes.length} atributo(s) style inline.`
     );
   }
+
+  const nativeDialogs = [
+    ...content.matchAll(/(?:^|[^.\w])(alert|confirm|prompt)\s*\(/gm)
+  ];
+
+  if (nativeDialogs.length > 0) {
+    errors.push(
+      `js/${fileName}: usa ${nativeDialogs.length} diálogo(s) nativo(s) alert/confirm/prompt.`
+    );
+  }
 }
 
 if (errors.length > 0) {
