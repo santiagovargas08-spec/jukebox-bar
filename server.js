@@ -161,7 +161,28 @@ io.on('connection', (socket) => {
   });
 
   // SEÑAL DEL BAR (TERMINÓ CANCIÓN) O DEL ADMIN (SALTAR CANCIÓN)
-  socket.on('siguiente_cancion', () => {
+  socket.on('siguiente_cancion', (payload = {}) => {
+    const playbackId =
+      payload && typeof payload === 'object'
+        ? payload.playbackId
+        : payload;
+
+    // Una reconexión o webOS puede repetir el evento ENDED. Solo avanzar
+    // si la señal corresponde exactamente a la reproducción vigente.
+    if (
+      playbackId !== undefined &&
+      playbackId !== null &&
+      (
+        !reproduciendo ||
+        String(reproduciendo.id) !== String(playbackId)
+      )
+    ) {
+      console.log(
+        `[↪] Señal duplicada/atrasada ignorada para reproducción ${playbackId}.`
+      );
+      return;
+    }
+
     avanzarCola();
   });
 
@@ -243,3 +264,4 @@ server.listen(PORT, () => {
   console.log(`\n Jukebox con Panel de Administración activo en puerto ${PORT}`);
   console.log(` -> Panel Admin: http://localhost:${PORT}/admin.html\n`);
 });
+

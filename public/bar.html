@@ -192,6 +192,9 @@
     let pendingVideo = null;   
     let notifTimer   = null;   
     let lastVideoId  = null;
+    let currentPlaybackId = null;
+    let advanceSentForPlaybackId = null;
+    let pendingVideoForce = false;
     let historialReproducidas = []; // 🔥 NUEVO: Historial local para Auto-DJ
     let isAutoDJ     = false;  
 
@@ -249,7 +252,7 @@
 
     socket.on('nueva_reproduccion', (cancion) => {
       isAutoDJ = false;
-      cargarVideo(cancion);
+      cargarVideo(cancion, true);
       mostrarNotificacion(cancion);
     });
 
@@ -261,8 +264,10 @@
       }
     });
 
-    socket.on('reconnect', () => {
-      socket.emit('solicitar_estado');
+    // El servidor ya envía estado_inicial automáticamente tras cada
+    // reconexión. No solicitarlo otra vez evita recargar el mismo video.
+    socket.io.on('reconnect', (attempt) => {
+      console.log(`Socket reconectado (intento ${attempt}).`);
     });
 
     window.onYouTubeIframeAPIReady = function () {
@@ -276,8 +281,11 @@
     function onPlayerReady(event) {
       playerReady = true;
       if (pendingVideo) {
-        cargarVideo(pendingVideo);
+        const video = pendingVideo;
+        const force = pendingVideoForce;
         pendingVideo = null;
+        pendingVideoForce = false;
+        cargarVideo(video, force);
       } else if (pendingAutoDJ && !isEsclavo) {
         iniciarAutoDJ();
         pendingAutoDJ = false;
@@ -286,18 +294,21 @@
 
     function onPlayerStateChange(event) {
       if (event.data === YT.PlayerState.ENDED) {
-        // 🔥 NUEVO: Registrar la canción que terminó de reproducirse
-        if (player.getVideoData && player.getVideoData()) {
-          const videoData = player.getVideoData();
-          if (videoData.video_id && !isAutoDJ) {
-            socket.emit('cancion_terminada', { 
-              videoId: videoData.video_id,
-              titulo: videoData.title || 'Desconocida',
-              nombre: '(Registrada)' 
-            });
+        if (!isAutoDJ && !isEsclavo) {
+          // Registrar el historial una sola vez por reproducción.
+          if (player.getVideoData && player.getVideoData()) {
+            const videoData = player.getVideoData();
+            if (videoData.video_id) {
+              socket.emit('cancion_terminada', {
+                videoId: videoData.video_id,
+                titulo: videoData.title || 'Desconocida',
+                nombre: '(Registrada)'
+              });
+            }
           }
+
+          solicitarSiguienteUnaVez('ended');
         }
-        if (!isAutoDJ && !isEsclavo) socket.emit('siguiente_cancion');
       } else if (event.data === YT.PlayerState.PLAYING) {
         mostrarIdleScreen(false);
         if (isAutoDJ && player.getVideoData) {
@@ -309,15 +320,77 @@
       }
     }
 
-    function onPlayerError(event) {
-      if (!isEsclavo) setTimeout(() => socket.emit('siguiente_cancion'), 2000);
+    function solicitarSiguienteUnaVez(motivo) {
+      if (isAutoDJ || isEsclavo || currentPlaybackId === null) return;
+
+      const playbackKey = String(currentPlaybackId);
+      if (advanceSentForPlaybackId === playbackKey) return;
+
+      advanceSentForPlaybackId = playbackKey;
+      socket.emit('siguiente_cancion', {
+        playbackId: currentPlaybackId,
+        motivo
+      });
     }
 
-    function cargarVideo(cancion) {
-      if (!cancion) return;
+    function onPlayerError(event) {
+      if (isEsclavo || isAutoDJ) return;
+
+      const failedPlaybackId = currentPlaybackId;
+      setTimeout(() => {
+        if (
+          failedPlaybackId !== null &&
+          String(currentPlaybackId) === String(failedPlaybackId)
+        ) {
+          solicitarSiguienteUnaVez(`player_error_${event.data}`);
+        }
+      }, 2000);
+    }
+
+    function cargarVideo(cancion, forzar = false) {
+      if (!cancion || !cancion.videoId) return;
+
       if (!playerReady || !player || typeof player.loadVideoById !== 'function') {
-        pendingVideo = cancion; return;
+        pendingVideo = cancion;
+        pendingVideoForce = pendingVideoForce || forzar;
+        return;
       }
+
+      const playbackId =
+        cancion.id !== undefined && cancion.id !== null
+          ? cancion.id
+          : cancion.videoId;
+      const mismoPlayback =
+        currentPlaybackId !== null &&
+        String(currentPlaybackId) === String(playbackId);
+
+      if (!forzar && mismoPlayback) {
+        let estadoActual = null;
+
+        if (typeof player.getPlayerState === 'function') {
+          try {
+            estadoActual = player.getPlayerState();
+          } catch (error) {
+            console.warn('No se pudo consultar el estado del reproductor.', error);
+          }
+        }
+
+        const estadosActivos = [
+          YT.PlayerState.PLAYING,
+          YT.PlayerState.PAUSED,
+          YT.PlayerState.BUFFERING,
+          YT.PlayerState.CUED
+        ];
+
+        if (estadoActual === null || estadosActivos.indexOf(estadoActual) !== -1) {
+          actualizarNowPlayingBar(cancion);
+          mostrarIdleScreen(false);
+          return;
+        }
+      }
+
+      currentPlaybackId = playbackId;
+      advanceSentForPlaybackId = null;
       lastVideoId = cancion.videoId;
       player.loadVideoById({ videoId: cancion.videoId });
       actualizarNowPlayingBar(cancion);
@@ -542,3 +615,4 @@
   <script src="https://www.youtube.com/iframe_api" async></script>
 </body>
 </html>
+
