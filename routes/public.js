@@ -16,7 +16,7 @@ const { authenticateMasterAdmin, revokeMasterAdminToken } = require('../services
 const { requireMasterAdmin, MASTER_ADMIN_COOKIE } = require('../middleware/masterAdminAuth.js');
 const { requireOperatorHttp, OPERATOR_COOKIE } = require('../middleware/operatorAuth.js');
 const { prisma } = require('../db.js');
-const { createBar, getBarById, listBars, updateBar } = require('../services/barService.js');
+const { createBar, getBarById, listBarsPage, updateBar } = require('../services/barService.js');
 const { buildBarUrls, getAppUrl } = require('../lib/barUrls.js');
 const { requireTrustedOrigin } = require('../lib/originValidation.js');
 
@@ -133,8 +133,21 @@ router.get('/master-admin/dashboard', async (req, res) => {
 
 router.get('/master-admin/bars', async (req, res) => {
   try {
-    const bars = await listBars();
-    res.json({ ok: true, data: bars.map((bar) => ({ ...bar, urls: buildBarUrls(bar, req) })) });
+    const page = await listBarsPage({
+      limit: req.query.limit,
+      offset: req.query.offset
+    });
+
+    res.json({
+      ok: true,
+      data: {
+        ...page,
+        items: page.items.map((bar) => ({
+          ...bar,
+          urls: buildBarUrls(bar, req)
+        }))
+      }
+    });
   } catch (error) {
     console.error('[MASTER_ADMIN] Error listando bares:', error);
     res.status(500).json({ ok: false, error: 'No se pudieron obtener los bares.' });
