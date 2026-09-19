@@ -1,6 +1,7 @@
 'use strict';
 
 const { prisma } = require('../db.js');
+const { logInfo } = require('../lib/logger.js');
 
 
 // ============================================================
@@ -663,14 +664,15 @@ async function activateSubscription({
     );
 
 
-  console.log(
-    `[LICENCIA] Bar ${id} → ${planNormalizado} → activa hasta ${resultado.license.expiresAt.toISOString()}`
-  );
-
-
-  console.log(
-    `[PAGO] Bar ${id} → ${metodoNormalizado} → ${monto}`
-  );
+  logInfo('Suscripción activada', {
+    event: 'license_activated',
+    barId: id,
+    plan: planNormalizado,
+    expiresAt: resultado.license.expiresAt.toISOString(),
+    paymentId: resultado.payment.id,
+    method: metodoNormalizado,
+    currency: currencyNormalizada
+  });
 
 
   return resultado;
