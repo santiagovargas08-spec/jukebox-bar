@@ -123,6 +123,8 @@ async function authenticateMasterAdmin({ email, password, ip = 'unknown' }) {
 
   if (!admin || !admin.active || !verifyPassword(password, admin.passwordHash)) return null;
 
+  loginAttempts.reset(`master:${normalizedEmail}`);
+
   return {
     token: createToken(admin),
     admin: { id: admin.id, email: admin.email, displayName: admin.displayName, role: 'SUPER_ADMIN' },
