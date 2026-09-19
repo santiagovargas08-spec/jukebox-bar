@@ -1,7 +1,7 @@
 'use strict';
 
 const ytSearch = require('yt-search');
-const { sanitizeThumbnailUrl } = require('../lib/urlValidation.js');
+const { sanitizeThumbnailUrl, isValidYoutubeVideoId } = require('../lib/urlValidation.js');
 
 const CACHE_TTL_MS = 60 * 60 * 1000;
 const MAX_CACHE_ENTRIES = 500;
@@ -16,7 +16,7 @@ function normalizeYoutubeResult(video) {
       ? video.videoId.trim()
       : '';
 
-  if (!videoId) return null;
+  if (!isValidYoutubeVideoId(videoId)) return null;
 
   let title =
     typeof video.title === 'string'
