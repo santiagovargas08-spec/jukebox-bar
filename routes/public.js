@@ -18,6 +18,7 @@ const { createBar, getBarById, listBarsPage, updateBar } = require('../services/
 const { buildBarUrls, getAppUrl } = require('../lib/barUrls.js');
 const { requireTrustedOrigin } = require('../lib/originValidation.js');
 const { getClientQrPng } = require('../services/qrService.js');
+const { auditAdminAction } = require('../lib/adminAudit.js');
 
 const router = express.Router();
 
@@ -169,6 +170,16 @@ router.post('/master-admin/bars', async (req, res) => {
     const { name, displayName, welcomeMessage, slug } = req.body || {};
     if (typeof name !== 'string' || !name.trim()) return res.status(400).json({ ok: false, error: 'El nombre del bar es obligatorio.' });
     const bar = await createBar({ name, slug, displayName, welcomeMessage });
+
+    auditAdminAction({
+      req,
+      action: 'bar.create',
+      barId: bar.id,
+      entityType: 'bar',
+      entityId: String(bar.id),
+      details: { slug: bar.slug }
+    });
+
     res.status(201).json({ ok: true, data: { ...bar, urls: buildBarUrls(bar, req) } });
   } catch (error) {
     console.error('[MASTER_ADMIN] Error creando bar:', error);
@@ -183,6 +194,19 @@ router.post('/master-admin/bars/:id/admins', async (req, res) => {
     const { email, displayName, password, role = 'BAR_ADMIN' } = req.body || {};
     if (role !== 'BAR_ADMIN') return res.status(400).json({ ok: false, error: 'Desde Master Admin solo se crean administradores BAR_ADMIN.' });
     const admin = await createAdminUser({ barId: bar.id, email, displayName, password, role });
+
+    auditAdminAction({
+      req,
+      action: 'bar.admin.create',
+      barId: bar.id,
+      entityType: 'adminUser',
+      entityId: String(admin.id),
+      details: {
+        email: admin.email,
+        role: admin.role
+      }
+    });
+
     res.status(201).json({ ok: true, data: admin });
   } catch (error) {
     console.error('[MASTER_ADMIN] Error creando administrador del bar:', error);
@@ -193,6 +217,18 @@ router.post('/master-admin/bars/:id/admins', async (req, res) => {
 router.put('/master-admin/bars/:id', async (req, res) => {
   try {
     const bar = await updateBar(req.params.id, req.body || {});
+
+    auditAdminAction({
+      req,
+      action: 'bar.update',
+      barId: bar.id,
+      entityType: 'bar',
+      entityId: String(bar.id),
+      details: {
+        fields: Object.keys(req.body || {})
+      }
+    });
+
     res.json({ ok: true, data: { ...bar, urls: buildBarUrls(bar, req) } });
   } catch (error) {
     console.error('[MASTER_ADMIN] Error actualizando bar:', error);
@@ -204,6 +240,16 @@ router.patch('/master-admin/bars/:id/active', async (req, res) => {
   try {
     if (typeof req.body?.active !== 'boolean') return res.status(400).json({ ok: false, error: 'active debe ser boolean.' });
     const bar = await updateBar(req.params.id, { active: req.body.active });
+
+    auditAdminAction({
+      req,
+      action: 'bar.active.update',
+      barId: bar.id,
+      entityType: 'bar',
+      entityId: String(bar.id),
+      details: { active: bar.active }
+    });
+
     res.json({ ok: true, data: { ...bar, urls: buildBarUrls(bar, req) } });
   } catch (error) {
     console.error('[MASTER_ADMIN] Error cambiando estado:', error);
@@ -239,6 +285,20 @@ router.post('/master-admin/bars/:id/license/activate', async (req, res) => {
       createdBy: req.masterAdmin.email
     });
 
+    auditAdminAction({
+      req,
+      action: 'license.activate',
+      barId: bar.id,
+      entityType: 'license',
+      entityId: String(result.license?.id || result.id || ''),
+      details: {
+        plan,
+        amount,
+        method,
+        currency
+      }
+    });
+
     res.json({ ok: true, data: result });
   } catch (error) {
     console.error('[MASTER_ADMIN] Error activando suscripción:', error);
@@ -251,6 +311,15 @@ router.post('/master-admin/bars/:id/license/suspend', async (req, res) => {
     const bar = await getBarById(req.params.id);
     if (!bar) return res.status(404).json({ ok: false, error: 'Bar no encontrado.' });
     const license = await suspendLicense(bar.id);
+
+    auditAdminAction({
+      req,
+      action: 'license.suspend',
+      barId: bar.id,
+      entityType: 'license',
+      entityId: String(license.id)
+    });
+
     res.json({ ok: true, data: license });
   } catch (error) {
     console.error('[MASTER_ADMIN] Error suspendiendo licencia:', error);
@@ -263,6 +332,15 @@ router.post('/master-admin/bars/:id/license/reactivate', async (req, res) => {
     const bar = await getBarById(req.params.id);
     if (!bar) return res.status(404).json({ ok: false, error: 'Bar no encontrado.' });
     const license = await reactivateLicense(bar.id);
+
+    auditAdminAction({
+      req,
+      action: 'license.reactivate',
+      barId: bar.id,
+      entityType: 'license',
+      entityId: String(license.id)
+    });
+
     res.json({ ok: true, data: license });
   } catch (error) {
     console.error('[MASTER_ADMIN] Error reactivando licencia:', error);
