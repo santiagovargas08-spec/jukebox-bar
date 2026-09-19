@@ -13,7 +13,8 @@ const { searchYoutube } = require('../services/youtubeSearchService.js');
 const { canSearch } = require('../services/searchRequestPolicy.js');
 const {
   canRequestSong,
-  isBlockedSong
+  isBlockedSong,
+  normalizeRequesterName
 } = require('../services/songRequestPolicy.js');
 
 const { logError, logInfo } = require('../lib/logger.js');
@@ -89,7 +90,7 @@ function registerPublicSocketHandlers({
           ? payload.barId
           : payload;
 
-      const id = obtenerBarIdAutorizado(
+      id = obtenerBarIdAutorizado(
         socket,
         barId
       );
@@ -115,8 +116,10 @@ function registerPublicSocketHandlers({
   });
 
   socket.on('buscar_canciones', async (query) => {
+    let id = null;
+
     try {
-      const id = obtenerBarIdAutorizado(
+      id = obtenerBarIdAutorizado(
         socket,
         null
       );
@@ -212,6 +215,8 @@ function registerPublicSocketHandlers({
   });
 
   socket.on('agregar_cancion', async (payload) => {
+    let id = null;
+
     try {
       let barId;
       let cancion;
@@ -264,11 +269,12 @@ function registerPublicSocketHandlers({
         ''
       ).trim();
 
-      const nombre = String(
+      const nombre = normalizeRequesterName(
         cancion.name ||
         cancion.nombre ||
-        'Cliente'
-      ).trim();
+        'Cliente',
+        Boolean(socket.data.operator)
+      );
 
       if (!titulo) {
         socket.emit('error_cancion', {
