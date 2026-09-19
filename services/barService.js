@@ -163,6 +163,52 @@ async function listBars() {
   });
 }
 
+
+async function listBarsPage({
+  limit = 25,
+  offset = 0
+} = {}) {
+  const safeLimit = Math.min(
+    Math.max(Number.parseInt(limit, 10) || 25, 1),
+    100
+  );
+
+  const safeOffset = Math.max(
+    Number.parseInt(offset, 10) || 0,
+    0
+  );
+
+  const include = {
+    settings: true,
+    license: true,
+    _count: {
+      select: {
+        users: true,
+        queue: true,
+        history: true,
+        payments: true
+      }
+    }
+  };
+
+  const [items, total] = await Promise.all([
+    prisma.bar.findMany({
+      orderBy: { createdAt: 'desc' },
+      skip: safeOffset,
+      take: safeLimit,
+      include
+    }),
+    prisma.bar.count()
+  ]);
+
+  return {
+    items,
+    total,
+    limit: safeLimit,
+    offset: safeOffset
+  };
+}
+
 async function updateBar(id, data) {
   const barId = Number(id);
   if (!Number.isInteger(barId) || barId <= 0) throw new Error('ID de bar inválido.');
@@ -245,6 +291,7 @@ module.exports = {
   getBarBySlug,
   getBarById,
   listBars,
+  listBarsPage,
   updateBar,
   slugify,
   MAX_BAR_NAME_LENGTH,
