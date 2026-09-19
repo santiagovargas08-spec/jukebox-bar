@@ -122,7 +122,7 @@ app.use(
     path.join(__dirname, 'public'),
     {
       etag: true,
-      maxAge: '5m',
+      maxAge: '1h',
       setHeaders(res, filePath) {
         if (filePath.endsWith('.html')) {
           res.setHeader('Cache-Control', 'no-cache');
