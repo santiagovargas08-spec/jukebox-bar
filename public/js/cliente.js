@@ -1057,6 +1057,10 @@ document.addEventListener('error', (event) => {
       (e) => {
 
         if (!e.target.value.trim()) {
+          searchRequestCounter += 1;
+          activeSearchRequestId =
+            `client-${searchRequestCounter}`;
+
           if (searchFallbackTimer) {
             clearTimeout(searchFallbackTimer);
             searchFallbackTimer = null;
