@@ -23,6 +23,7 @@ const {
 } = require('../services/playbackService.js');
 
 const { HISTORIAL_MAX } = require('../services/socketStateService.js');
+const { logError, logInfo } = require('../lib/logger.js');
 
 function registerPlaybackAdminHandlers({
   socket,
@@ -46,9 +47,12 @@ function registerPlaybackAdminHandlers({
 
     const reproduciendo = await setNowPlaying(id, siguiente);
 
-    console.log(
-      `[${logPrefix}] Bar ${id} → videoId=${siguiente.videoId}`
-    );
+    logInfo('Reproduciendo siguiente canción', {
+      event: 'playback_next',
+      source: logPrefix,
+      barId: id,
+      videoId: siguiente.videoId
+    });
 
     io.to(`bar:${id}`).emit(
       'nueva_reproduccion',
@@ -87,7 +91,7 @@ function registerPlaybackAdminHandlers({
 
       await reproducirSiguiente(id, 'REPRODUCCION');
     } catch (error) {
-      console.error('[REPRODUCCION] Error:', error);
+      logError('[REPRODUCCION] Error:', { error: error?.message || String(error) });
     }
   });
 
@@ -112,7 +116,7 @@ function registerPlaybackAdminHandlers({
 
       await reproducirSiguiente(id, 'ADMIN');
     } catch (error) {
-      console.error('[ADMIN] Error saltando:', error);
+      logError('[ADMIN] Error saltando:', { error: error?.message || String(error) });
     }
   });
 
@@ -140,13 +144,16 @@ function registerPlaybackAdminHandlers({
         payload?.id
       );
 
-      console.log(
-        `[ADMIN] Bar ${id} → Eliminación ${payload?.id}: ${eliminado}`
-      );
+      logInfo('Canción eliminada por operador', {
+        event: 'queue_song_removed',
+        barId: id,
+        queueItemId: payload?.id || null,
+        removed: eliminado
+      });
 
       await emitirEstadoBar(id);
     } catch (error) {
-      console.error('[ADMIN] Error eliminando:', error);
+      logError('[ADMIN] Error eliminando:', { error: error?.message || String(error) });
     }
   });
 
@@ -171,13 +178,15 @@ function registerPlaybackAdminHandlers({
 
       const cantidad = await clearQueue(id);
 
-      console.log(
-        `[ADMIN] Bar ${id} → Se eliminaron ${cantidad} canciones`
-      );
+      logInfo('Cola vaciada por operador', {
+        event: 'queue_cleared',
+        barId: id,
+        removedCount: cantidad
+      });
 
       await emitirEstadoBar(id);
     } catch (error) {
-      console.error('[ADMIN] Error vaciando:', error);
+      logError('[ADMIN] Error vaciando:', { error: error?.message || String(error) });
     }
   });
 
@@ -214,7 +223,7 @@ function registerPlaybackAdminHandlers({
       await reorderQueue(id, orderedIds);
       await emitirEstadoBar(id);
     } catch (error) {
-      console.error('[COLA] Error reordenando:', error);
+      logError('[COLA] Error reordenando:', { error: error?.message || String(error) });
 
       socket.emit('error_cola', {
         mensaje:
@@ -271,9 +280,11 @@ function registerPlaybackAdminHandlers({
         ultimo.length > 0 &&
         ultimo[0].videoId === song.videoId
       ) {
-        console.log(
-          `[HISTORIAL] Bar ${id} → duplicado ignorado`
-        );
+        logInfo('Historial duplicado ignorado', {
+          event: 'history_duplicate_ignored',
+          barId: id,
+          videoId: song.videoId
+        });
       } else {
         await addToHistory(id, song);
       }
@@ -293,11 +304,13 @@ function registerPlaybackAdminHandlers({
         }
       );
 
-      console.log(
-        `[HISTORIAL] Bar ${id} → videoId=${song.videoId}`
-      );
+      logInfo('Canción agregada al historial', {
+        event: 'history_song_added',
+        barId: id,
+        videoId: song.videoId
+      });
     } catch (error) {
-      console.error('[HISTORIAL] Error:', error);
+      logError('[HISTORIAL] Error:', { error: error?.message || String(error) });
     }
   });
 }
