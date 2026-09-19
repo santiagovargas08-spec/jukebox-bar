@@ -20,9 +20,17 @@ const { buildBarUrls, getAppUrl } = require('../lib/barUrls.js');
 
 const router = express.Router();
 
+function noStore(req, res, next) {
+  res.set('Cache-Control', 'no-store, max-age=0');
+  res.set('Pragma', 'no-cache');
+  next();
+}
+
 // ============================================================
 // MASTER ADMIN / SUPER_ADMIN
 // ============================================================
+
+router.use('/master-admin', noStore);
 
 router.post('/master-admin/login', async (req, res) => {
   try {
@@ -222,7 +230,7 @@ router.get('/master-admin/bars/:id/urls', async (req, res) => {
 // OPERADORES DEL BAR
 // ============================================================
 
-router.post('/bars/:slug/operator/login', async (req, res) => {
+router.post('/bars/:slug/operator/login', noStore, async (req, res) => {
   try {
     const result = await authenticateOperator({ slug: req.params.slug, email: req.body?.email, password: req.body?.password, ip: req.ip });
     if (!result) return res.status(401).json({ ok: false, error: 'Credenciales inválidas.' });
