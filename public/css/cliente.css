@@ -1,0 +1,19 @@
+    #live-queue-list {
+      max-height: 250px;
+      overflow-y: auto;
+      padding-right: 8px;
+    }
+
+    #live-queue-list::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    #live-queue-list::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 4px;
+    }
+
+    #live-queue-list::-webkit-scrollbar-thumb {
+      background: #00f0ff;
+      border-radius: 4px;
+    }
