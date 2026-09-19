@@ -147,9 +147,7 @@ document.addEventListener('error', (event) => {
             socket.emit('cancion_terminada', {
               barId,
               cancion: {
-                videoId: videoData.video_id,
-                titulo: videoData.title || 'Desconocida',
-                nombre: '(Registrada)'
+                videoId: videoData.video_id
               }
             });
           }
