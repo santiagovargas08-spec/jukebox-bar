@@ -224,7 +224,8 @@ function registerPublicSocketHandlers({
       const {
         videos,
         cached,
-        status
+        status,
+        elapsedMs
       } = await searchYoutube(texto);
 
       logInfo('Búsqueda YouTube completada', {
@@ -234,17 +235,14 @@ function registerPublicSocketHandlers({
         cached,
         results: videos.length,
         queryLength: texto.length,
-        status
+        status,
+        elapsedMs
       });
 
       if (videos.length === 0) {
         const mensajes = {
           NO_RESULTS:
             'No encontramos canciones relacionadas. Prueba escribiendo artista y canción.',
-          TIMEOUT:
-            'YouTube está respondiendo lento. Intenta nuevamente.',
-          PROVIDER_UNAVAILABLE:
-            'La búsqueda está temporalmente ocupada. Intenta nuevamente en unos segundos.',
           PROVIDER_ERROR:
             'YouTube no respondió correctamente. Intenta nuevamente.'
         };
