@@ -58,6 +58,16 @@ describe('auth', () => {
     assert.equal(result.admin.barId, bar.id);
   });
 
+  it('login con slug malformado es rechazado', async () => {
+    const result = await operatorAuthService.authenticateOperator({
+      slug: '../otro-bar',
+      email: 'operator@test.local',
+      password: 'password-test-12'
+    });
+
+    assert.equal(result, null);
+  });
+
   it('login incorrecto (email inexistente) devuelve null', async () => {
     const result = await operatorAuthService.authenticateOperator({
       slug: bar.slug,
