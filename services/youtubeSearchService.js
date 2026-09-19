@@ -45,6 +45,12 @@ function recordProviderFailure(now = Date.now()) {
     !providerCircuit.openedAt
   ) {
     providerCircuit.openedAt = now;
+
+    logWarn('Circuit breaker de YouTube abierto', {
+      event: 'youtube_search_circuit_open',
+      failures: providerCircuit.failures,
+      openMs: PROVIDER_OPEN_MS
+    });
   }
 }
 
@@ -128,11 +134,6 @@ async function searchYoutube(
   }
 
   if (isProviderCircuitOpen()) {
-    logWarn('Búsqueda de YouTube omitida por circuit breaker', {
-      event: 'youtube_search_circuit_open',
-      failures: providerCircuit.failures
-    });
-
     return {
       videos: [],
       cached: false
