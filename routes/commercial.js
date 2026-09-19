@@ -212,10 +212,7 @@ router.get('/bars/:id/license', async (req, res) => {
       data: license
     });
   } catch (error) {
-    console.error(
-      '[LICENSE] Error obteniendo licencia:',
-      error
-    );
+    logError('[LICENSE] Error obteniendo licencia:', { requestId: req.id || null, error: error?.message || String(error) });
 
     res.status(500).json({
       ok: false,
@@ -245,10 +242,7 @@ router.get(
         data: status
       });
     } catch (error) {
-      console.error(
-        '[LICENSE] Error obteniendo estado:',
-        error
-      );
+      logError('[LICENSE] Error obteniendo estado:', { requestId: req.id || null, error: error?.message || String(error) });
 
       res.status(500).json({
         ok: false,
@@ -285,10 +279,7 @@ router.post(
         data: resultado
       });
     } catch (error) {
-      console.error(
-        '[LICENSE] Error activando suscripción:',
-        error
-      );
+      logError('[LICENSE] Error activando suscripción:', { requestId: req.id || null, error: error?.message || String(error) });
 
       res.status(400).json({
         ok: false,
@@ -316,10 +307,7 @@ router.post(
         data: license
       });
     } catch (error) {
-      console.error(
-        '[LICENSE] Error suspendiendo licencia:',
-        error
-      );
+      logError('[LICENSE] Error suspendiendo licencia:', { requestId: req.id || null, error: error?.message || String(error) });
 
       res.status(400).json({
         ok: false,
@@ -347,10 +335,7 @@ router.post(
         data: license
       });
     } catch (error) {
-      console.error(
-        '[LICENSE] Error reactivando licencia:',
-        error
-      );
+      logError('[LICENSE] Error reactivando licencia:', { requestId: req.id || null, error: error?.message || String(error) });
 
       res.status(400).json({
         ok: false,
@@ -377,10 +362,7 @@ router.get(
         data: payments
       });
     } catch (error) {
-      console.error(
-        '[PAYMENT] Error obteniendo pagos:',
-        error
-      );
+      logError('[PAYMENT] Error obteniendo pagos:', { requestId: req.id || null, error: error?.message || String(error) });
 
       res.status(500).json({
         ok: false,
@@ -409,10 +391,7 @@ router.get(
         data: queue
       });
     } catch (error) {
-      console.error(
-        '[QUEUE] Error obteniendo cola:',
-        error
-      );
+      logError('[QUEUE] Error obteniendo cola:', { requestId: req.id || null, error: error?.message || String(error) });
 
       res.status(500).json({
         ok: false,
@@ -441,10 +420,7 @@ router.post(
         data: result.item
       });
     } catch (error) {
-      console.error(
-        '[QUEUE] Error agregando canción:',
-        error
-      );
+      logError('[QUEUE] Error agregando canción:', { requestId: req.id || null, error: error?.message || String(error) });
 
       res.status(400).json({
         ok: false,
@@ -476,10 +452,7 @@ router.delete(
         ok: true
       });
     } catch (error) {
-      console.error(
-        '[QUEUE] Error eliminando canción:',
-        error
-      );
+      logError('[QUEUE] Error eliminando canción:', { requestId: req.id || null, error: error?.message || String(error) });
 
       res.status(400).json({
         ok: false,
@@ -504,10 +477,7 @@ router.delete(
         deleted
       });
     } catch (error) {
-      console.error(
-        '[QUEUE] Error vaciando cola:',
-        error
-      );
+      logError('[QUEUE] Error vaciando cola:', { requestId: req.id || null, error: error?.message || String(error) });
 
       res.status(400).json({
         ok: false,
@@ -537,10 +507,7 @@ router.get(
         data: history
       });
     } catch (error) {
-      console.error(
-        '[HISTORY] Error obteniendo historial:',
-        error
-      );
+      logError('[HISTORY] Error obteniendo historial:', { requestId: req.id || null, error: error?.message || String(error) });
 
       res.status(500).json({
         ok: false,
@@ -566,10 +533,7 @@ router.post(
         data: item
       });
     } catch (error) {
-      console.error(
-        '[HISTORY] Error agregando historial:',
-        error
-      );
+      logError('[HISTORY] Error agregando historial:', { requestId: req.id || null, error: error?.message || String(error) });
 
       res.status(400).json({
         ok: false,
@@ -594,10 +558,7 @@ router.delete(
         deleted
       });
     } catch (error) {
-      console.error(
-        '[HISTORY] Error eliminando historial:',
-        error
-      );
+      logError('[HISTORY] Error eliminando historial:', { requestId: req.id || null, error: error?.message || String(error) });
 
       res.status(400).json({
         ok: false,
