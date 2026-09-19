@@ -1282,3 +1282,16 @@ button { cursor: pointer; font-family: inherit; border: none; }
   color: #ccc;
   line-height: 1.6;
 }
+
+
+/* ─── Accesibilidad: reducir animaciones si el usuario lo solicita ─── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
