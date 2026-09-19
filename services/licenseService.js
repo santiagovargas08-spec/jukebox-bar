@@ -14,6 +14,9 @@ const PLAN_MONTHS = {
   QUARTERLY: 3
 };
 
+const MAX_PAYMENT_AMOUNT = 99999999.99;
+const MAX_PAYMENT_NOTES_LENGTH = 1000;
+
 
 // ============================================================
 // UTILIDADES
@@ -96,7 +99,8 @@ function normalizarMonto(amount) {
 
   if (
     !Number.isFinite(numero) ||
-    numero <= 0
+    numero <= 0 ||
+    numero > MAX_PAYMENT_AMOUNT
   ) {
     return null;
   }
@@ -482,7 +486,32 @@ async function activateSubscription({
 
   if (monto === null) {
     throw new Error(
-      'El monto del pago debe ser mayor que cero.'
+      `El monto debe ser mayor que cero y no superar ${MAX_PAYMENT_AMOUNT}.`
+    );
+  }
+
+  const currencyNormalizada =
+    typeof currency === 'string'
+      ? currency.trim().toUpperCase()
+      : '';
+
+  if (!/^[A-Z]{3}$/.test(currencyNormalizada)) {
+    throw new Error(
+      'La moneda debe usar un código ISO de 3 letras.'
+    );
+  }
+
+  const notesNormalizadas =
+    notes && String(notes).trim()
+      ? String(notes).trim()
+      : null;
+
+  if (
+    notesNormalizadas &&
+    notesNormalizadas.length > MAX_PAYMENT_NOTES_LENGTH
+  ) {
+    throw new Error(
+      `Las notas no pueden superar ${MAX_PAYMENT_NOTES_LENGTH} caracteres.`
     );
   }
 
@@ -597,9 +626,7 @@ async function activateSubscription({
                 monto,
 
               currency:
-                typeof currency === 'string' && currency.trim()
-                  ? currency.trim().slice(0, 8).toUpperCase()
-                  : 'USD',
+                currencyNormalizada,
 
               plan:
                 planNormalizado,
@@ -621,10 +648,7 @@ async function activateSubscription({
                 ahora,
 
               notes:
-                notes &&
-                String(notes).trim()
-                  ? String(notes).trim()
-                  : null
+                notesNormalizadas
             }
           });
 
