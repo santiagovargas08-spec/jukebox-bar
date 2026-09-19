@@ -152,6 +152,9 @@ async function reorderQueue(barId, orderedIds) {
   }
 
   return prisma.$transaction(async (tx) => {
+    // Serializa reordenamientos con altas/bajas concurrentes del mismo bar.
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(${id})`;
+
     const items = await tx.queueItem.findMany({
       where: {
         barId: id
