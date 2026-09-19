@@ -6,8 +6,10 @@ const {
   parseAuditRetentionDays
 } = require('../lib/retention.js');
 
+let prisma = null;
+
 async function main() {
-  const { prisma } = require('../db.js');
+  ({ prisma } = require('../db.js'));
 
   const retentionDays = parseAuditRetentionDays(
     process.env.AUDIT_RETENTION_DAYS
@@ -70,7 +72,9 @@ if (require.main === module) {
       process.exitCode = 1;
     })
     .finally(async () => {
-      await prisma.$disconnect();
+      if (prisma) {
+        await prisma.$disconnect();
+      }
     });
 }
 
