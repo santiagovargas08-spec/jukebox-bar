@@ -55,6 +55,7 @@ Ver `.env.example`:
 | `MASTER_ADMIN_TOKEN_SECRET` | Secreto independiente del SUPER_ADMIN (≥32 chars) |
 | `APP_URL` | Uno o más orígenes HTTP(S), separados por coma; el primero genera QR/enlaces |
 | `PORT` | Puerto HTTP (Render lo asigna) |
+| `LOG_LEVEL` | Nivel de logs estructurados: `error`, `warn`, `info` o `debug` |
 | `TEST_DATABASE_URL` | Base de datos separada para tests |
 
 ## Prisma
@@ -163,6 +164,10 @@ La cola usa `QueueItem.position` como orden explícito por bar. `createdAt` cons
 - `cancion_terminada`
 
 Los operadores autenticados quedan vinculados a `token.barId`; no pueden acceder a otro tenant.
+
+## Observabilidad
+
+Los logs estructurados incluyen `requestId`, método, ruta, estado y duración. Los campos sensibles como contraseñas, tokens, cookies, secretos y API keys se redactan automáticamente antes de salir por consola. `/health` funciona como liveness y `/ready` verifica también PostgreSQL; Render usa `/ready`.
 
 ## Producción comercial
 
