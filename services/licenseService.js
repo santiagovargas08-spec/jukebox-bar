@@ -730,72 +730,53 @@ async function reactivateLicense(barId) {
     );
   }
 
+  return prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(${id})`;
 
-  const license =
-    await prisma.license.findUnique({
-      where: {
-        barId: id
-      }
-    });
+    const license =
+      await tx.license.findUnique({
+        where: {
+          barId: id
+        }
+      });
 
+    if (!license) {
+      throw new Error(
+        'El bar no tiene licencia.'
+      );
+    }
 
-  if (!license) {
-    throw new Error(
-      'El bar no tiene licencia.'
-    );
-  }
+    if (
+      license.status !== 'SUSPENDED'
+    ) {
+      return license;
+    }
 
+    const ahora =
+      new Date();
 
-  if (
-    license.status !== 'SUSPENDED'
-  ) {
+    /*
+     * Si la suscripción todavía tiene
+     * fecha de vencimiento futura,
+     * vuelve a ACTIVE.
+     *
+     * Si ya venció, pasa a EXPIRED.
+     */
 
-    return license;
-  }
+    const status =
+      license.expiresAt &&
+      license.expiresAt > ahora
+        ? 'ACTIVE'
+        : 'EXPIRED';
 
-
-  const ahora =
-    new Date();
-
-
-  /*
-   * Si la suscripción todavía tiene
-   * fecha de vencimiento futura,
-   * vuelve a ACTIVE.
-   *
-   * Si ya venció, pasa a EXPIRED.
-   */
-
-  if (
-    license.expiresAt &&
-    license.expiresAt > ahora
-  ) {
-
-    return prisma.license.update({
+    return tx.license.update({
       where: {
         id: license.id
       },
-
       data: {
-        status: 'ACTIVE'
+        status
       }
     });
-  }
-
-
-  /*
-   * Una licencia suspendida que ya venció
-   * no debe volver a ACTIVE automáticamente.
-   */
-
-  return prisma.license.update({
-    where: {
-      id: license.id
-    },
-
-    data: {
-      status: 'EXPIRED'
-    }
   });
 }
 
