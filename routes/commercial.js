@@ -34,10 +34,17 @@ const {
   clearHistory
 } = require('../services/historyService.js');
 const { createAdminUser } = require('../services/operatorAuthService.js');
+const { logError } = require('../lib/logger.js');
 
 const router = express.Router();
 
-router.use(requireAdminKey);
+function noStore(req, res, next) {
+  res.set('Cache-Control', 'no-store, max-age=0');
+  res.set('Pragma', 'no-cache');
+  next();
+}
+
+router.use(noStore, requireAdminKey);
 
 
 // ============================================================
@@ -60,7 +67,7 @@ router.get('/bars/by-slug/:slug', async (req, res) => {
       data: bar
     });
   } catch (error) {
-    console.error('[COMMERCIAL] Error obteniendo bar por slug:', error);
+    logError('[COMMERCIAL] Error obteniendo bar por slug:', { requestId: req.id || null, error: error?.message || String(error) });
 
     res.status(500).json({
       ok: false,
@@ -78,7 +85,7 @@ router.get('/bars', async (req, res) => {
       data: bars
     });
   } catch (error) {
-    console.error('[COMMERCIAL] Error listando bares:', error);
+    logError('[COMMERCIAL] Error listando bares:', { requestId: req.id || null, error: error?.message || String(error) });
 
     res.status(500).json({
       ok: false,
@@ -104,7 +111,7 @@ router.get('/bars/:id', async (req, res) => {
       data: bar
     });
   } catch (error) {
-    console.error('[COMMERCIAL] Error obteniendo bar:', error);
+    logError('[COMMERCIAL] Error obteniendo bar:', { requestId: req.id || null, error: error?.message || String(error) });
 
     res.status(500).json({
       ok: false,
@@ -142,7 +149,7 @@ router.post('/bars', async (req, res) => {
       data: bar
     });
   } catch (error) {
-    console.error('[COMMERCIAL] Error creando bar:', error);
+    logError('[COMMERCIAL] Error creando bar:', { requestId: req.id || null, error: error?.message || String(error) });
 
     res.status(500).json({
       ok: false,
@@ -164,7 +171,7 @@ router.put('/bars/:id', async (req, res) => {
       data: bar
     });
   } catch (error) {
-    console.error('[COMMERCIAL] Error actualizando bar:', error);
+    logError('[COMMERCIAL] Error actualizando bar:', { requestId: req.id || null, error: error?.message || String(error) });
 
     res.status(500).json({
       ok: false,
