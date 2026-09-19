@@ -144,6 +144,8 @@ document.addEventListener('error', (event) => {
         return;
       }
 
+      restaurarNombreGuardado();
+
       if (socket.connected) {
         seleccionarBarAutomaticamente();
       }
@@ -169,23 +171,30 @@ document.addEventListener('error', (event) => {
     // RECORDAR NOMBRE / MESA
     // ============================================================
 
+    function clientNameStorageKey() {
+      const slug =
+        barActual?.slug ||
+        new URLSearchParams(window.location.search).get('bar') ||
+        'default';
+
+      return `jukebox_client_name:${slug}`;
+    }
+
+    function restaurarNombreGuardado() {
+      const nombreGuardado =
+        localStorage.getItem(
+          clientNameStorageKey()
+        );
+
+      if (nombreGuardado) {
+        inputNombre.value =
+          nombreGuardado.slice(0, 30);
+      }
+    }
+
     window.addEventListener(
       'DOMContentLoaded',
-      () => {
-
-        const nombreGuardado =
-          localStorage.getItem(
-            'genesis_cliente_nombre'
-          );
-
-
-        if (nombreGuardado) {
-
-          inputNombre.value =
-            nombreGuardado;
-        }
-
-      }
+      restaurarNombreGuardado
     );
 
 
@@ -626,7 +635,7 @@ document.addEventListener('error', (event) => {
       // ----------------------------------------------------------
 
       localStorage.setItem(
-        'genesis_cliente_nombre',
+        clientNameStorageKey(),
         nombre
       );
 
