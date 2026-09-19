@@ -78,7 +78,6 @@ function withTimeout(promise, timeoutMs = SEARCH_TIMEOUT_MS) {
       reject(error);
     }, timeoutMs);
 
-    if (timer.unref) timer.unref();
   });
 
   return Promise.race([promise, timeout])
