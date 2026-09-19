@@ -16,6 +16,8 @@ const {
   isBlockedSong
 } = require('../services/songRequestPolicy.js');
 
+const { logError, logInfo } = require('../lib/logger.js');
+
 const SEARCH_COOLDOWN_MS = 1500;
 
 function registerPublicSocketHandlers({
@@ -63,13 +65,16 @@ function registerPublicSocketHandlers({
       socket.data.barId = id;
       socket.join(`bar:${id}`);
 
-      console.log(
-        `[BAR] Cliente [${clienteId}] asociado al bar ${id} · Licencia: ${acceso.status}`
-      );
+      logInfo('Socket asociado a bar', {
+        event: 'socket_bar_selected',
+        socketId: clienteId,
+        barId: id,
+        licenseStatus: acceso.status
+      });
 
       await emitirEstadoSocket(socket, id);
     } catch (error) {
-      console.error('[BAR] Error seleccionando bar:', error);
+      logError('[BAR] Error seleccionando bar:', { socketId: clienteId, error: error?.message || String(error) });
 
       socket.emit('error_bar', {
         mensaje: 'No se pudo seleccionar el bar.'
@@ -105,7 +110,7 @@ function registerPublicSocketHandlers({
 
       await emitirEstadoSocket(socket, id);
     } catch (error) {
-      console.error('[ESTADO] Error:', error);
+      logError('[ESTADO] Error:', { socketId: clienteId, error: error?.message || String(error) });
     }
   });
 
@@ -170,9 +175,14 @@ function registerPublicSocketHandlers({
         cached
       } = await searchYoutube(texto);
 
-      console.log(
-        `[BUSQUEDA] Bar ${id} · cliente ${clienteId} · cache=${cached} · resultados=${videos.length} · longitud=${texto.length}`
-      );
+      logInfo('Búsqueda YouTube completada', {
+        event: 'youtube_search',
+        socketId: clienteId,
+        barId: id,
+        cached,
+        results: videos.length,
+        queryLength: texto.length
+      });
 
       if (videos.length === 0) {
         socket.emit('error_busqueda', {
@@ -304,9 +314,12 @@ function registerPublicSocketHandlers({
         return;
       }
 
-      console.log(
-        `[COLA] Bar ${id} → videoId=${result.item.videoId}`
-      );
+      logInfo('Canción agregada a cola', {
+        event: 'queue_song_added',
+        socketId: clienteId,
+        barId: id,
+        videoId: result.item.videoId
+      });
 
       socket.emit('cancion_confirmada', {
         titulo: result.item.title
