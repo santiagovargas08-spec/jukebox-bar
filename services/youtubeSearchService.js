@@ -92,8 +92,6 @@ async function searchYoutube(
   }
 
   let pending = inFlight.get(key);
-  const shared = Boolean(pending);
-
   if (!pending) {
     pending = (async () => {
       try {
@@ -137,8 +135,7 @@ async function searchYoutube(
 
   return {
     videos,
-    cached: false,
-    shared
+    cached: false
   };
 }
 
