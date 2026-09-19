@@ -1,4 +1,12 @@
     'use strict';
+// Oculta thumbnails rotos sin usar manejadores inline (compatible con CSP estricta).
+document.addEventListener('error', (event) => {
+  const target = event.target;
+  if (target instanceof HTMLImageElement && target.matches('.admin-thumb, .queue-thumb, .result-thumb, .live-queue-thumb')) {
+    target.style.display = 'none';
+  }
+}, true);
+
 
     let barActual = null;
     let barId = null;
@@ -267,7 +275,7 @@
 
         const thumbSafe = DomSafe.sanitizeThumbnailUrl(cancion.thumbnail || '');
         const thumbHtml = thumbSafe
-          ? `<img class="queue-thumb" src="${escapeHtml(thumbSafe)}" alt="" loading="lazy" onerror="this.style.display='none'">`
+          ? `<img class="queue-thumb" src="${escapeHtml(thumbSafe)}" alt="" loading="lazy">`
           : `<div class="queue-thumb-placeholder">🎵</div>`;
 
         const multiplicadorHtml = cancion.cantidad > 1 
