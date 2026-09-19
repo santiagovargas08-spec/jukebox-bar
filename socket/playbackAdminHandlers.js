@@ -19,7 +19,8 @@ const {
 
 const {
   setNowPlaying,
-  clearPlaybackState
+  clearPlaybackState,
+  clearPlaybackStateIfMatches
 } = require('../services/playbackService.js');
 
 const { HISTORIAL_MAX } = require('../services/socketStateService.js');
@@ -351,6 +352,21 @@ function registerPlaybackAdminHandlers({
 
       if (!song.title) return;
 
+      const completedCurrent =
+        await clearPlaybackStateIfMatches(
+          id,
+          song.videoId
+        );
+
+      if (!completedCurrent) {
+        logInfo('Finalización de reproducción obsoleta ignorada', {
+          event: 'playback_stale_completion_ignored',
+          barId: id,
+          videoId: song.videoId
+        });
+        return;
+      }
+
       const ultimo = await getHistory(id, 1);
 
       if (
@@ -365,9 +381,6 @@ function registerPlaybackAdminHandlers({
       } else {
         await addToHistory(id, song);
       }
-
-      await clearPlaybackState(id);
-      await emitirEstadoBar(id);
 
       const historial = await getHistory(
         id,
@@ -386,6 +399,11 @@ function registerPlaybackAdminHandlers({
         barId: id,
         videoId: song.videoId
       });
+
+      await reproducirSiguiente(
+        id,
+        'FIN_REPRODUCCION'
+      );
     } catch (error) {
       logError('[HISTORIAL] Error:', { error: error?.message || String(error) });
     }
