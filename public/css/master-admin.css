@@ -18,3 +18,10 @@
 .actions-end{align-items:flex-end}
 .row-space-between{justify-content:space-between}
 .qr-row{margin-top:12px}
+
+
+.admin-dialog-message{
+  margin:0;
+  color:#cfd7e6;
+  line-height:1.55
+}
