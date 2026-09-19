@@ -103,11 +103,10 @@ document.addEventListener('error', (event) => {
         return false;
       }
 
-      barSeleccionado = Number(bar.id);
+      barSeleccionado = bar.slug;
       barActual = bar;
 
       console.log('[BAR] Bar identificado correctamente:', {
-        id: bar.id,
         slug: bar.slug,
         name: bar.name,
         licenseStatus: bar.license?.status
@@ -121,7 +120,7 @@ document.addEventListener('error', (event) => {
         return;
       }
 
-      socket.emit('seleccionar_bar', { barId: barSeleccionado });
+      socket.emit('seleccionar_bar', { slug: barSeleccionado });
     }
 
     socket.on('connect', () => {
