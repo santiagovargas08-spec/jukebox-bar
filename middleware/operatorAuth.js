@@ -3,25 +3,12 @@
 const { getActiveAdminFromToken } = require('../services/operatorAuthService.js');
 const { RateLimitStore } = require('../lib/rateLimitStore.js');
 const { logError } = require('../lib/logger.js');
+const { getCookieValueFromHeader } = require('../lib/cookies.js');
 
 const OPERATOR_COOKIE = 'jukebox_operator';
 const AUTH_WINDOW_MS = 60 * 1000;
 const MAX_AUTH_CHECKS_PER_IP = 600;
 const authLimiter = new RateLimitStore(AUTH_WINDOW_MS);
-
-function getCookieValueFromHeader(raw, name) {
-  if (typeof raw !== 'string' || !raw) return '';
-
-  for (const part of raw.split(';')) {
-    const [key, ...valueParts] = part.trim().split('=');
-
-    if (key === name) {
-      return decodeURIComponent(valueParts.join('='));
-    }
-  }
-
-  return '';
-}
 
 function getBearerToken(req) {
   const authorization = req.headers.authorization;
