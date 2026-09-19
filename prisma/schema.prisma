@@ -209,7 +209,9 @@ model AdminAuditLog {
   createdAt  DateTime @default(now())
 
   @@index([createdAt])
+  @@index([requestId])
   @@index([barId, createdAt])
   @@index([actorEmail, createdAt])
   @@index([action, createdAt])
+  @@index([entityType, entityId])
 }
