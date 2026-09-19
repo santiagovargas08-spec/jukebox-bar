@@ -261,7 +261,7 @@ const btnLogout        = document.getElementById('btn-logout-operator');
       const q = e.target.value.trim();
       
       if (q.length >= 3) {
-        adminResults.innerHTML = '<div class="empty-msg">Buscando en YouTube... ⏳</div>';
+        mostrarMensajeResultados('Buscando en YouTube... ⏳');
         timerBusquedaAdmin = setTimeout(() => {
           socket.emit('buscar_canciones', q);
         }, 300); // ⚡ DEBOUNCE: 300ms para evitar spam de búsquedas
@@ -272,7 +272,7 @@ const btnLogout        = document.getElementById('btn-logout-operator');
       clearTimeout(timerBusquedaAdmin);
       const q = inputBuscarAdmin.value.trim();
       if (q) {
-        adminResults.innerHTML = '<div class="empty-msg">Buscando en YouTube... ⏳</div>';
+        mostrarMensajeResultados('Buscando en YouTube... ⏳');
         socket.emit('buscar_canciones', q);
       }
     });
@@ -283,7 +283,7 @@ const btnLogout        = document.getElementById('btn-logout-operator');
         clearTimeout(timerBusquedaAdmin);
         const q = inputBuscarAdmin.value.trim();
         if (q) {
-          adminResults.innerHTML = '<div class="empty-msg">Buscando en YouTube... ⏳</div>';
+          mostrarMensajeResultados('Buscando en YouTube... ⏳');
           socket.emit('buscar_canciones', q);
         }
       }
@@ -293,31 +293,66 @@ const btnLogout        = document.getElementById('btn-logout-operator');
     socket.on('resultados_busqueda', ({ items }) => {
       if (document.activeElement === inputBuscarAdmin || inputBuscarAdmin.value !== '') {
         if (!items || items.length === 0) {
-          adminResults.innerHTML = '<div class="empty-msg">Sin resultados.</div>';
+          mostrarMensajeResultados('Sin resultados.');
           return;
         }
 
-        adminResults.innerHTML = items.slice(0, 5).map((item) => {
-          const thumbSrc = DomSafe.safeThumbnailAttr(item.thumbnail);
-          const thumbHtml = thumbSrc
-            ? `<img class="admin-thumb" src="${thumbSrc}" alt="" loading="lazy">`
-            : `<div class="admin-thumb admin-thumb-placeholder">🎵</div>`;
+        adminResults.replaceChildren();
 
-          return `
-          <div class="admin-queue-item">
-            ${thumbHtml}
-            <div class="admin-item-main">
-              <div class="admin-item-title admin-item-title-sm">${escapeHtml(item.title)}</div>
-            </div>
-            <button class="btn-admin btn-add-dj" 
-              data-id="${escapeHtml(item.videoId)}" 
-              data-title="${escapeHtml(item.title)}" 
-              data-thumb="${escapeHtml(DomSafe.sanitizeThumbnailUrl(item.thumbnail) || '')}">
-              ➕ Añadir
-            </button>
-          </div>
-        `;
-        }).join('');
+        items.slice(0, 5).forEach((item) => {
+          const row = document.createElement('div');
+          row.className = 'admin-queue-item';
+
+          const thumbSrc =
+            DomSafe.safeThumbnailAttr(
+              item.thumbnail
+            );
+
+          let thumb;
+
+          if (thumbSrc) {
+            thumb = document.createElement('img');
+            thumb.className = 'admin-thumb';
+            thumb.src = thumbSrc;
+            thumb.alt = '';
+            thumb.loading = 'lazy';
+          } else {
+            thumb = document.createElement('div');
+            thumb.className =
+              'admin-thumb admin-thumb-placeholder';
+            thumb.textContent = '🎵';
+          }
+
+          const main = document.createElement('div');
+          main.className = 'admin-item-main';
+
+          const title = document.createElement('div');
+          title.className =
+            'admin-item-title admin-item-title-sm';
+          title.textContent =
+            String(item.title || '');
+
+          main.appendChild(title);
+
+          const add = document.createElement('button');
+          add.type = 'button';
+          add.className = 'btn-admin btn-add-dj';
+          add.dataset.id = String(item.videoId || '');
+          add.dataset.title = String(item.title || '');
+          add.dataset.thumb =
+            DomSafe.sanitizeThumbnailUrl(
+              item.thumbnail
+            ) || '';
+          add.textContent = '➕ Añadir';
+
+          row.append(
+            thumb,
+            main,
+            add
+          );
+
+          adminResults.appendChild(row);
+        });
 
         // Eventos para añadir la canción como DJ
         adminResults.querySelectorAll('.btn-add-dj').forEach(btn => {
@@ -332,7 +367,7 @@ const btnLogout        = document.getElementById('btn-logout-operator');
               }
             });
             
-            adminResults.innerHTML = `<div class="empty-msg empty-msg-success">¡Canción añadida a la fila con éxito! 🎵</div>`;
+            mostrarMensajeResultados('¡Canción añadida a la fila con éxito! 🎵', 'empty-msg-success');
             inputBuscarAdmin.value = '';
           });
         });
@@ -341,7 +376,7 @@ const btnLogout        = document.getElementById('btn-logout-operator');
 
     socket.on('error_busqueda', () => {
       if (inputBuscarAdmin.value !== '') {
-        adminResults.innerHTML = '<div class="empty-msg empty-msg-error">Error en la búsqueda.</div>';
+        mostrarMensajeResultados('Error en la búsqueda.', 'empty-msg-error');
       }
     });
 
@@ -385,7 +420,21 @@ const btnLogout        = document.getElementById('btn-logout-operator');
       const titulo = document.querySelector('.admin-title');
 
       if (titulo) {
-        titulo.innerHTML = `GENESIS 2.0 <span>${BarLoader.escapeHtml(barActual.name)}</span>`;
+        titulo.replaceChildren(
+          document.createTextNode(
+            'GENESIS 2.0 '
+          )
+        );
+
+        const barName =
+          document.createElement('span');
+
+        barName.textContent =
+          String(barActual.name || '');
+
+        titulo.appendChild(
+          barName
+        );
       }
 
       BarLoader.conectarSocketBar(socket, barId);
@@ -393,7 +442,3 @@ const btnLogout        = document.getElementById('btn-logout-operator');
 
     inicializarAdmin();
 
-    function escapeHtml(str) {
-      if (!str) return '';
-      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    }
