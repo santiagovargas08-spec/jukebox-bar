@@ -294,66 +294,40 @@ async function refreshLicenseStatus(barId) {
 // COMPROBAR SI EL BAR PUEDE UTILIZAR EL SISTEMA
 // ============================================================
 
-async function isLicenseValid(barId) {
+function isLicenseRecordValid(
+  license,
+  now = new Date()
+) {
+  if (!license) {
+    return false;
+  }
 
+  if (license.status === 'TRIAL') {
+    return Boolean(
+      license.trialEndsAt &&
+      now < new Date(license.trialEndsAt)
+    );
+  }
+
+  if (license.status === 'ACTIVE') {
+    return Boolean(
+      license.expiresAt &&
+      now < new Date(license.expiresAt)
+    );
+  }
+
+  return false;
+}
+
+async function isLicenseValid(barId) {
   const license =
     await refreshLicenseStatus(
       barId
     );
 
-  if (!license) {
-    return false;
-  }
-
-
-  /*
-   * TRIAL vigente
-   */
-
-  if (
-    license.status === 'TRIAL'
-  ) {
-
-    if (
-      !license.trialEndsAt
-    ) {
-      return false;
-    }
-
-    return (
-      new Date() <
-      license.trialEndsAt
-    );
-  }
-
-
-  /*
-   * SUSCRIPCIÓN ACTIVA
-   */
-
-  if (
-    license.status === 'ACTIVE'
-  ) {
-
-    if (
-      !license.expiresAt
-    ) {
-      return false;
-    }
-
-    return (
-      new Date() <
-      license.expiresAt
-    );
-  }
-
-
-  /*
-   * EXPIRED y SUSPENDED
-   * no pueden utilizar el sistema.
-   */
-
-  return false;
+  return isLicenseRecordValid(
+    license
+  );
 }
 
 
