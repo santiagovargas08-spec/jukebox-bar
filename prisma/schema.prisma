@@ -150,7 +150,6 @@ model Payment {
   @@index([licenseId])
   @@index([paidAt])
   @@index([reference])
-  @@index([idempotencyKey])
   @@unique([barId, idempotencyKey])
 }
 
