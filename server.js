@@ -31,6 +31,7 @@ const { registerPlaybackAdminHandlers } = require('./socket/playbackAdminHandler
 const { registerPublicSocketHandlers } = require('./socket/publicHandlers.js');
 const { allowConnection } = require('./services/socketConnectionPolicy.js');
 const { withTimeout } = require('./lib/promiseTimeout.js');
+const { beginShutdown, isShuttingDown } = require('./lib/serviceLifecycle.js');
 
 
 // ============================================================
@@ -119,6 +120,16 @@ app.get('/health', (req, res) => {
 
 app.get('/ready', async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
+
+  if (isShuttingDown()) {
+    res.setHeader('Retry-After', '5');
+    res.status(503).json({
+      ok: false,
+      database: 'draining',
+      status: 'shutting_down'
+    });
+    return;
+  }
 
   try {
     await withTimeout(
@@ -273,11 +284,8 @@ io.on(
 if (require.main === module) {
   assertProductionConfig();
 
-  let shuttingDown = false;
-
   async function shutdown(reason, exitCode = 0) {
-    if (shuttingDown) return;
-    shuttingDown = true;
+    if (!beginShutdown()) return;
 
     logInfo('[SHUTDOWN] Cerrando servidor', { reason, exitCode });
 
