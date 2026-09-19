@@ -81,10 +81,21 @@ for (const fileName of fs.readdirSync(jsDir)) {
     );
   }
 
-  if (/\.innerHTML\b/.test(content)) {
-    errors.push(
-      `js/${fileName}: no debe usar innerHTML; usa APIs DOM seguras.`
-    );
+  const unsafeDomPatterns = [
+    [/\.innerHTML\b/, 'innerHTML'],
+    [/\.outerHTML\b/, 'outerHTML'],
+    [/\binsertAdjacentHTML\s*\(/, 'insertAdjacentHTML'],
+    [/\bdocument\.write(?:ln)?\s*\(/, 'document.write'],
+    [/(?:^|[^\w.])eval\s*\(/m, 'eval'],
+    [/\bnew\s+Function\s*\(/, 'new Function']
+  ];
+
+  for (const [pattern, label] of unsafeDomPatterns) {
+    if (pattern.test(content)) {
+      errors.push(
+        `js/${fileName}: no debe usar ${label}; usa APIs DOM seguras.`
+      );
+    }
   }
 
   const nativeDialogs = [
