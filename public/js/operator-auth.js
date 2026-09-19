@@ -167,9 +167,31 @@ window.OperatorAuth = (function () {
     return token;
   }
 
-  function cerrarSesion(slug) {
+  async function cerrarSesion({ slug, socket } = {}) {
     if (!slug) return;
-    sessionStorage.removeItem(`jukebox_operator_${slug}`);
+
+    const storageKey = `jukebox_operator_${slug}`;
+    const token = sessionStorage.getItem(storageKey);
+
+    try {
+      if (token) {
+        await fetch(
+          `/api/public/bars/${encodeURIComponent(slug)}/operator/logout`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Cache-Control': 'no-store'
+            }
+          }
+        );
+      }
+    } catch (error) {
+      console.warn('No se pudo revocar la sesión en el servidor:', error);
+    } finally {
+      sessionStorage.removeItem(storageKey);
+      if (socket?.connected) socket.disconnect();
+    }
   }
 
   return {
