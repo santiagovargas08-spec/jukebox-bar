@@ -7,6 +7,7 @@ const { logWarn } = require('../lib/logger.js');
 const { normalizeBarSlug } = require('../lib/barSlug.js');
 
 const TOKEN_TTL_MS = 12 * 60 * 60 * 1000;
+const MAX_TOKEN_LENGTH = 4096;
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 const MAX_LOGIN_ATTEMPTS = 10;
 const MAX_IP_LOGIN_ATTEMPTS = 30;
@@ -145,7 +146,11 @@ function createToken(admin) {
 }
 
 function verifyToken(token) {
-  if (typeof token !== 'string') {
+  if (
+    typeof token !== 'string' ||
+    token.length === 0 ||
+    token.length > MAX_TOKEN_LENGTH
+  ) {
     return null;
   }
 
