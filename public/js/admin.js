@@ -255,16 +255,39 @@ const btnLogout        = document.getElementById('btn-logout-operator');
     //  BUSCADOR DEL DJ (CON DEBOUNCE OPTIMIZADO: 300ms)
     // ─────────────────────────────────────────────────────────
     let timerBusquedaAdmin = null;
+    let searchRequestCounterAdmin = 0;
+    let activeSearchRequestIdAdmin = '';
+    let lastAdminQuery = '';
+
+    function emitirBusquedaAdmin(query) {
+      const q = String(query || '').trim();
+      if (!q) return;
+
+      const normalized = q.toLowerCase();
+      if (normalized === lastAdminQuery) return;
+
+      searchRequestCounterAdmin += 1;
+      activeSearchRequestIdAdmin =
+        `admin-${searchRequestCounterAdmin}`;
+      lastAdminQuery = normalized;
+
+      mostrarMensajeResultados('Buscando en YouTube... ⏳');
+
+      socket.emit('buscar_canciones', {
+        query: q,
+        requestId:
+          activeSearchRequestIdAdmin
+      });
+    }
 
     inputBuscarAdmin.addEventListener('input', (e) => {
       clearTimeout(timerBusquedaAdmin);
       const q = e.target.value.trim();
       
       if (q.length >= 3) {
-        mostrarMensajeResultados('Buscando en YouTube... ⏳');
         timerBusquedaAdmin = setTimeout(() => {
-          socket.emit('buscar_canciones', q);
-        }, 300); // ⚡ DEBOUNCE: 300ms para evitar spam de búsquedas
+          emitirBusquedaAdmin(q);
+        }, 800);
       }
     });
 
@@ -272,8 +295,8 @@ const btnLogout        = document.getElementById('btn-logout-operator');
       clearTimeout(timerBusquedaAdmin);
       const q = inputBuscarAdmin.value.trim();
       if (q) {
-        mostrarMensajeResultados('Buscando en YouTube... ⏳');
-        socket.emit('buscar_canciones', q);
+        lastAdminQuery = '';
+        emitirBusquedaAdmin(q);
       }
     });
 
@@ -283,14 +306,20 @@ const btnLogout        = document.getElementById('btn-logout-operator');
         clearTimeout(timerBusquedaAdmin);
         const q = inputBuscarAdmin.value.trim();
         if (q) {
-          mostrarMensajeResultados('Buscando en YouTube... ⏳');
-          socket.emit('buscar_canciones', q);
+          lastAdminQuery = '';
+          emitirBusquedaAdmin(q);
         }
       }
     });
 
     // Recibir resultados del buscador
-    socket.on('resultados_busqueda', ({ items }) => {
+    socket.on('resultados_busqueda', ({ items, requestId }) => {
+      if (
+        requestId &&
+        requestId !== activeSearchRequestIdAdmin
+      ) {
+        return;
+      }
       if (document.activeElement === inputBuscarAdmin || inputBuscarAdmin.value !== '') {
         if (!items || items.length === 0) {
           mostrarMensajeResultados('Sin resultados.');
@@ -374,9 +403,23 @@ const btnLogout        = document.getElementById('btn-logout-operator');
       }
     });
 
-    socket.on('error_busqueda', () => {
+    socket.on('error_busqueda', ({ mensaje, requestId, codigo }) => {
+      if (
+        requestId &&
+        requestId !== activeSearchRequestIdAdmin
+      ) {
+        return;
+      }
+
+      if (codigo === 'COOLDOWN') {
+        return;
+      }
+
       if (inputBuscarAdmin.value !== '') {
-        mostrarMensajeResultados('Error en la búsqueda.', 'empty-msg-error');
+        mostrarMensajeResultados(
+          mensaje || 'Error en la búsqueda.',
+          'empty-msg-error'
+        );
       }
     });
 
