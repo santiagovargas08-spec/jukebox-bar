@@ -56,6 +56,59 @@ describe('license', () => {
     assert.equal(payments.length, 2);
   });
 
+  it('misma Idempotency-Key no duplica pago ni extensión', async () => {
+    const idempotentBar = await createTestBar(prisma, {
+      slug: uniqueSlug('license-idempotent')
+    });
+
+    const key = 'payment-test-idempotency-001';
+
+    const first = await licenseService.activateSubscription({
+      barId: idempotentBar.id,
+      plan: 'MONTHLY',
+      amount: 25,
+      method: 'TRANSFER',
+      reference: 'IDEMP-1',
+      idempotencyKey: key
+    });
+
+    const firstExpiry = first.license.expiresAt.getTime();
+
+    const second = await licenseService.activateSubscription({
+      barId: idempotentBar.id,
+      plan: 'MONTHLY',
+      amount: 25,
+      method: 'TRANSFER',
+      reference: 'IDEMP-1',
+      idempotencyKey: key
+    });
+
+    assert.equal(second.idempotent, true);
+    assert.equal(second.payment.id, first.payment.id);
+    assert.equal(second.license.expiresAt.getTime(), firstExpiry);
+
+    const payments = await licenseService.getPaymentsByBarId(
+      idempotentBar.id
+    );
+
+    assert.equal(payments.length, 1);
+
+    await deleteTestBar(prisma, idempotentBar.id);
+  });
+
+  it('rechaza Idempotency-Key malformada', async () => {
+    await assert.rejects(
+      () => licenseService.activateSubscription({
+        barId: bar.id,
+        plan: 'MONTHLY',
+        amount: 10,
+        method: 'CASH',
+        idempotencyKey: 'bad key'
+      }),
+      /Idempotency-Key/
+    );
+  });
+
   it('activación simultánea no duplica licencias activas', async () => {
     const concurrentBar = await createTestBar(prisma, {
       slug: uniqueSlug('license-concurrent')
