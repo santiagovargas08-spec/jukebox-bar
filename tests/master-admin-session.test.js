@@ -122,6 +122,23 @@ describe('master admin HttpOnly session', () => {
 
     assert.equal(meResponse.status, 200);
 
+    const auditResponse = await fetch(
+      `${baseUrl}/api/public/master-admin/audit?limit=5&offset=0`,
+      {
+        headers: {
+          Cookie: sessionCookie
+        }
+      }
+    );
+
+    assert.equal(auditResponse.status, 200);
+
+    const auditBody = await auditResponse.json();
+
+    assert.equal(auditBody.ok, true);
+    assert.ok(Array.isArray(auditBody.data.items));
+    assert.ok(auditBody.data.limit <= 5);
+
     const logoutResponse = await fetch(
       `${baseUrl}/api/public/master-admin/logout`,
       {
