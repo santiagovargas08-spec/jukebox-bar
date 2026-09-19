@@ -164,9 +164,7 @@ function registerPublicSocketHandlers({
       } = await searchYoutube(texto);
 
       console.log(
-        cached
-          ? `[CACHE] "${texto}" · ${clienteId}`
-          : `[BUSQUEDA] "${texto}" · ${clienteId} · ${videos.length} resultado(s)`
+        `[BUSQUEDA] Bar ${id} · cliente ${clienteId} · cache=${cached} · resultados=${videos.length} · longitud=${texto.length}`
       );
 
       if (videos.length === 0) {
@@ -310,7 +308,7 @@ function registerPublicSocketHandlers({
       }
 
       console.log(
-        `[COLA] Bar ${id} → "${result.item.title}" · ${result.item.name}`
+        `[COLA] Bar ${id} → videoId=${result.item.videoId}`
       );
 
       socket.emit('cancion_confirmada', {
