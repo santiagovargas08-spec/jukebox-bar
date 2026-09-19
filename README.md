@@ -170,6 +170,9 @@ Los operadores autenticados quedan vinculados a `token.barId`; no pueden acceder
 
 Los logs estructurados incluyen `requestId`, método, ruta, estado y duración. Los campos sensibles como contraseñas, tokens, cookies, secretos y API keys se redactan automáticamente antes de salir por consola. Las mutaciones del Master Admin generan eventos `admin_audit` con actor, bar, acción y entidad afectada. Además, esos eventos se persisten en PostgreSQL (`AdminAuditLog`) y pueden consultarse desde el panel Master Admin. `/health` funciona como liveness y `/ready` verifica también PostgreSQL; Render usa `/ready`.
 
+
+Render instala explícitamente las dependencias de desarrollo necesarias para Prisma durante el build y ejecuta `npx --no-install prisma migrate deploy` al iniciar, evitando descargas implícitas de paquetes en producción.
+
 ## Producción comercial
 
 ### Escalado horizontal
