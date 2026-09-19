@@ -110,7 +110,15 @@ window.BarLoader = (function () {
     }
 
     try {
-      const bar = await cargarBarPorSlug(slug);
+      const requiereLicencia =
+        options.verificarLicencia !== false;
+
+      const [bar, licencia] = await Promise.all([
+        cargarBarPorSlug(slug),
+        requiereLicencia
+          ? verificarLicenciaPorSlug(slug)
+          : Promise.resolve(null)
+      ]);
 
       if (!bar.active) {
         mostrarErrorPantalla(
@@ -120,9 +128,7 @@ window.BarLoader = (function () {
         return null;
       }
 
-      if (options.verificarLicencia !== false) {
-        const licencia = await verificarLicenciaPorSlug(slug);
-
+      if (requiereLicencia) {
         if (!licencia.puedeUsar) {
           mostrarErrorPantalla(
             mensajeLicenciaInvalida(licencia.status),
