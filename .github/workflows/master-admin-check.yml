@@ -91,6 +91,7 @@ jobs:
       - run: node --check middleware/publicApiRateLimit.js
       - run: node --check middleware/requestId.js
       - run: node --check middleware/httpAccessLog.js
+      - run: node --check middleware/apiCacheControl.js
       - run: node --check middleware/errorHandler.js
       - run: node --check create-master-admin.js
       - run: node --check scripts/db-smoke.js
