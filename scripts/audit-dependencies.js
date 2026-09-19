@@ -10,9 +10,9 @@ const HIGH_SEVERITIES = new Set(['high', 'critical']);
 // minimatch quedan permitidas de forma temporal mientras se reemplaza/actualiza
 // la dependencia de búsqueda.
 const ALLOWED_ADVISORIES = new Set([
-  'GHSA-3ppc-4f35-3m26',
-  'GHSA-7r86-cg39-jmmj',
-  'GHSA-23c5-xmqv-rm74'
+  'GHSA-3PPC-4F35-3M26',
+  'GHSA-7R86-CG39-JMMJ',
+  'GHSA-23C5-XMQV-RM74'
 ]);
 
 const ALLOWED_CHAIN = new Set([
