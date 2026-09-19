@@ -65,6 +65,12 @@ const { logError, logInfo } = require('./lib/logger.js');
 
 const app = express();
 
+// Render y otros proxies terminan TLS antes de entregar la petición a Node.
+// Confiar en un único proxy permite que req.ip/req.secure reflejen al cliente real.
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
+}
+
 const server = http.createServer(app);
 
 const io = new Server(server, {
@@ -173,7 +179,46 @@ function isBlockedSong(song) {
 // MIDDLEWARE
 // ============================================================
 
-app.use(express.json());
+function securityHeaders(req, res, next) {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader(
+    'Permissions-Policy',
+    'camera=(), microphone=(), geolocation=(), payment=()'
+  );
+
+  // CSP compatible con la interfaz actual (todavía contiene estilos/scripts inline).
+  // Se podrá endurecer retirando 'unsafe-inline' cuando el frontend se modularice.
+  res.setHeader(
+    'Content-Security-Policy',
+    [
+      "default-src 'self'",
+      "base-uri 'self'",
+      "object-src 'none'",
+      "frame-ancestors 'self'",
+      "script-src 'self' 'unsafe-inline' https://www.youtube.com https://www.gstatic.com https://bernardo-castilho.github.io",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+      "font-src 'self' https://fonts.gstatic.com data:",
+      "img-src 'self' data: blob: https://i.ytimg.com https://img.youtube.com https://yt3.ggpht.com https://yt3.googleusercontent.com",
+      "frame-src https://www.youtube.com https://www.youtube-nocookie.com",
+      "connect-src 'self' ws: wss: https://www.youtube.com"
+    ].join('; ')
+  );
+
+  if (process.env.NODE_ENV === 'production') {
+    res.setHeader(
+      'Strict-Transport-Security',
+      'max-age=31536000; includeSubDomains'
+    );
+  }
+
+  next();
+}
+
+app.disable('x-powered-by');
+app.use(securityHeaders);
+app.use(express.json({ limit: '32kb' }));
 
 app.get('/health', (req, res) => {
   res.status(200).json({ ok: true });
