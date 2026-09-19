@@ -235,3 +235,63 @@
 .empty-msg-error {
   color: var(--neon-danger);
 }
+
+
+/* ─── Diálogo reutilizable del panel ───────────────────────── */
+.admin-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 6000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(5, 7, 14, 0.86);
+  backdrop-filter: blur(8px);
+}
+
+.admin-dialog-card {
+  width: min(100%, 520px);
+  padding: 20px;
+  border: 1px solid rgba(0, 240, 255, 0.35);
+  border-radius: 14px;
+  background: #111726;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+}
+
+.admin-dialog-title {
+  margin: 0 0 16px;
+  color: var(--neon-admin);
+  font-family: 'Orbitron', sans-serif;
+}
+
+.admin-dialog-message {
+  margin: 0;
+  color: #cfd7e6;
+  line-height: 1.55;
+}
+
+.admin-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.admin-dialog-actions button {
+  padding: 10px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.admin-dialog-actions .secondary {
+  border: 1px solid #5b6375;
+  background: transparent;
+  color: #fff;
+}
+
+.admin-dialog-actions .danger {
+  border: 1px solid var(--neon-danger);
+  background: var(--neon-danger);
+  color: #fff;
+}
