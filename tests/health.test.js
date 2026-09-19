@@ -41,7 +41,7 @@ describe('health', () => {
     }
   });
 
-  async function getJson(pathname) {
+  async function getResponse(pathname) {
     return new Promise((resolve, reject) => {
       http.get(`${baseUrl}${pathname}`, (res) => {
         let body = '';
@@ -53,11 +53,21 @@ describe('health', () => {
         res.on('end', () => {
           resolve({
             status: res.statusCode,
-            body: JSON.parse(body)
+            headers: res.headers,
+            body
           });
         });
       }).on('error', reject);
     });
+  }
+
+  async function getJson(pathname) {
+    const response = await getResponse(pathname);
+
+    return {
+      ...response,
+      body: JSON.parse(response.body)
+    };
   }
 
   it('GET /health responde 200', async () => {
@@ -73,5 +83,36 @@ describe('health', () => {
     assert.equal(data.status, 200);
     assert.equal(data.body.ok, true);
     assert.equal(data.body.database, 'ready');
+  });
+
+  it('sirve las cuatro interfaces públicas con cabeceras de seguridad', async () => {
+    const pages = [
+      '/cliente.html',
+      '/bar.html',
+      '/admin.html',
+      '/master-admin.html'
+    ];
+
+    for (const page of pages) {
+      const response = await getResponse(page);
+
+      assert.equal(response.status, 200, page);
+      assert.match(
+        String(response.headers['content-type'] || ''),
+        /text\/html/i,
+        page
+      );
+      assert.match(
+        String(response.headers['content-security-policy'] || ''),
+        /default-src 'self'/,
+        page
+      );
+      assert.equal(
+        response.headers['x-content-type-options'],
+        'nosniff',
+        page
+      );
+      assert.doesNotMatch(response.body, /^\s*```/, page);
+    }
   });
 });
