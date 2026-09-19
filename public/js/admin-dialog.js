@@ -1,6 +1,33 @@
 'use strict';
 
 window.AdminDialog = (function () {
+  let dialogSequence = 0;
+
+  function restoreFocus(node) {
+    if (
+      node &&
+      typeof node.focus === 'function' &&
+      document.contains(node)
+    ) {
+      setTimeout(() => node.focus(), 0);
+    }
+  }
+
+  function bindEscape(close) {
+    const handler = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        close();
+      }
+    };
+
+    document.addEventListener('keydown', handler);
+
+    return () => {
+      document.removeEventListener('keydown', handler);
+    };
+  }
+
   function el(tag, attrs = {}, text = '') {
     const node = document.createElement(tag);
 
@@ -18,9 +45,23 @@ window.AdminDialog = (function () {
 
   function ask(title, fields) {
     return new Promise((resolve) => {
+      const previousFocus = document.activeElement;
+      const headingId = `admin-dialog-title-${++dialogSequence}`;
       const overlay = el('div', { className: 'admin-dialog-overlay' });
-      const form = el('form', { className: 'admin-dialog-card' });
-      const heading = el('h2', { className: 'admin-dialog-title' }, title);
+      const form = el('form', {
+        className: 'admin-dialog-card',
+        role: 'dialog',
+        'aria-modal': 'true',
+        'aria-labelledby': headingId
+      });
+      const heading = el(
+        'h2',
+        {
+          className: 'admin-dialog-title',
+          id: headingId
+        },
+        title
+      );
       const body = el('div', { className: 'admin-dialog-body' });
       const actions = el('div', { className: 'admin-dialog-actions' });
       const cancel = el('button', { type: 'button', className: 'secondary' }, 'Cancelar');
@@ -71,10 +112,16 @@ window.AdminDialog = (function () {
         body.appendChild(label);
       }
 
+      let unbindEscape = () => {};
+
       const close = (result) => {
+        unbindEscape();
         overlay.remove();
+        restoreFocus(previousFocus);
         resolve(result);
       };
+
+      unbindEscape = bindEscape(() => close(null));
 
       cancel.addEventListener('click', () => close(null));
 
@@ -116,15 +163,23 @@ window.AdminDialog = (function () {
     } = {}
   ) {
     return new Promise((resolve) => {
+      const previousFocus = document.activeElement;
+      const headingId = `admin-dialog-title-${++dialogSequence}`;
       const overlay = el('div', {
         className: 'admin-dialog-overlay'
       });
       const card = el('div', {
-        className: 'admin-dialog-card'
+        className: 'admin-dialog-card',
+        role: 'dialog',
+        'aria-modal': 'true',
+        'aria-labelledby': headingId
       });
       const heading = el(
         'h2',
-        { className: 'admin-dialog-title' },
+        {
+          className: 'admin-dialog-title',
+          id: headingId
+        },
         title
       );
       const body = el(
@@ -149,10 +204,16 @@ window.AdminDialog = (function () {
         confirmText
       );
 
+      let unbindEscape = () => {};
+
       const close = (result) => {
+        unbindEscape();
         overlay.remove();
+        restoreFocus(previousFocus);
         resolve(result);
       };
+
+      unbindEscape = bindEscape(() => close(false));
 
       cancel.addEventListener('click', () => close(false));
       confirmButton.addEventListener('click', () => close(true));
@@ -172,15 +233,23 @@ window.AdminDialog = (function () {
 
   function message(title, message, buttonText = 'Aceptar') {
     return new Promise((resolve) => {
+      const previousFocus = document.activeElement;
+      const headingId = `admin-dialog-title-${++dialogSequence}`;
       const overlay = el('div', {
         className: 'admin-dialog-overlay'
       });
       const card = el('div', {
-        className: 'admin-dialog-card'
+        className: 'admin-dialog-card',
+        role: 'dialog',
+        'aria-modal': 'true',
+        'aria-labelledby': headingId
       });
       const heading = el(
         'h2',
-        { className: 'admin-dialog-title' },
+        {
+          className: 'admin-dialog-title',
+          id: headingId
+        },
         title
       );
       const body = el(
@@ -197,10 +266,16 @@ window.AdminDialog = (function () {
         buttonText
       );
 
+      let unbindEscape = () => {};
+
       const close = () => {
+        unbindEscape();
         overlay.remove();
+        restoreFocus(previousFocus);
         resolve();
       };
+
+      unbindEscape = bindEscape(close);
 
       button.addEventListener('click', close);
       overlay.addEventListener('mousedown', (event) => {
