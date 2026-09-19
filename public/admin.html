@@ -224,6 +224,7 @@
 
   <script src="/js/dom-safe.js"></script>
   <script src="/js/bar-loader.js"></script>
+  <script src="/js/operator-auth.js"></script>
   <script src="/socket.io/socket.io.js"></script>
   <script>
     'use strict';
@@ -232,30 +233,6 @@
     let barActual = null;
 
     const socket = io({ autoConnect: false });
-
-    async function iniciarSesionOperador(slug) {
-      const storageKey = `jukebox_operator_${slug}`;
-      let token = sessionStorage.getItem(storageKey);
-
-      if (!token) {
-        const email = window.prompt('Correo del administrador del bar:');
-        const password = window.prompt('Contraseña del administrador:');
-        if (!email || !password) throw new Error('Necesitas iniciar sesión para abrir el panel.');
-
-        const response = await fetch(`/api/public/bars/${encodeURIComponent(slug)}/operator/login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password })
-        });
-        const result = await response.json();
-        if (!response.ok || !result.ok) throw new Error(result.error || 'No se pudo iniciar sesión.');
-        token = result.data.token;
-        sessionStorage.setItem(storageKey, token);
-      }
-
-      socket.auth = { operatorToken: token };
-      socket.connect();
-    }
 
     // ELEMENTOS DEL DOM
     const boxReproduciendo = document.getElementById('box-reproduciendo');
@@ -501,7 +478,7 @@
       barId = barActual.id;
 
       try {
-        await iniciarSesionOperador(barActual.slug);
+        await OperatorAuth.iniciarSesionOperador({ slug: barActual.slug, socket, titulo: 'Acceso al panel del bar' });
       } catch (error) {
         BarLoader.mostrarErrorPantalla(error.message, 'Acceso de operador');
         return;
