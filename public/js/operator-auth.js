@@ -15,9 +15,23 @@ window.OperatorAuth = (function () {
 
   function pedirCredenciales(titulo = 'Acceso de operador') {
     return new Promise((resolve, reject) => {
+      const previousFocus = document.activeElement;
+      const headingId = 'operator-login-title-' + Date.now();
       const overlay = createElement('div', { className: 'operator-login-overlay' });
-      const card = createElement('form', { className: 'operator-login-card' });
-      const heading = createElement('h2', { className: 'operator-login-title' }, titulo);
+      const card = createElement('form', {
+        className: 'operator-login-card',
+        role: 'dialog',
+        'aria-modal': 'true',
+        'aria-labelledby': headingId
+      });
+      const heading = createElement(
+        'h2',
+        {
+          className: 'operator-login-title',
+          id: headingId
+        },
+        titulo
+      );
       const help = createElement(
         'p',
         { className: 'operator-login-help' },
@@ -52,7 +66,28 @@ window.OperatorAuth = (function () {
       overlay.appendChild(card);
       document.body.appendChild(overlay);
 
-      const cleanup = () => overlay.remove();
+      const onKeyDown = (event) => {
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          cleanup();
+          reject(new Error('Inicio de sesión cancelado.'));
+        }
+      };
+
+      const cleanup = () => {
+        document.removeEventListener('keydown', onKeyDown);
+        overlay.remove();
+
+        if (
+          previousFocus &&
+          typeof previousFocus.focus === 'function' &&
+          document.contains(previousFocus)
+        ) {
+          setTimeout(() => previousFocus.focus(), 0);
+        }
+      };
+
+      document.addEventListener('keydown', onKeyDown);
 
       cancel.addEventListener('click', () => {
         cleanup();
