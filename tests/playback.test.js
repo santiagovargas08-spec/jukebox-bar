@@ -145,6 +145,66 @@ describe('playback', () => {
     );
   });
 
+  it('completeCurrentAndAdvance ignora eventos obsoletos', async () => {
+    await queueService.clearQueue(bar.id);
+    await playbackService.setNowPlaying(bar.id, {
+      id: 401,
+      videoId: 'Current0001',
+      title: 'Current Track',
+      name: 'Cliente Uno'
+    });
+
+    const result = await playbackService.completeCurrentAndAdvance(
+      bar.id,
+      'Stale000001'
+    );
+
+    assert.equal(result.completed, false);
+    assert.equal(result.reason, 'STALE_COMPLETION');
+
+    const state = await playbackService.getPlaybackState(bar.id);
+    assert.equal(state.videoId, 'Current0001');
+  });
+
+  it('completeCurrentAndAdvance conserva metadatos del servidor y avanza una sola canción', async () => {
+    await queueService.clearQueue(bar.id);
+
+    await playbackService.setNowPlaying(bar.id, {
+      id: 402,
+      videoId: 'DoneNow0001',
+      title: 'Título confiable',
+      name: 'Cliente Real'
+    });
+
+    await queueService.addToQueue(bar.id, {
+      videoId: 'NextUp00001',
+      title: 'Siguiente',
+      name: 'Cliente Dos'
+    });
+
+    const result = await playbackService.completeCurrentAndAdvance(
+      bar.id,
+      'DoneNow0001'
+    );
+
+    assert.equal(result.completed, true);
+    assert.equal(result.completedSong.title, 'Título confiable');
+    assert.equal(result.completedSong.name, 'Cliente Real');
+    assert.equal(result.playback.videoId, 'NextUp00001');
+
+    const history = await prisma.songHistory.findFirst({
+      where: {
+        barId: bar.id,
+        videoId: 'DoneNow0001'
+      },
+      orderBy: { playedAt: 'desc' }
+    });
+
+    assert.equal(history.title, 'Título confiable');
+    assert.equal(history.name, 'Cliente Real');
+    assert.equal((await queueService.getQueue(bar.id)).length, 0);
+  });
+
   it('estado sobrevive desconexión de Prisma (simula reinicio)', async () => {
     await playbackService.setNowPlaying(bar.id, {
       id: 100,
