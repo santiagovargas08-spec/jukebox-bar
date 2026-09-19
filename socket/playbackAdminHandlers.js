@@ -24,6 +24,7 @@ const {
 
 const { HISTORIAL_MAX } = require('../services/socketStateService.js');
 const { logError, logInfo } = require('../lib/logger.js');
+const { auditSocketAdminAction } = require('../lib/adminAudit.js');
 
 function registerPlaybackAdminHandlers({
   socket,
@@ -90,6 +91,13 @@ function registerPlaybackAdminHandlers({
       if (!acceso) return;
 
       await reproducirSiguiente(id, 'REPRODUCCION');
+
+      await auditSocketAdminAction({
+        socket,
+        action: 'playback.next',
+        barId: id,
+        entityType: 'playback'
+      });
     } catch (error) {
       logError('[REPRODUCCION] Error:', { error: error?.message || String(error) });
     }
@@ -115,6 +123,13 @@ function registerPlaybackAdminHandlers({
       if (!acceso) return;
 
       await reproducirSiguiente(id, 'ADMIN');
+
+      await auditSocketAdminAction({
+        socket,
+        action: 'playback.skip',
+        barId: id,
+        entityType: 'playback'
+      });
     } catch (error) {
       logError('[ADMIN] Error saltando:', { error: error?.message || String(error) });
     }
@@ -151,6 +166,16 @@ function registerPlaybackAdminHandlers({
         removed: eliminado
       });
 
+      if (eliminado) {
+        await auditSocketAdminAction({
+          socket,
+          action: 'queue.remove',
+          barId: id,
+          entityType: 'queueItem',
+          entityId: payload?.id || null
+        });
+      }
+
       await emitirEstadoBar(id);
     } catch (error) {
       logError('[ADMIN] Error eliminando:', { error: error?.message || String(error) });
@@ -182,6 +207,16 @@ function registerPlaybackAdminHandlers({
         event: 'queue_cleared',
         barId: id,
         removedCount: cantidad
+      });
+
+      await auditSocketAdminAction({
+        socket,
+        action: 'queue.clear',
+        barId: id,
+        entityType: 'queue',
+        details: {
+          removedCount: cantidad
+        }
       });
 
       await emitirEstadoBar(id);
@@ -221,6 +256,17 @@ function registerPlaybackAdminHandlers({
       }
 
       await reorderQueue(id, orderedIds);
+
+      await auditSocketAdminAction({
+        socket,
+        action: 'queue.reorder',
+        barId: id,
+        entityType: 'queue',
+        details: {
+          itemCount: orderedIds.length
+        }
+      });
+
       await emitirEstadoBar(id);
     } catch (error) {
       logError('[COLA] Error reordenando:', { error: error?.message || String(error) });
