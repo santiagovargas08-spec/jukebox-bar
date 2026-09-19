@@ -10,6 +10,7 @@ const MAX_CACHE_ENTRIES = 500;
 const SEARCH_TIMEOUT_MS = 8 * 1000;
 
 const cache = new Map();
+const inFlight = new Map();
 
 function normalizeYoutubeResult(video) {
   if (!video) return null;
@@ -90,50 +91,60 @@ async function searchYoutube(
     };
   }
 
-  try {
-    const result = await withTimeout(
-      Promise.resolve().then(() => searchFn(text)),
-      timeoutMs,
-      {
-        message: 'YOUTUBE_SEARCH_TIMEOUT',
-        code: 'YOUTUBE_SEARCH_TIMEOUT'
+  let pending = inFlight.get(key);
+  const shared = Boolean(pending);
+
+  if (!pending) {
+    pending = (async () => {
+      try {
+        const result = await withTimeout(
+          Promise.resolve().then(() => searchFn(text)),
+          timeoutMs,
+          {
+            message: 'YOUTUBE_SEARCH_TIMEOUT',
+            code: 'YOUTUBE_SEARCH_TIMEOUT'
+          }
+        );
+
+        if (!result || !Array.isArray(result.videos)) {
+          return [];
+        }
+
+        const videos = result.videos
+          .slice(0, 25)
+          .map(normalizeYoutubeResult)
+          .filter(Boolean);
+
+        setCached(key, videos);
+        return videos;
+      } catch (error) {
+        logWarn('Error en búsqueda de YouTube', {
+          event: 'youtube_search_provider_error',
+          code: error?.code || null,
+          error: error?.message || String(error)
+        });
+
+        return [];
+      } finally {
+        inFlight.delete(key);
       }
-    );
+    })();
 
-    if (!result || !Array.isArray(result.videos)) {
-      return {
-        videos: [],
-        cached: false
-      };
-    }
-
-    const videos = result.videos
-      .slice(0, 25)
-      .map(normalizeYoutubeResult)
-      .filter(Boolean);
-
-    setCached(key, videos);
-
-    return {
-      videos,
-      cached: false
-    };
-  } catch (error) {
-    logWarn('Error en búsqueda de YouTube', {
-      event: 'youtube_search_provider_error',
-      code: error?.code || null,
-      error: error?.message || String(error)
-    });
-
-    return {
-      videos: [],
-      cached: false
-    };
+    inFlight.set(key, pending);
   }
+
+  const videos = await pending;
+
+  return {
+    videos,
+    cached: false,
+    shared
+  };
 }
 
 function clearSearchCache() {
   cache.clear();
+  inFlight.clear();
 }
 
 module.exports = {
