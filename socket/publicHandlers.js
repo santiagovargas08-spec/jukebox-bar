@@ -26,7 +26,7 @@ const {
 
 const { logError, logInfo } = require('../lib/logger.js');
 
-const SEARCH_COOLDOWN_MS = 1500;
+const SEARCH_COOLDOWN_MS = 500;
 
 function registerPublicSocketHandlers({
   socket,
@@ -149,7 +149,7 @@ function registerPublicSocketHandlers({
     }
   });
 
-  socket.on('buscar_canciones', async (query) => {
+  socket.on('buscar_canciones', async (payload) => {
     let id = null;
 
     try {
@@ -181,12 +181,23 @@ function registerPublicSocketHandlers({
         return;
       }
 
-      const texto = String(query || '').trim();
+      const texto = String(
+        payload && typeof payload === 'object'
+          ? payload.query
+          : payload
+      ).trim();
+
+      const requestId =
+        payload && typeof payload === 'object'
+          ? String(payload.requestId || '')
+          : '';
 
       if (!texto || texto.length > 120) {
         socket.emit('error_busqueda', {
           mensaje:
-            'La búsqueda debe tener entre 1 y 120 caracteres.'
+            'La búsqueda debe tener entre 1 y 120 caracteres.',
+          codigo: 'INVALID_QUERY',
+          requestId
         });
         return;
       }
@@ -200,7 +211,9 @@ function registerPublicSocketHandlers({
       ) {
         socket.emit('error_busqueda', {
           mensaje:
-            'Espera un momento antes de buscar de nuevo.'
+            'Espera un instante antes de buscar de nuevo.',
+          codigo: 'COOLDOWN',
+          requestId
         });
         return;
       }
@@ -209,7 +222,8 @@ function registerPublicSocketHandlers({
 
       const {
         videos,
-        cached
+        cached,
+        status
       } = await searchYoutube(texto);
 
       logInfo('Búsqueda YouTube completada', {
@@ -218,20 +232,36 @@ function registerPublicSocketHandlers({
         barId: id,
         cached,
         results: videos.length,
-        queryLength: texto.length
+        queryLength: texto.length,
+        status
       });
 
       if (videos.length === 0) {
+        const mensajes = {
+          NO_RESULTS:
+            'No encontramos canciones relacionadas. Prueba escribiendo artista y canción.',
+          TIMEOUT:
+            'YouTube está respondiendo lento. Intenta nuevamente.',
+          PROVIDER_UNAVAILABLE:
+            'La búsqueda está temporalmente ocupada. Intenta nuevamente en unos segundos.',
+          PROVIDER_ERROR:
+            'YouTube no respondió correctamente. Intenta nuevamente.'
+        };
+
         socket.emit('error_busqueda', {
           mensaje:
-            'No se pudieron obtener resultados de YouTube. Intenta nuevamente en unos segundos.'
+            mensajes[status] ||
+            'No se encontraron resultados.',
+          codigo: status || 'NO_RESULTS',
+          requestId
         });
         return;
       }
 
       socket.emit('resultados_busqueda', {
         items: videos,
-        query: texto
+        query: texto,
+        requestId
       });
     } catch (error) {
       logError('Error buscando canciones', {
@@ -243,7 +273,12 @@ function registerPublicSocketHandlers({
 
       socket.emit('error_busqueda', {
         mensaje:
-          'Error al buscar canciones. Intenta nuevamente.'
+          'Error al buscar canciones. Intenta nuevamente.',
+        codigo: 'INTERNAL_ERROR',
+        requestId:
+          payload && typeof payload === 'object'
+            ? String(payload.requestId || '')
+            : ''
       });
     }
   });
