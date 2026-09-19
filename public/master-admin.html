@@ -43,6 +43,21 @@
       </div>
       <div id="bars"></div>
     </section>
+
+    <section class="card">
+      <div class="bars-heading-row">
+        <div>
+          <h2>Auditoría administrativa</h2>
+          <p class="muted">Cambios realizados desde el panel Master Admin.</p>
+        </div>
+        <div class="bars-toolbar" aria-label="Paginación de auditoría">
+          <button id="audit-prev" type="button" class="secondary">Anterior</button>
+          <span id="audit-page" class="muted" aria-live="polite">0 eventos</span>
+          <button id="audit-next" type="button" class="secondary">Siguiente</button>
+        </div>
+      </div>
+      <div id="audit-list" class="audit-list"></div>
+    </section>
   </main>
 </div>
 <script src="/js/admin-dialog.js"></script>
