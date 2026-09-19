@@ -2,6 +2,7 @@
 
 const ytSearch = require('yt-search');
 const { sanitizeThumbnailUrl, isValidYoutubeVideoId } = require('../lib/urlValidation.js');
+const { withTimeout } = require('../lib/promiseTimeout.js');
 
 const CACHE_TTL_MS = 60 * 60 * 1000;
 const MAX_CACHE_ENTRIES = 500;
@@ -68,22 +69,6 @@ function setCached(queryKey, videos) {
   }
 }
 
-function withTimeout(promise, timeoutMs = SEARCH_TIMEOUT_MS) {
-  let timer;
-
-  const timeout = new Promise((_, reject) => {
-    timer = setTimeout(() => {
-      const error = new Error('YOUTUBE_SEARCH_TIMEOUT');
-      error.code = 'YOUTUBE_SEARCH_TIMEOUT';
-      reject(error);
-    }, timeoutMs);
-
-  });
-
-  return Promise.race([promise, timeout])
-    .finally(() => clearTimeout(timer));
-}
-
 async function searchYoutube(
   query,
   {
@@ -107,7 +92,11 @@ async function searchYoutube(
   try {
     const result = await withTimeout(
       Promise.resolve().then(() => searchFn(text)),
-      timeoutMs
+      timeoutMs,
+      {
+        message: 'YOUTUBE_SEARCH_TIMEOUT',
+        code: 'YOUTUBE_SEARCH_TIMEOUT'
+      }
     );
 
     if (!result || !Array.isArray(result.videos)) {
@@ -146,6 +135,5 @@ module.exports = {
   searchYoutube,
   clearSearchCache,
   normalizeYoutubeResult,
-  withTimeout,
   SEARCH_TIMEOUT_MS
 };
