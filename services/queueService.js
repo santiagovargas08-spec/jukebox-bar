@@ -1,7 +1,7 @@
 'use strict';
 
 const { prisma } = require('../db.js');
-const { sanitizeThumbnailUrl } = require('../lib/urlValidation.js');
+const { sanitizeThumbnailUrl, isValidYoutubeVideoId } = require('../lib/urlValidation.js');
 
 const MAX_QUEUE_PER_BAR = 100;
 
@@ -36,6 +36,11 @@ async function addToQueue(barId, song, maxItems = MAX_QUEUE_PER_BAR) {
   }
 
   const videoId = String(song.videoId).trim();
+
+  if (!isValidYoutubeVideoId(videoId)) {
+    throw new Error('videoId inválido');
+  }
+
   const thumbnail = sanitizeThumbnailUrl(song.thumbnail);
 
   return prisma.$transaction(async (tx) => {
