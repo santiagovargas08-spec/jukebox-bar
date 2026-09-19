@@ -136,9 +136,10 @@ model Payment {
   currency  String        @default("USD")
   plan      PlanType
   method    PaymentMethod
-  reference String?
-  createdBy String?
-  paidAt    DateTime      @default(now())
+  reference      String?
+  idempotencyKey String?
+  createdBy       String?
+  paidAt          DateTime      @default(now())
   notes     String?
   createdAt DateTime      @default(now())
   bar       Bar           @relation(fields: [barId], references: [id], onDelete: Cascade)
@@ -149,6 +150,8 @@ model Payment {
   @@index([licenseId])
   @@index([paidAt])
   @@index([reference])
+  @@index([idempotencyKey])
+  @@unique([barId, idempotencyKey])
 }
 
 model PlaybackState {
