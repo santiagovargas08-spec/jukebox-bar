@@ -9,6 +9,25 @@ on:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: jukebox
+          POSTGRES_PASSWORD: jukebox_test
+          POSTGRES_DB: jukebox_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U jukebox -d jukebox_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://jukebox:jukebox_test@127.0.0.1:5432/jukebox_test
+      TEST_DATABASE_URL: postgresql://jukebox:jukebox_test@127.0.0.1:5432/jukebox_test
+      OPERATOR_TOKEN_SECRET: test-operator-secret-0123456789-abcdef
+      MASTER_ADMIN_TOKEN_SECRET: test-master-secret-0123456789-abcdefghi
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -21,6 +40,8 @@ jobs:
         continue-on-error: true
       - run: npx prisma validate
       - run: npx prisma generate
+      - name: Run test database migrations
+        run: npx prisma migrate deploy
       - run: node --check server.js
       - run: node --check routes/public.js
       - run: node --check services/barService.js
@@ -50,3 +71,5 @@ jobs:
       - run: node --check middleware/masterAdminAuth.js
       - run: node --check middleware/operatorAuth.js
       - run: node --check create-master-admin.js
+      - name: Run full integration test suite
+        run: npm test
