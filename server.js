@@ -160,6 +160,14 @@ if (process.env.ENABLE_LEGACY_COMMERCIAL_API === 'true') {
   app.use('/api/commercial', commercialRoutes);
 }
 
+app.use('/api', (req, res) => {
+  res.status(404).json({
+    ok: false,
+    error: 'API_NOT_FOUND',
+    requestId: req.id || null
+  });
+});
+
 app.use(errorHandler);
 
 
