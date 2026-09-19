@@ -10,6 +10,13 @@ const MAX_REQUESTS = 180;
 const limiter = new RateLimitStore(WINDOW_MS);
 const MASTER_ADMIN_COOKIE = 'jukebox_master_admin';
 
+function getCookieValue(req, name) {
+  return getCookieValueFromHeader(
+    req?.headers?.cookie,
+    name
+  );
+}
+
 function getMasterAdminToken(req) {
   const header = req.headers.authorization || '';
 
@@ -17,7 +24,7 @@ function getMasterAdminToken(req) {
     return header.slice(7).trim();
   }
 
-  return getCookieValueFromHeader(req.headers.cookie, MASTER_ADMIN_COOKIE);
+  return getCookieValue(req, MASTER_ADMIN_COOKIE);
 }
 
 async function requireMasterAdmin(req, res, next) {
@@ -80,6 +87,7 @@ async function requireMasterAdmin(req, res, next) {
 
 module.exports = {
   MASTER_ADMIN_COOKIE,
+  getCookieValue,
   getMasterAdminToken,
   requireMasterAdmin
 };
