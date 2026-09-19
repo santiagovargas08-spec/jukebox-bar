@@ -13,7 +13,7 @@ const {
 } = require('../services/licenseService.js');
 const { authenticateOperator, createAdminUser, revokeOperatorTokens } = require('../services/operatorAuthService.js');
 const { authenticateMasterAdmin, revokeMasterAdminToken } = require('../services/masterAdminAuthService.js');
-const { requireMasterAdmin } = require('../middleware/masterAdminAuth.js');
+const { requireMasterAdmin, MASTER_ADMIN_COOKIE } = require('../middleware/masterAdminAuth.js');
 const { requireOperatorHttp } = require('../middleware/operatorAuth.js');
 const { prisma } = require('../db.js');
 const { createBar, getBarById, listBars, updateBar } = require('../services/barService.js');
@@ -27,6 +27,16 @@ function noStore(req, res, next) {
   next();
 }
 
+function masterAdminCookieOptions() {
+  return {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    path: '/api/public/master-admin',
+    maxAge: 12 * 60 * 60 * 1000
+  };
+}
+
 // ============================================================
 // MASTER ADMIN / SUPER_ADMIN
 // ============================================================
@@ -35,9 +45,32 @@ router.use('/master-admin', noStore);
 
 router.post('/master-admin/login', async (req, res) => {
   try {
-    const result = await authenticateMasterAdmin({ email: req.body?.email, password: req.body?.password, ip: req.ip });
-    if (!result) return res.status(401).json({ ok: false, error: 'Credenciales inválidas.' });
-    res.json({ ok: true, data: result });
+    const result = await authenticateMasterAdmin({
+      email: req.body?.email,
+      password: req.body?.password,
+      ip: req.ip
+    });
+
+    if (!result) {
+      return res.status(401).json({
+        ok: false,
+        error: 'Credenciales inválidas.'
+      });
+    }
+
+    res.cookie(
+      MASTER_ADMIN_COOKIE,
+      result.token,
+      masterAdminCookieOptions()
+    );
+
+    res.json({
+      ok: true,
+      data: {
+        admin: result.admin,
+        expiresAt: result.expiresAt
+      }
+    });
   } catch (error) {
     console.error('[MASTER_ADMIN] Error iniciando sesión:', error);
     res.status(500).json({ ok: false, error: 'No se pudo iniciar sesión.' });
@@ -53,6 +86,15 @@ router.get('/master-admin/me', (req, res) => {
 router.post('/master-admin/logout', async (req, res) => {
   try {
     await revokeMasterAdminToken(req.masterAdmin.id);
+
+    res.clearCookie(
+      MASTER_ADMIN_COOKIE,
+      {
+        ...masterAdminCookieOptions(),
+        maxAge: undefined
+      }
+    );
+
     res.json({ ok: true });
   } catch (error) {
     console.error('[MASTER_ADMIN] Error cerrando sesión:', error);
