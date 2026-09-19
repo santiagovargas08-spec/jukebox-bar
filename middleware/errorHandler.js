@@ -7,6 +7,7 @@ function errorHandler(err, req, res, next) {
     event: 'http_error',
     path: req.path,
     method: req.method,
+    requestId: req.id || null,
     error: err.message
   });
 
