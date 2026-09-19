@@ -6,8 +6,6 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
-const ytSearch = require('yt-search');
-
 const publicRoutes = require('./routes/public.js');
 const { errorHandler } = require('./middleware/errorHandler.js');
 
@@ -53,10 +51,10 @@ const {
   createSocketCorsOptions
 } = require('./lib/socketBar.js');
 
-const { sanitizeThumbnailUrl } = require('./lib/urlValidation.js');
 const { RateLimitStore } = require('./lib/rateLimitStore.js');
 const { logError, logInfo } = require('./lib/logger.js');
 const { securityHeaders } = require('./lib/securityHeaders.js');
+const { searchYoutube } = require('./services/youtubeSearchService.js');
 
 
 // ============================================================
@@ -102,8 +100,6 @@ io.use(async (socket, next) => {
 // CONFIGURACIÓN
 // ============================================================
 
-const CACHE_TTL = 3600000;
-
 const HISTORIAL_MAX = 10;
 
 const REQUEST_WINDOW_MS = 60 * 1000;
@@ -115,7 +111,6 @@ const blockedTerms = (process.env.BLOCKED_SONG_TERMS || '')
   .map((term) => term.trim().toLowerCase())
   .filter(Boolean);
 
-const cacheSearches = new Map();
 const requestLimits = new RateLimitStore(REQUEST_WINDOW_MS);
 const ipRequestLimits = new RateLimitStore(REQUEST_WINDOW_MS);
 
@@ -139,33 +134,6 @@ function canRequestSong(socket, barId) {
   );
 
   return ipLimit.allowed;
-}
-
-function getCachedSearch(queryKey) {
-  const cached = cacheSearches.get(queryKey);
-
-  if (!cached) {
-    return null;
-  }
-
-  if (Date.now() - cached.timestamp >= CACHE_TTL) {
-    cacheSearches.delete(queryKey);
-    return null;
-  }
-
-  return cached.videos;
-}
-
-function setCachedSearch(queryKey, videos) {
-  cacheSearches.set(queryKey, {
-    videos,
-    timestamp: Date.now()
-  });
-
-  if (cacheSearches.size > 500) {
-    const oldestKey = cacheSearches.keys().next().value;
-    cacheSearches.delete(oldestKey);
-  }
 }
 
 function isBlockedSong(song) {
@@ -629,188 +597,6 @@ async function emitirEstadoSocket(
 
 
 // ============================================================
-// NORMALIZAR RESULTADO YOUTUBE
-// ============================================================
-
-function normalizarResultadoYoutube(video) {
-
-  if (!video) {
-    return null;
-  }
-
-  try {
-
-    const videoId =
-      typeof video.videoId === 'string'
-        ? video.videoId.trim()
-        : '';
-
-    if (!videoId) {
-      return null;
-    }
-
-
-    let titulo =
-      'Sin título';
-
-
-    if (
-      typeof video.title === 'string'
-    ) {
-
-      titulo =
-        video.title.trim();
-
-    } else if (
-      video.title !== null &&
-      video.title !== undefined
-    ) {
-
-      titulo =
-        String(
-          video.title
-        ).trim();
-    }
-
-
-    if (!titulo) {
-      titulo = 'Sin título';
-    }
-
-
-    let canal =
-      'Canal desconocido';
-
-
-    if (
-      video.author &&
-      typeof video.author.name === 'string'
-    ) {
-
-      canal =
-        video.author.name.trim();
-    }
-
-
-    let thumbnail =
-      '';
-
-
-    if (
-      typeof video.thumbnail === 'string'
-    ) {
-
-      thumbnail =
-        video.thumbnail.trim();
-
-    } else if (
-      video.thumbnail !== null &&
-      video.thumbnail !== undefined
-    ) {
-
-      thumbnail =
-        String(
-          video.thumbnail
-        ).trim();
-    }
-
-
-    return {
-      videoId,
-
-      title:
-        titulo,
-
-      author: {
-        name:
-          canal
-      },
-
-      thumbnail:
-        sanitizeThumbnailUrl(thumbnail)
-    };
-
-  } catch (error) {
-
-    console.error(
-      '[YOUTUBE] Error normalizando resultado:',
-      error
-    );
-
-    return null;
-  }
-}
-
-
-// ============================================================
-// BUSCAR EN YOUTUBE
-// ============================================================
-
-async function buscarYoutube(query) {
-
-  const texto =
-    String(
-      query || ''
-    ).trim();
-
-  if (!texto) {
-    return [];
-  }
-
-
-  console.log(
-    `[YOUTUBE] Buscando: "${texto}"`
-  );
-
-
-  try {
-
-    const resultado =
-      await ytSearch(texto);
-
-
-    if (
-      !resultado ||
-      !Array.isArray(resultado.videos)
-    ) {
-
-      console.warn(
-        '[YOUTUBE] La búsqueda no devolvió videos.'
-      );
-
-      return [];
-    }
-
-
-    const videos =
-      resultado.videos
-        .slice(0, 25)
-        .map(
-          normalizarResultadoYoutube
-        )
-        .filter(Boolean);
-
-
-    console.log(
-      `[YOUTUBE] Resultados encontrados: ${videos.length}`
-    );
-
-
-    return videos;
-
-  } catch (error) {
-
-    console.error(
-      '[YOUTUBE] Error buscando:',
-      error
-    );
-
-    return [];
-  }
-}
-
-
-// ============================================================
 // SOCKET.IO
 // ============================================================
 
@@ -1126,53 +912,15 @@ io.on(
           socket.data.lastSearchAt = ahoraBusqueda;
 
 
-          const queryKey =
-            texto.toLowerCase();
-
-
-          // --------------------------------------------------
-          // CACHE
-          // --------------------------------------------------
-
-          const cachedVideos =
-            getCachedSearch(queryKey);
-
-          if (cachedVideos) {
-
-            console.log(
-              `[CACHE] "${texto}" · ${clienteId}`
-            );
-
-
-            socket.emit(
-              'resultados_busqueda',
-              {
-                items:
-                  cachedVideos,
-
-                query:
-                  texto
-              }
-            );
-
-            return;
-          }
-
+          const {
+            videos,
+            cached
+          } = await searchYoutube(texto);
 
           console.log(
-            `[BUSQUEDA] Buscando "${texto}" · ${clienteId}`
-          );
-
-
-          const videos =
-            await buscarYoutube(
-              texto
-            );
-
-
-          setCachedSearch(
-            queryKey,
-            videos
+            cached
+              ? `[CACHE] "${texto}" · ${clienteId}`
+              : `[BUSQUEDA] "${texto}" · ${clienteId} · ${videos.length} resultado(s)`
           );
 
 
