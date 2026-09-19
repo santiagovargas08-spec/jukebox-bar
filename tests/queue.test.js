@@ -79,6 +79,50 @@ describe('queue', () => {
     );
   });
 
+  it('reordenar cambia position sin alterar createdAt', async () => {
+    await queueService.clearQueue(bar.id);
+
+    await queueService.addToQueue(bar.id, {
+      videoId: 'OrderA00001',
+      title: 'Primera',
+      name: 'Cliente'
+    });
+    await queueService.addToQueue(bar.id, {
+      videoId: 'OrderB00001',
+      title: 'Segunda',
+      name: 'Cliente'
+    });
+    await queueService.addToQueue(bar.id, {
+      videoId: 'OrderC00001',
+      title: 'Tercera',
+      name: 'Cliente'
+    });
+
+    const before = await queueService.getQueue(bar.id);
+    const createdAtById = new Map(
+      before.map((item) => [item.id, item.createdAt.getTime()])
+    );
+
+    const reversedIds = before.map((item) => item.id).reverse();
+    const reordered = await queueService.reorderQueue(bar.id, reversedIds);
+
+    assert.deepEqual(
+      reordered.map((item) => item.id),
+      reversedIds
+    );
+    assert.deepEqual(
+      reordered.map((item) => item.position),
+      [1, 2, 3]
+    );
+
+    for (const item of reordered) {
+      assert.equal(
+        item.createdAt.getTime(),
+        createdAtById.get(item.id)
+      );
+    }
+  });
+
   it('concurrencia: cola no supera MAX_QUEUE_PER_BAR', async () => {
     await queueService.clearQueue(bar.id);
 
