@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [comercializacion]
 
+permissions:
+  contents: read
+
 concurrency:
   group: validation-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -13,6 +16,7 @@ concurrency:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     services:
       postgres:
         image: postgres:16
@@ -92,7 +96,7 @@ jobs:
           tests/request-id.test.js
           tests/http-access-log.test.js
           tests/logger.test.js
-          tests/admin-audit.test.js tests/audit-retention.test.js
+          tests/admin-audit.test.js tests/audit-retention.test.js tests/audit-cleanup.test.js
           tests/bar-access.test.js
           tests/error-handler.test.js
           tests/promise-timeout.test.js
