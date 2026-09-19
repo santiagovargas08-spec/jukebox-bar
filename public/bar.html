@@ -31,16 +31,16 @@
       <div class="now-playing-bar">
         <span class="np-label">▶ REPRODUCIENDO</span>
         <span class="np-title" id="np-titulo">— Esperando canciones —</span>
-        <span class="np-separator" id="np-sep" style="display:none">|</span>
+        <span class="np-separator is-hidden" id="np-sep">|</span>
         <span class="np-mesa"  id="np-nombre"></span>
       </div>
     </div>
 
     <div class="panel-info">
       <div class="bar-logo-section">
-        <img src="GENESIS 2.0.png" alt="Logo del bar Genesis" class="bar-logo-img" style="filter: drop-shadow(0 0 15px #00f0ff);">
-        <div class="logo-text" style="margin-top: 10px;">
-          GENESIS<span style="color: #00f0ff; text-shadow: 0 0 10px #00f0ff;">2.0</span>
+        <img src="GENESIS 2.0.png" alt="Logo del bar Genesis" class="bar-logo-img bar-logo-glow">
+        <div class="logo-text logo-text-spaced">
+          GENESIS<span class="logo-accent">2.0</span>
         </div>
       </div>
 
@@ -52,16 +52,16 @@
         </h3>
         <div class="queue-list" id="queue-list">
           <div class="queue-empty" id="queue-empty">
-            <p style="color: #00f0ff; text-shadow: 0 0 8px rgba(0, 240, 255, 0.6);">🎵 La fila está vacía</p>
-            <small style="color: #ffffff;">Escanea el QR para pedir</small>
+            <p class="queue-empty-title">🎵 La fila está vacía</p>
+            <small class="queue-empty-subtitle">Escanea el QR para pedir</small>
           </div>
         </div>
       </div>
 
       <div class="qr-section" id="seccion-qr">
-        <div style="display: flex; flex-direction: column; align-items: center; text-align: center; padding: 10px 0;">
+        <div class="qr-content">
           <img id="bar-qr-img" src="" alt="QR del Bar" class="bar-qr-img">
-          <div class="qr-text" style="font-size: 1rem; color: #00f0ff; text-shadow: 0 0 10px rgba(0, 240, 255, 0.8); font-weight: bold; line-height: 1.4; margin-top: 12px;">
+          <div class="qr-text qr-text-emphasis">
             PIDE TU CANCIÓN<br>DESDE TU CELULAR
           </div>
         </div>
