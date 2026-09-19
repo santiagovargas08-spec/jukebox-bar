@@ -32,6 +32,7 @@ const { registerPublicSocketHandlers } = require('./socket/publicHandlers.js');
 const { allowConnection } = require('./services/socketConnectionPolicy.js');
 const { withTimeout } = require('./lib/promiseTimeout.js');
 const { beginShutdown, isShuttingDown } = require('./lib/serviceLifecycle.js');
+const { warmKnownSongs } = require('./services/knownSongCatalogService.js');
 
 
 // ============================================================
@@ -364,6 +365,8 @@ if (require.main === module) {
   });
 
   server.listen(PORT, HOST, () => {
+    void warmKnownSongs();
+
     console.log(`
 ==============================================
  JUKEBOX DIGITAL — MULTI-BAR
