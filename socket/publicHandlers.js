@@ -6,9 +6,7 @@ const {
 } = require('../lib/socketBar.js');
 
 const {
-  getQueue,
-  addToQueue,
-  MAX_QUEUE_PER_BAR
+  addToQueue
 } = require('../services/queueService.js');
 
 const { searchYoutube } = require('../services/youtubeSearchService.js');
@@ -293,16 +291,6 @@ function registerPublicSocketHandlers({
         return;
       }
 
-      const queue = await getQueue(id);
-
-      if (queue.length >= MAX_QUEUE_PER_BAR) {
-        socket.emit('error_cancion', {
-          mensaje:
-            'La cola está llena. Intenta más tarde.'
-        });
-        return;
-      }
-
       const result = await addToQueue(
         id,
         song
@@ -326,6 +314,14 @@ function registerPublicSocketHandlers({
 
       await emitirEstadoBar(id);
     } catch (error) {
+      if (error?.message === 'QUEUE_FULL') {
+        socket.emit('error_cancion', {
+          mensaje:
+            'La cola está llena. Intenta más tarde.'
+        });
+        return;
+      }
+
       console.error(
         '[COLA] Error agregando canción:',
         error
