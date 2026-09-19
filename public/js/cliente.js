@@ -74,7 +74,7 @@ document.addEventListener('error', (event) => {
     const cacheBusquedas = {};
     let searchRequestCounter = 0;
     let activeSearchRequestId = '';
-    let lastSearchQuery = '';
+    let searchFallbackTimer = null;
 
 
     // ============================================================
@@ -281,6 +281,11 @@ document.addEventListener('error', (event) => {
           return;
         }
 
+        if (searchFallbackTimer) {
+          clearTimeout(searchFallbackTimer);
+          searchFallbackTimer = null;
+        }
+
         const clave =
           String(query || '')
             .toLowerCase();
@@ -323,13 +328,14 @@ document.addEventListener('error', (event) => {
           false
         );
 
+        if (searchFallbackTimer) {
+          clearTimeout(searchFallbackTimer);
+          searchFallbackTimer = null;
+        }
+
         if (codigo === 'COOLDOWN') {
           return;
         }
-
-        // Permite reintentar inmediatamente la misma consulta
-        // si el proveedor falló o respondió con timeout.
-        lastSearchQuery = '';
 
         mostrarError(
           mensaje
@@ -360,13 +366,6 @@ document.addEventListener('error', (event) => {
 
       const queryLower =
         query.toLowerCase();
-
-      if (
-        queryLower === lastSearchQuery &&
-        !cacheBusquedas[queryLower]
-      ) {
-        return;
-      }
 
 
       // ----------------------------------------------------------
@@ -415,14 +414,37 @@ document.addEventListener('error', (event) => {
       searchRequestCounter += 1;
       activeSearchRequestId =
         `client-${searchRequestCounter}`;
-      lastSearchQuery = queryLower;
+
+      if (searchFallbackTimer) {
+        clearTimeout(searchFallbackTimer);
+      }
+
+      const requestId =
+        activeSearchRequestId;
+
+      searchFallbackTimer =
+        setTimeout(() => {
+          if (
+            requestId !==
+            activeSearchRequestId
+          ) {
+            return;
+          }
+
+          mostrarLoading(false);
+
+          mostrarError(
+            'La búsqueda tardó demasiado. Intenta nuevamente.'
+          );
+
+          searchFallbackTimer = null;
+        }, 17000);
 
       socket.emit(
         'buscar_canciones',
         {
           query,
-          requestId:
-            activeSearchRequestId
+          requestId
         }
       );
 
@@ -1026,52 +1048,23 @@ document.addEventListener('error', (event) => {
 
 
     // ============================================================
-    // BÚSQUEDA AUTOMÁTICA
+    // BÚSQUEDA MANUAL
+    // Solo se consulta YouTube al pulsar Buscar o Enter.
     // ============================================================
-
-    let timerBusqueda =
-      null;
-
 
     inputBuscar.addEventListener(
       'input',
       (e) => {
 
-        clearTimeout(
-          timerBusqueda
-        );
+        if (!e.target.value.trim()) {
+          if (searchFallbackTimer) {
+            clearTimeout(searchFallbackTimer);
+            searchFallbackTimer = null;
+          }
 
-
-        const query =
-          e.target.value.trim();
-
-
-        if (
-          query.length === 0
-        ) {
-
+          mostrarLoading(false);
           ocultarResultados();
-
-          return;
-        }
-
-
-        if (
-          query.length >= 3
-        ) {
-
-          timerBusqueda =
-            setTimeout(
-              () => {
-
-                buscarVideos(
-                  query
-                );
-
-              },
-              800
-            );
-
+          ocultarError();
         }
 
       }
@@ -1085,11 +1078,6 @@ document.addEventListener('error', (event) => {
     btnBuscar.addEventListener(
       'click',
       () => {
-
-        clearTimeout(
-          timerBusqueda
-        );
-
 
         buscarVideos(
           inputBuscar.value
@@ -1112,11 +1100,6 @@ document.addEventListener('error', (event) => {
         ) {
 
           e.preventDefault();
-
-
-          clearTimeout(
-            timerBusqueda
-          );
 
 
           buscarVideos(
