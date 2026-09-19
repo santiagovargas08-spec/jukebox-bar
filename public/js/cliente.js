@@ -394,8 +394,9 @@ document.addEventListener('error', (event) => {
           '<p class="no-results">Sin resultados. Prueba con otra búsqueda.</p>';
 
 
-        resultsSection.style.display =
-          'block';
+        resultsSection.classList.remove(
+          'is-hidden'
+        );
 
 
         return;
@@ -470,14 +471,7 @@ document.addEventListener('error', (event) => {
 
               : `
                 <div
-                  class="result-thumb"
-                  style="
-                    background:var(--bg-card);
-                    display:flex;
-                    align-items:center;
-                    justify-content:center;
-                    font-size:2rem;
-                  "
+                  class="result-thumb result-thumb-placeholder"
                 >
                   🎵
                 </div>
@@ -523,8 +517,9 @@ document.addEventListener('error', (event) => {
       );
 
 
-      resultsSection.style.display =
-        'block';
+      resultsSection.classList.remove(
+        'is-hidden'
+      );
 
 
       resultsList
@@ -673,8 +668,9 @@ document.addEventListener('error', (event) => {
         '⏳ Añadiendo...';
 
 
-      btn.style.opacity =
-        '0.7';
+      btn.classList.add(
+        'btn-add-pending'
+      );
 
 
       // ----------------------------------------------------------
@@ -755,16 +751,18 @@ document.addEventListener('error', (event) => {
         cola.length === 0
       ) {
 
-        liveQueueSection.style.display =
-          'none';
+        liveQueueSection.classList.add(
+          'is-hidden'
+        );
 
 
         return;
       }
 
 
-      liveQueueSection.style.display =
-        'block';
+      liveQueueSection.classList.remove(
+        'is-hidden'
+      );
 
 
       liveQueueList.innerHTML =
@@ -815,10 +813,10 @@ document.addEventListener('error', (event) => {
 
     function mostrarLoading(visible) {
 
-      loadingState.style.display =
-        visible
-          ? 'flex'
-          : 'none';
+      loadingState.classList.toggle(
+        'is-hidden',
+        !visible
+      );
 
     }
 
@@ -833,8 +831,9 @@ document.addEventListener('error', (event) => {
         msg;
 
 
-      errorState.style.display =
-        'block';
+      errorState.classList.remove(
+        'is-hidden'
+      );
 
 
       errorState.scrollIntoView({
@@ -863,8 +862,9 @@ document.addEventListener('error', (event) => {
 
     function ocultarError() {
 
-      errorState.style.display =
-        'none';
+      errorState.classList.add(
+        'is-hidden'
+      );
 
     }
 
@@ -875,8 +875,9 @@ document.addEventListener('error', (event) => {
 
     function ocultarResultados() {
 
-      resultsSection.style.display =
-        'none';
+      resultsSection.classList.add(
+        'is-hidden'
+      );
 
 
       resultsList.innerHTML =
