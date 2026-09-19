@@ -252,65 +252,94 @@ const btnLogout        = document.getElementById('btn-logout-operator');
     }
 
     // ─────────────────────────────────────────────────────────
-    //  BUSCADOR DEL DJ (CON DEBOUNCE OPTIMIZADO: 300ms)
+    //  BUSCADOR DEL DJ
+    //  Solo busca al pulsar Buscar o Enter.
     // ─────────────────────────────────────────────────────────
-    let timerBusquedaAdmin = null;
     let searchRequestCounterAdmin = 0;
     let activeSearchRequestIdAdmin = '';
-    let lastAdminQuery = '';
+    let searchFallbackTimerAdmin = null;
+
+    function finalizarBusquedaAdmin() {
+      if (searchFallbackTimerAdmin) {
+        clearTimeout(searchFallbackTimerAdmin);
+        searchFallbackTimerAdmin = null;
+      }
+    }
 
     function emitirBusquedaAdmin(query) {
       const q = String(query || '').trim();
       if (!q) return;
 
-      const normalized = q.toLowerCase();
-      if (normalized === lastAdminQuery) return;
+      finalizarBusquedaAdmin();
 
       searchRequestCounterAdmin += 1;
       activeSearchRequestIdAdmin =
         `admin-${searchRequestCounterAdmin}`;
-      lastAdminQuery = normalized;
 
-      mostrarMensajeResultados('Buscando en YouTube... ⏳');
+      const requestId =
+        activeSearchRequestIdAdmin;
+
+      mostrarMensajeResultados(
+        'Buscando en YouTube... ⏳'
+      );
+
+      searchFallbackTimerAdmin =
+        setTimeout(() => {
+          if (
+            requestId !==
+            activeSearchRequestIdAdmin
+          ) {
+            return;
+          }
+
+          mostrarMensajeResultados(
+            'La búsqueda tardó demasiado. Intenta nuevamente.',
+            'empty-msg-error'
+          );
+
+          searchFallbackTimerAdmin = null;
+        }, 17000);
 
       socket.emit('buscar_canciones', {
         query: q,
-        requestId:
-          activeSearchRequestIdAdmin
+        requestId
       });
     }
 
-    inputBuscarAdmin.addEventListener('input', (e) => {
-      clearTimeout(timerBusquedaAdmin);
-      const q = e.target.value.trim();
-      
-      if (q.length >= 3) {
-        timerBusquedaAdmin = setTimeout(() => {
-          emitirBusquedaAdmin(q);
-        }, 800);
-      }
-    });
+    inputBuscarAdmin.addEventListener(
+      'input',
+      (e) => {
+        if (!e.target.value.trim()) {
+          finalizarBusquedaAdmin();
 
-    btnBuscarAdmin.addEventListener('click', () => {
-      clearTimeout(timerBusquedaAdmin);
-      const q = inputBuscarAdmin.value.trim();
-      if (q) {
-        lastAdminQuery = '';
-        emitirBusquedaAdmin(q);
-      }
-    });
-
-    inputBuscarAdmin.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        clearTimeout(timerBusquedaAdmin);
-        const q = inputBuscarAdmin.value.trim();
-        if (q) {
-          lastAdminQuery = '';
-          emitirBusquedaAdmin(q);
+          mostrarMensajeResultados(
+            'Escribe artista o canción y pulsa Buscar.'
+          );
         }
       }
-    });
+    );
+
+    btnBuscarAdmin.addEventListener(
+      'click',
+      () => {
+        emitirBusquedaAdmin(
+          inputBuscarAdmin.value
+        );
+      }
+    );
+
+    inputBuscarAdmin.addEventListener(
+      'keydown',
+      (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+
+          emitirBusquedaAdmin(
+            inputBuscarAdmin.value
+          );
+        }
+      }
+    );
 
     // Recibir resultados del buscador
     socket.on('resultados_busqueda', ({ items, requestId }) => {
@@ -320,6 +349,9 @@ const btnLogout        = document.getElementById('btn-logout-operator');
       ) {
         return;
       }
+
+      finalizarBusquedaAdmin();
+
       if (document.activeElement === inputBuscarAdmin || inputBuscarAdmin.value !== '') {
         if (!items || items.length === 0) {
           mostrarMensajeResultados('Sin resultados.');
@@ -410,6 +442,8 @@ const btnLogout        = document.getElementById('btn-logout-operator');
       ) {
         return;
       }
+
+      finalizarBusquedaAdmin();
 
       if (codigo === 'COOLDOWN') {
         return;
