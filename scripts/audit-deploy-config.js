@@ -14,6 +14,7 @@ const required = [
   'startCommand: npx --no-install prisma migrate deploy && npm start',
   'healthCheckPath: /ready',
   'key: ENABLE_LEGACY_COMMERCIAL_API',
+  'key: ENABLE_BEARER_ADMIN_AUTH',
   'value: "false"'
 ];
 
