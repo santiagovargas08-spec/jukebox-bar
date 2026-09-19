@@ -2,6 +2,22 @@
 
 const { getActiveAdminFromToken } = require('../services/operatorAuthService.js');
 
+const OPERATOR_COOKIE = 'jukebox_operator';
+
+function getCookieValueFromHeader(raw, name) {
+  if (typeof raw !== 'string' || !raw) return '';
+
+  for (const part of raw.split(';')) {
+    const [key, ...valueParts] = part.trim().split('=');
+
+    if (key === name) {
+      return decodeURIComponent(valueParts.join('='));
+    }
+  }
+
+  return '';
+}
+
 function getBearerToken(req) {
   const authorization = req.headers.authorization;
 
@@ -16,9 +32,26 @@ function getBearerToken(req) {
   return token;
 }
 
+function getOperatorToken(req) {
+  return (
+    getBearerToken(req) ||
+    getCookieValueFromHeader(
+      req.headers.cookie,
+      OPERATOR_COOKIE
+    )
+  );
+}
+
+function getOperatorTokenFromCookieHeader(rawCookie) {
+  return getCookieValueFromHeader(
+    rawCookie,
+    OPERATOR_COOKIE
+  );
+}
+
 async function requireOperatorHttp(req, res, next) {
   try {
-    const token = getBearerToken(req);
+    const token = getOperatorToken(req);
 
     if (!token) {
       return res.status(401).json({
@@ -50,6 +83,10 @@ async function requireOperatorHttp(req, res, next) {
 }
 
 module.exports = {
+  OPERATOR_COOKIE,
+  getCookieValueFromHeader,
   getBearerToken,
+  getOperatorToken,
+  getOperatorTokenFromCookieHeader,
   requireOperatorHttp
 };
