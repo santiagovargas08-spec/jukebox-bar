@@ -41,6 +41,29 @@ describe('youtube search service', () => {
     assert.equal(result.thumbnail, null);
   });
 
+  it('no cachea respuestas vacías del proveedor', async () => {
+    clearSearchCache();
+
+    let calls = 0;
+    const searchFn = async () => {
+      calls += 1;
+      return { videos: [] };
+    };
+
+    const first = await searchYoutube(
+      'consulta sin resultados',
+      { searchFn, timeoutMs: 200 }
+    );
+    const second = await searchYoutube(
+      'consulta sin resultados',
+      { searchFn, timeoutMs: 200 }
+    );
+
+    assert.equal(first.videos.length, 0);
+    assert.equal(second.videos.length, 0);
+    assert.equal(calls, 2);
+  });
+
   it('coalesce búsquedas idénticas concurrentes', async () => {
     clearSearchCache();
 
