@@ -102,10 +102,13 @@ app.use(securityHeaders);
 app.use(express.json({ limit: '32kb' }));
 
 app.get('/health', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
   res.status(200).json({ ok: true });
 });
 
 app.get('/ready', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+
   try {
     await prisma.$queryRaw`SELECT 1`;
     res.status(200).json({ ok: true, database: 'ready' });
