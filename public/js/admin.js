@@ -36,14 +36,14 @@ const btnLogout        = document.getElementById('btn-logout-operator');
         const thumbSrc = DomSafe.safeThumbnailAttr(reproduciendo.thumbnail);
         const thumbHtml = thumbSrc
           ? `<img class="admin-thumb" src="${thumbSrc}" alt="" loading="lazy">`
-          : `<div class="admin-thumb" style="display:flex;align-items:center;justify-content:center;font-size:2rem;">🎵</div>`;
+          : `<div class="admin-thumb admin-thumb-placeholder admin-thumb-placeholder-lg">🎵</div>`;
 
         boxReproduciendo.innerHTML = `
           <div class="now-playing-box">
             ${thumbHtml}
             <div class="track-details">
               <div class="track-title">${escapeHtml(reproduciendo.titulo)}</div>
-              <div class="track-author">Pedida por: <strong style="color:var(--neon-admin);">${escapeHtml(reproduciendo.nombre)}</strong> · Fila: ${escapeHtml(reproduciendo.timestamp)}</div>
+              <div class="track-author">Pedida por: <strong class="admin-requester-dj">${escapeHtml(reproduciendo.nombre)}</strong> · Fila: ${escapeHtml(reproduciendo.timestamp)}</div>
             </div>
             <button class="btn-admin" id="btn-saltar">⏭️ Saltar</button>
           </div>
@@ -66,9 +66,9 @@ const btnLogout        = document.getElementById('btn-logout-operator');
       listaCola.innerHTML = cola.map((c, index) => `
         <div class="admin-queue-item" draggable="true" data-id="${c.id}">
           <div class="drag-handle" title="Arrastrar para mover">☰</div>
-          <div style="flex:1; padding-right:10px;">
-            <div style="font-weight:bold; font-size:1rem;">${index + 1}. ${escapeHtml(c.title || c.titulo)}</div>
-            <div style="color:#666; font-size:0.85rem;">📍 Mesa/Nombre: <span style="${c.name === '👑 DJ / Admin' || c.nombre === '👑 DJ / Admin' ? 'color:var(--neon-admin);' : ''}">${escapeHtml(c.name || c.nombre)}</span></div>
+          <div class="admin-item-main">
+            <div class="admin-item-title">${index + 1}. ${escapeHtml(c.title || c.titulo)}</div>
+            <div class="admin-item-meta">📍 Mesa/Nombre: <span class="${c.name === '👑 DJ / Admin' || c.nombre === '👑 DJ / Admin' ? 'admin-requester-dj' : ''}">${escapeHtml(c.name || c.nombre)}</span></div>
           </div>
           <button class="btn-delete-item" data-id="${c.id}">❌</button>
         </div>
@@ -192,13 +192,13 @@ const btnLogout        = document.getElementById('btn-logout-operator');
           const thumbSrc = DomSafe.safeThumbnailAttr(item.thumbnail);
           const thumbHtml = thumbSrc
             ? `<img class="admin-thumb" src="${thumbSrc}" alt="" loading="lazy">`
-            : `<div class="admin-thumb" style="display:flex;align-items:center;justify-content:center;">🎵</div>`;
+            : `<div class="admin-thumb admin-thumb-placeholder">🎵</div>`;
 
           return `
           <div class="admin-queue-item">
             ${thumbHtml}
-            <div style="flex:1; padding-right:10px;">
-              <div style="font-weight:bold; font-size:0.9rem;">${escapeHtml(item.title)}</div>
+            <div class="admin-item-main">
+              <div class="admin-item-title admin-item-title-sm">${escapeHtml(item.title)}</div>
             </div>
             <button class="btn-admin btn-add-dj" 
               data-id="${escapeHtml(item.videoId)}" 
@@ -223,7 +223,7 @@ const btnLogout        = document.getElementById('btn-logout-operator');
               }
             });
             
-            adminResults.innerHTML = `<div class="empty-msg" style="color:var(--neon-admin);">¡Canción añadida a la fila con éxito! 🎵</div>`;
+            adminResults.innerHTML = `<div class="empty-msg empty-msg-success">¡Canción añadida a la fila con éxito! 🎵</div>`;
             inputBuscarAdmin.value = '';
           });
         });
@@ -232,7 +232,7 @@ const btnLogout        = document.getElementById('btn-logout-operator');
 
     socket.on('error_busqueda', () => {
       if (inputBuscarAdmin.value !== '') {
-        adminResults.innerHTML = '<div class="empty-msg" style="color:var(--neon-danger);">Error en la búsqueda.</div>';
+        adminResults.innerHTML = '<div class="empty-msg empty-msg-error">Error en la búsqueda.</div>';
       }
     });
 
