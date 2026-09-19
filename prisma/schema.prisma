@@ -193,3 +193,23 @@ enum PlaybackStatus {
   IDLE
   PLAYING
 }
+
+
+model AdminAuditLog {
+  id         Int      @id @default(autoincrement())
+  requestId  String?
+  actorId    Int?
+  actorEmail String?
+  actorRole  String?
+  action     String
+  barId      Int?
+  entityType String?
+  entityId   String?
+  details    Json?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([barId, createdAt])
+  @@index([actorEmail, createdAt])
+  @@index([action, createdAt])
+}
