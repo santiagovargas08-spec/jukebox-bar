@@ -64,6 +64,10 @@ for (const fileName of htmlFiles) {
 }
 
 const jsDir = path.join(publicDir, 'js');
+const zeroInnerHtmlFiles = new Set([
+  'bar-loader.js',
+  'bar.js'
+]);
 
 for (const fileName of fs.readdirSync(jsDir)) {
   if (!fileName.endsWith('.js')) continue;
@@ -78,6 +82,15 @@ for (const fileName of fs.readdirSync(jsDir)) {
   if (markupStyleAttributes.length > 0) {
     errors.push(
       `js/${fileName}: genera ${markupStyleAttributes.length} atributo(s) style inline.`
+    );
+  }
+
+  if (
+    zeroInnerHtmlFiles.has(fileName) &&
+    /\.innerHTML\b/.test(content)
+  ) {
+    errors.push(
+      `js/${fileName}: no debe volver a usar innerHTML; usa APIs DOM seguras.`
     );
   }
 
