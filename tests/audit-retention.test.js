@@ -4,38 +4,38 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 
 const {
-  parseRetentionDays,
-  MIN_DAYS,
-  MAX_DAYS,
-  DEFAULT_DAYS
-} = require('../scripts/cleanup-audit-logs.js');
+  parseAuditRetentionDays,
+  MIN_AUDIT_RETENTION_DAYS,
+  MAX_AUDIT_RETENTION_DAYS,
+  DEFAULT_AUDIT_RETENTION_DAYS
+} = require('../lib/retention.js');
 
 describe('audit retention parser', () => {
   it('usa el valor por defecto cuando no hay número válido', () => {
     assert.equal(
-      parseRetentionDays(undefined),
-      DEFAULT_DAYS
+      parseAuditRetentionDays(undefined),
+      DEFAULT_AUDIT_RETENTION_DAYS
     );
     assert.equal(
-      parseRetentionDays('abc'),
-      DEFAULT_DAYS
+      parseAuditRetentionDays('abc'),
+      DEFAULT_AUDIT_RETENTION_DAYS
     );
   });
 
   it('aplica límites mínimo y máximo', () => {
     assert.equal(
-      parseRetentionDays('1'),
-      MIN_DAYS
+      parseAuditRetentionDays('1'),
+      MIN_AUDIT_RETENTION_DAYS
     );
     assert.equal(
-      parseRetentionDays('99999'),
-      MAX_DAYS
+      parseAuditRetentionDays('99999'),
+      MAX_AUDIT_RETENTION_DAYS
     );
   });
 
   it('acepta valores dentro del rango', () => {
     assert.equal(
-      parseRetentionDays('365'),
+      parseAuditRetentionDays('365'),
       365
     );
   });
