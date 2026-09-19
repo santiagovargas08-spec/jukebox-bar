@@ -48,6 +48,7 @@ jobs:
       - name: Run test database migrations
         run: npx prisma migrate deploy
       - run: node --check server.js
+      - run: node --check db.js
       - run: node --check routes/public.js
       - run: node --check services/barService.js
       - run: node --check services/licenseService.js
