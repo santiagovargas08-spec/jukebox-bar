@@ -4,8 +4,8 @@ services:
     runtime: node
     plan: starter
     nodeVersion: 20
-    buildCommand: npm ci && npm run build
-    startCommand: npx prisma migrate deploy && npm start
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npx --no-install prisma migrate deploy && npm start
     healthCheckPath: /ready
     envVars:
       - key: NODE_ENV
