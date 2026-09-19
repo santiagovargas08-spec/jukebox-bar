@@ -51,10 +51,13 @@ document.addEventListener('error', (event) => {
         return;
       }
 
-      barId = barActual.id;
-
       try {
-        await OperatorAuth.iniciarSesionOperador({ slug: barActual.slug, socket, titulo: 'Acceso a la pantalla del bar' });
+        const operator = await OperatorAuth.iniciarSesionOperador({
+          slug: barActual.slug,
+          socket,
+          titulo: 'Acceso a la pantalla del bar'
+        });
+        barId = operator.barId;
       } catch (error) {
         BarLoader.mostrarErrorPantalla(error.message, 'Acceso de operador');
         return;
@@ -67,7 +70,10 @@ document.addEventListener('error', (event) => {
         qrImg.alt = `QR para ${barActual.name}`;
       }
 
-      BarLoader.conectarSocketBar(socket, barId);
+      BarLoader.conectarSocketBar(socket, {
+        slug: barActual.slug,
+        barId
+      });
     }
 
     socket.on('estado_inicial', ({ cola, reproduciendo, historialReproducidas: hist }) => {

@@ -408,10 +408,13 @@ const btnLogout        = document.getElementById('btn-logout-operator');
         return;
       }
 
-      barId = barActual.id;
-
       try {
-        await OperatorAuth.iniciarSesionOperador({ slug: barActual.slug, socket, titulo: 'Acceso al panel del bar' });
+        const operator = await OperatorAuth.iniciarSesionOperador({
+          slug: barActual.slug,
+          socket,
+          titulo: 'Acceso al panel del bar'
+        });
+        barId = operator.barId;
       } catch (error) {
         BarLoader.mostrarErrorPantalla(error.message, 'Acceso de operador');
         return;
@@ -437,7 +440,10 @@ const btnLogout        = document.getElementById('btn-logout-operator');
         );
       }
 
-      BarLoader.conectarSocketBar(socket, barId);
+      BarLoader.conectarSocketBar(socket, {
+        slug: barActual.slug,
+        barId
+      });
     }
 
     inicializarAdmin();

@@ -180,9 +180,17 @@ window.BarLoader = (function () {
     }
   }
 
-  function conectarSocketBar(socket, barId) {
+  function conectarSocketBar(socket, barReference) {
+    const payload =
+      barReference && typeof barReference === 'object'
+        ? {
+            slug: barReference.slug || undefined,
+            barId: barReference.barId || undefined
+          }
+        : { slug: barReference };
+
     function seleccionar() {
-      socket.emit('seleccionar_bar', { barId });
+      socket.emit('seleccionar_bar', payload);
     }
 
     if (socket.connected) {

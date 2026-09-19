@@ -60,10 +60,12 @@ describe('security', () => {
     assert.equal(authorized, null);
   });
 
-  it('cliente sin operador usa barId recibido', () => {
-    const socket = { data: {} };
-    const authorized = getAuthorizedBarId(socket, 5);
-    assert.equal(authorized, 5);
+  it('cliente sin operador ignora barId recibido y usa solo el asociado', () => {
+    const unselected = { data: {} };
+    assert.equal(getAuthorizedBarId(unselected, 5), null);
+
+    const selected = { data: { barId: 7 } };
+    assert.equal(getAuthorizedBarId(selected, 5), 7);
   });
 
   it('emitBarIdRechazado notifica al operador con error_autorizacion', () => {
