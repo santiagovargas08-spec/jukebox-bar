@@ -1,11 +1,12 @@
 'use strict';
 
 const { normalizarBarId } = require('../lib/socketBar.js');
-const { getBarById } = require('./barService.js');
+const { getBarAccessRecord } = require('./barService.js');
 const {
   refreshLicenseStatus,
-  isLicenseValid
+  isLicenseRecordValid
 } = require('./licenseService.js');
+const { logError } = require('../lib/logger.js');
 
 async function validarAccesoBar(barId) {
   const id = normalizarBarId(barId);
@@ -19,7 +20,7 @@ async function validarAccesoBar(barId) {
   }
 
   try {
-    const bar = await getBarById(id);
+    const bar = await getBarAccessRecord(id);
 
     if (!bar) {
       return {
@@ -37,7 +38,25 @@ async function validarAccesoBar(barId) {
       };
     }
 
-    const license = await refreshLicenseStatus(id);
+    let license = bar.license;
+
+    const now = new Date();
+    const needsRefresh =
+      !license ||
+      (
+        license.status === 'TRIAL' &&
+        license.trialEndsAt &&
+        now >= new Date(license.trialEndsAt)
+      ) ||
+      (
+        license.status === 'ACTIVE' &&
+        license.expiresAt &&
+        now >= new Date(license.expiresAt)
+      );
+
+    if (needsRefresh) {
+      license = await refreshLicenseStatus(id);
+    }
 
     if (!license) {
       return {
@@ -48,9 +67,7 @@ async function validarAccesoBar(barId) {
       };
     }
 
-    const puedeUsar = await isLicenseValid(id);
-
-    if (!puedeUsar) {
+    if (!isLicenseRecordValid(license, now)) {
       let reason = 'INVALID_LICENSE';
       let message = 'La licencia de este bar no es válida.';
 
@@ -81,7 +98,11 @@ async function validarAccesoBar(barId) {
       license
     };
   } catch (error) {
-    console.error('[LICENCIA] Error comprobando acceso:', error);
+    logError('Error comprobando acceso del bar', {
+      event: 'bar_access_error',
+      barId: id,
+      error: error?.message || String(error)
+    });
 
     return {
       valid: false,
