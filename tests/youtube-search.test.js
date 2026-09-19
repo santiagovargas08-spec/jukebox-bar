@@ -41,6 +41,37 @@ describe('youtube search service', () => {
     assert.equal(result.thumbnail, null);
   });
 
+  it('coalesce búsquedas idénticas concurrentes', async () => {
+    clearSearchCache();
+
+    let calls = 0;
+    const searchFn = async () => {
+      calls += 1;
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      return {
+        videos: [
+          {
+            videoId: 'abc123XYZ09',
+            title: 'Concurrente',
+            author: { name: 'Canal' },
+            thumbnail: 'https://i.ytimg.com/vi/abc123XYZ09/hqdefault.jpg'
+          }
+        ]
+      };
+    };
+
+    const [first, second] = await Promise.all([
+      searchYoutube('misma consulta', { searchFn, timeoutMs: 200 }),
+      searchYoutube('misma consulta', { searchFn, timeoutMs: 200 })
+    ]);
+
+    assert.equal(calls, 1);
+    assert.equal(first.videos.length, 1);
+    assert.equal(second.videos.length, 1);
+    assert.equal(first.videos[0].videoId, 'abc123XYZ09');
+    assert.equal(second.videos[0].videoId, 'abc123XYZ09');
+  });
+
   it('corta búsquedas bloqueadas por timeout', async () => {
     clearSearchCache();
 
