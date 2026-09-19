@@ -33,7 +33,7 @@ describe('playback', () => {
   it('guarda y recupera estado de reproducción', async () => {
     const playing = await playbackService.setNowPlaying(bar.id, {
       id: 99,
-      videoId: 'play-1',
+      videoId: 'Play0000001',
       title: 'Now Playing',
       name: 'DJ',
       thumbnail: 'https://i.ytimg.com/vi/play-1/hqdefault.jpg'
@@ -55,7 +55,7 @@ describe('playback', () => {
   it('estado sobrevive desconexión de Prisma (simula reinicio)', async () => {
     await playbackService.setNowPlaying(bar.id, {
       id: 100,
-      videoId: 'persist-1',
+      videoId: 'Persist00001',
       title: 'Persist',
       name: 'DJ'
     });
