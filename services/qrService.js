@@ -1,0 +1,83 @@
+'use strict';
+
+const QRCode = require('qrcode');
+
+const QR_CACHE_TTL_MS = 60 * 60 * 1000;
+const MAX_QR_CACHE_ENTRIES = 500;
+
+const cache = new Map();
+
+function getCached(key) {
+  const item = cache.get(key);
+
+  if (!item) return null;
+
+  if (Date.now() - item.createdAt >= QR_CACHE_TTL_MS) {
+    cache.delete(key);
+    return null;
+  }
+
+  return item.buffer;
+}
+
+function setCached(key, buffer) {
+  cache.set(key, {
+    buffer,
+    createdAt: Date.now()
+  });
+
+  if (cache.size > MAX_QR_CACHE_ENTRIES) {
+    const oldestKey = cache.keys().next().value;
+    cache.delete(oldestKey);
+  }
+}
+
+async function getClientQrPng(
+  clientUrl,
+  {
+    generate = QRCode.toBuffer
+  } = {}
+) {
+  const key = String(clientUrl || '').trim();
+
+  if (!key) {
+    throw new Error('URL de cliente inválida.');
+  }
+
+  const cached = getCached(key);
+
+  if (cached) {
+    return {
+      buffer: cached,
+      cached: true
+    };
+  }
+
+  const buffer = await generate(key, {
+    type: 'png',
+    width: 400,
+    margin: 2,
+    color: {
+      dark: '#00f0ff',
+      light: '#0a0a0f'
+    }
+  });
+
+  setCached(key, buffer);
+
+  return {
+    buffer,
+    cached: false
+  };
+}
+
+function clearQrCache() {
+  cache.clear();
+}
+
+module.exports = {
+  getClientQrPng,
+  clearQrCache,
+  QR_CACHE_TTL_MS,
+  MAX_QR_CACHE_ENTRIES
+};
