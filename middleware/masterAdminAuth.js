@@ -38,6 +38,24 @@ function getMasterAdminToken(req) {
 
 async function requireMasterAdmin(req, res, next) {
   try {
+    const ip =
+      req.ip ||
+      req.headers['x-forwarded-for'] ||
+      'unknown';
+
+    const limit = limiter.hit(
+      `master:${String(ip).slice(0, 120)}`,
+      WINDOW_MS,
+      MAX_REQUESTS
+    );
+
+    if (!limit.allowed) {
+      return res.status(429).json({
+        ok: false,
+        error: 'Demasiadas solicitudes. Intenta más tarde.'
+      });
+    }
+
     const token = getMasterAdminToken(req);
 
     if (!token) {
@@ -48,11 +66,13 @@ async function requireMasterAdmin(req, res, next) {
     }
 
     const admin = await getActiveMasterAdminFromToken(token);
-    if (!admin) return res.status(401).json({ ok: false, error: 'Sesión inválida o expirada.' });
 
-    const ip = req.ip || req.headers['x-forwarded-for'] || 'unknown';
-    const limit = limiter.hit(`master:${ip}`, WINDOW_MS, MAX_REQUESTS);
-    if (!limit.allowed) return res.status(429).json({ ok: false, error: 'Demasiadas solicitudes. Intenta más tarde.' });
+    if (!admin) {
+      return res.status(401).json({
+        ok: false,
+        error: 'Sesión inválida o expirada.'
+      });
+    }
 
     req.masterAdmin = admin;
     next();
