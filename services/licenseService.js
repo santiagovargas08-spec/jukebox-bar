@@ -836,6 +836,8 @@ module.exports = {
 
   isLicenseValid,
 
+  isLicenseRecordValid,
+
   getLicenseStatus,
 
   activateSubscription,
