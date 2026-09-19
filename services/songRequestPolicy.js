@@ -10,7 +10,19 @@ function normalizeSocketIp(socket) {
   const forwarded = socket?.handshake?.headers?.['x-forwarded-for'];
 
   if (typeof forwarded === 'string' && forwarded.trim()) {
-    return forwarded.split(',')[0].trim().slice(0, 120);
+    const chain = forwarded
+      .split(',')
+      .map((value) => value.trim())
+      .filter(Boolean);
+
+    // Detrás de un único proxy confiable, el último valor es el cliente
+    // que el proxy observó. Evita confiar ciegamente en un primer valor
+    // X-Forwarded-For que el cliente pudiera haber inyectado.
+    const clientIp = chain.at(-1);
+
+    if (clientIp) {
+      return clientIp.slice(0, 120);
+    }
   }
 
   const direct = socket?.handshake?.address;
