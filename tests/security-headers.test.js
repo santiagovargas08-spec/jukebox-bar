@@ -17,6 +17,9 @@ describe('security headers', () => {
     assert.match(policy, /form-action 'self'/);
     assert.match(policy, /script-src-attr 'none'/);
     assert.match(policy, /worker-src 'none'/);
+    assert.match(policy, /style-src-elem 'self'/);
+    assert.match(policy, /style-src-attr 'unsafe-inline'/);
+    assert.doesNotMatch(policy, /style-src 'self' 'unsafe-inline'/);
     assert.doesNotMatch(policy, /bernardo-castilho\.github\.io/);
     assert.doesNotMatch(policy, /script-src[^;]*unsafe-inline/);
   });
