@@ -6,17 +6,22 @@ const {
   parseAuditRetentionDays
 } = require('../lib/retention.js');
 
-let prisma = null;
-
-async function main() {
-  ({ prisma } = require('../db.js'));
+async function cleanupAuditLogs({
+  prismaClient,
+  retentionDaysRaw = process.env.AUDIT_RETENTION_DAYS,
+  now = Date.now(),
+  apply = false
+}) {
+  if (!prismaClient) {
+    throw new Error('prismaClient es obligatorio.');
+  }
 
   const retentionDays = parseAuditRetentionDays(
-    process.env.AUDIT_RETENTION_DAYS
+    retentionDaysRaw
   );
 
   const cutoff = new Date(
-    Date.now() -
+    now -
     retentionDays * 24 * 60 * 60 * 1000
   );
 
@@ -26,58 +31,63 @@ async function main() {
     }
   };
 
-  const count = await prisma.adminAuditLog.count({
+  const count = await prismaClient.adminAuditLog.count({
     where
   });
-
-  const apply = process.argv.includes('--apply');
 
   if (!apply) {
-    console.log(
-      JSON.stringify({
-        mode: 'dry-run',
-        retentionDays,
-        cutoff: cutoff.toISOString(),
-        rowsEligible: count
-      })
-    );
-    return;
-  }
-
-  const result = await prisma.adminAuditLog.deleteMany({
-    where
-  });
-
-  console.log(
-    JSON.stringify({
-      mode: 'apply',
+    return {
+      mode: 'dry-run',
       retentionDays,
       cutoff: cutoff.toISOString(),
-      rowsDeleted: result.count
-    })
-  );
+      rowsEligible: count
+    };
+  }
+
+  const result =
+    await prismaClient.adminAuditLog.deleteMany({
+      where
+    });
+
+  return {
+    mode: 'apply',
+    retentionDays,
+    cutoff: cutoff.toISOString(),
+    rowsDeleted: result.count
+  };
+}
+
+async function main() {
+  const { prisma } = require('../db.js');
+
+  try {
+    const result = await cleanupAuditLogs({
+      prismaClient: prisma,
+      apply: process.argv.includes('--apply')
+    });
+
+    console.log(JSON.stringify(result));
+  } finally {
+    await prisma.$disconnect();
+  }
 }
 
 if (require.main === module) {
-  main()
-    .catch((error) => {
-      console.error(
-        JSON.stringify({
-          level: 'error',
-          message:
-            error?.message ||
-            String(error)
-        })
-      );
-      process.exitCode = 1;
-    })
-    .finally(async () => {
-      if (prisma) {
-        await prisma.$disconnect();
-      }
-    });
+  main().catch((error) => {
+    console.error(
+      JSON.stringify({
+        level: 'error',
+        message:
+          error?.message ||
+          String(error)
+      })
+    );
+
+    process.exitCode = 1;
+  });
 }
 
 module.exports = {
-  main
+  main,
+  cleanupAuditLogs
 };
