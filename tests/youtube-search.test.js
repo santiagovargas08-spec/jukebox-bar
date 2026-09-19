@@ -6,307 +6,208 @@ const assert = require('node:assert/strict');
 const {
   searchYoutube,
   clearSearchCache,
-  normalizeYoutubeResult,
-  isAcceptableYoutubeResult,
-  scoreYoutubeResult,
-  rankYoutubeResults,
-  resetProviderCircuit,
-  isProviderCircuitOpen,
-  recordProviderFailure,
-  PROVIDER_FAILURE_THRESHOLD
+  MAX_SEARCH_RESULTS
 } = require('../services/youtubeSearchService.js');
 
 describe('youtube search service', () => {
-  it('normaliza un resultado válido', () => {
-    const result = normalizeYoutubeResult({
-      videoId: 'abc123XYZ09',
-      title: '  Canción demo  ',
-      author: { name: '  Canal Demo ' },
-      thumbnail: 'https://i.ytimg.com/vi/abc123XYZ09/hqdefault.jpg'
-    });
-
-    assert.equal(result.videoId, 'abc123XYZ09');
-    assert.equal(result.title, 'Canción demo');
-    assert.equal(result.author.name, 'Canal Demo');
-    assert.match(result.thumbnail, /i\.ytimg\.com/);
-  });
-
-  it('descarta resultados sin videoId', () => {
-    assert.equal(normalizeYoutubeResult({ title: 'Sin id' }), null);
-  });
-
-  it('descarta directos y videos demasiado largos para el jukebox', () => {
-    assert.equal(
-      isAcceptableYoutubeResult({
-        videoId: 'abc123XYZ09',
-        duration: { seconds: 7200 },
-        live: false
-      }),
-      false
-    );
-
-    assert.equal(
-      isAcceptableYoutubeResult({
-        videoId: 'abc123XYZ09',
-        duration: { seconds: 240 },
-        live: true
-      }),
-      false
-    );
-
-    assert.equal(
-      isAcceptableYoutubeResult({
-        videoId: 'abc123XYZ09',
-        duration: { seconds: 240 },
-        live: false
-      }),
-      true
-    );
-  });
-
-  it('filtra resultados largos antes de devolver la búsqueda', async () => {
+  it('devuelve los primeros resultados tal como los entrega yt-search', async () => {
     clearSearchCache();
+
+    const source = Array.from(
+      { length: 30 },
+      (_, index) => ({
+        videoId:
+          `Video${String(index).padStart(6, '0')}`,
+        title:
+          `Resultado ${index}`,
+        author: {
+          name: 'Canal'
+        }
+      })
+    );
 
     const result = await searchYoutube(
       'artista canción',
       {
         searchFn: async () => ({
-          videos: [
-            {
-              videoId: 'Long0000001',
-              title: 'Mix de dos horas',
-              author: { name: 'Canal' },
-              thumbnail: '',
-              duration: { seconds: 7200, timestamp: '2:00:00' }
-            },
-            {
-              videoId: 'Song0000001',
-              title: 'Canción',
-              author: { name: 'Artista' },
-              thumbnail: '',
-              duration: { seconds: 210, timestamp: '3:30' }
-            }
-          ]
-        }),
-        timeoutMs: 100
+          videos: source
+        })
       }
     );
 
-    assert.equal(result.videos.length, 1);
-    assert.equal(result.videos[0].videoId, 'Song0000001');
-    assert.equal(result.videos[0].durationSeconds, 210);
+    assert.equal(
+      result.status,
+      'OK'
+    );
+
+    assert.equal(
+      result.videos.length,
+      MAX_SEARCH_RESULTS
+    );
+
+    assert.deepEqual(
+      result.videos,
+      source.slice(
+        0,
+        MAX_SEARCH_RESULTS
+      )
+    );
   });
 
-  it('usa valores seguros cuando faltan metadatos', () => {
-    const result = normalizeYoutubeResult({
-      videoId: 'abc123XYZ09',
-      title: '',
-      author: null,
-      thumbnail: ''
-    });
-
-    assert.equal(result.title, 'Sin título');
-    assert.equal(result.author.name, 'Canal desconocido');
-    assert.equal(result.thumbnail, null);
-  });
-
-  it('no cachea respuestas vacías del proveedor', async () => {
+  it('cachea búsquedas exitosas durante la sesión del servidor', async () => {
     clearSearchCache();
 
     let calls = 0;
+
     const searchFn = async () => {
       calls += 1;
-      return { videos: [] };
-    };
 
-    const first = await searchYoutube(
-      'consulta sin resultados',
-      { searchFn, timeoutMs: 200 }
-    );
-    const second = await searchYoutube(
-      'consulta sin resultados',
-      { searchFn, timeoutMs: 200 }
-    );
-
-    assert.equal(first.videos.length, 0);
-    assert.equal(second.videos.length, 0);
-    assert.equal(calls, 2);
-  });
-
-  it('resultados vacíos no abren el circuit breaker', async () => {
-    clearSearchCache();
-
-    const searchFn = async () => ({ videos: [] });
-
-    for (let index = 0; index < PROVIDER_FAILURE_THRESHOLD + 2; index += 1) {
-      await searchYoutube(
-        `consulta vacía ${index}`,
-        { searchFn, timeoutMs: 100 }
-      );
-    }
-
-    assert.equal(isProviderCircuitOpen(), false);
-  });
-
-  it('coalesce búsquedas idénticas concurrentes', async () => {
-    clearSearchCache();
-
-    let calls = 0;
-    const searchFn = async () => {
-      calls += 1;
-      await new Promise((resolve) => setTimeout(resolve, 20));
       return {
         videos: [
           {
             videoId: 'abc123XYZ09',
-            title: 'Concurrente',
-            author: { name: 'Canal' },
-            thumbnail: 'https://i.ytimg.com/vi/abc123XYZ09/hqdefault.jpg'
+            title: 'Canción',
+            author: {
+              name: 'Artista'
+            }
           }
         ]
       };
     };
 
-    const [first, second] = await Promise.all([
-      searchYoutube('misma consulta', { searchFn, timeoutMs: 200 }),
-      searchYoutube('misma consulta', { searchFn, timeoutMs: 200 })
-    ]);
+    const first = await searchYoutube(
+      'misma búsqueda',
+      { searchFn }
+    );
+
+    const second = await searchYoutube(
+      'misma búsqueda',
+      { searchFn }
+    );
+
+    assert.equal(calls, 1);
+    assert.equal(first.cached, false);
+    assert.equal(second.cached, true);
+    assert.equal(second.videos.length, 1);
+  });
+
+  it('comparte una sola consulta para búsquedas idénticas concurrentes', async () => {
+    clearSearchCache();
+
+    let calls = 0;
+
+    const searchFn = async () => {
+      calls += 1;
+
+      await new Promise(
+        (resolve) =>
+          setTimeout(resolve, 20)
+      );
+
+      return {
+        videos: [
+          {
+            videoId: 'abc123XYZ09',
+            title: 'Concurrente',
+            author: {
+              name: 'Canal'
+            }
+          }
+        ]
+      };
+    };
+
+    const [first, second] =
+      await Promise.all([
+        searchYoutube(
+          'consulta concurrente',
+          { searchFn }
+        ),
+        searchYoutube(
+          'consulta concurrente',
+          { searchFn }
+        )
+      ]);
 
     assert.equal(calls, 1);
     assert.equal(first.videos.length, 1);
     assert.equal(second.videos.length, 1);
-    assert.equal(first.videos[0].videoId, 'abc123XYZ09');
-    assert.equal(second.videos[0].videoId, 'abc123XYZ09');
   });
 
-  it('corta búsquedas bloqueadas por timeout', async () => {
+  it('devuelve NO_RESULTS cuando yt-search responde sin videos', async () => {
     clearSearchCache();
 
     const result = await searchYoutube(
-      'consulta que se queda esperando',
+      'sin resultados',
       {
-        searchFn: () => new Promise(() => {}),
-        timeoutMs: 15
+        searchFn: async () => ({
+          videos: []
+        })
       }
     );
 
-    assert.deepEqual(result, {
-      videos: [],
-      cached: false,
-      status: 'TIMEOUT'
-    });
+    assert.deepEqual(
+      {
+        videos: result.videos,
+        cached: result.cached,
+        status: result.status
+      },
+      {
+        videos: [],
+        cached: false,
+        status: 'NO_RESULTS'
+      }
+    );
   });
 
-  it('abre el circuit breaker tras fallos consecutivos del proveedor', async () => {
+  it('devuelve PROVIDER_ERROR cuando yt-search lanza una excepción', async () => {
     clearSearchCache();
-    resetProviderCircuit();
 
-    for (let index = 0; index < PROVIDER_FAILURE_THRESHOLD; index += 1) {
-      recordProviderFailure();
-    }
+    const result = await searchYoutube(
+      'error proveedor',
+      {
+        searchFn: async () => {
+          throw new Error(
+            'fallo yt-search'
+          );
+        }
+      }
+    );
 
-    assert.equal(isProviderCircuitOpen(), true);
+    assert.equal(
+      result.status,
+      'PROVIDER_ERROR'
+    );
+
+    assert.deepEqual(
+      result.videos,
+      []
+    );
+  });
+
+  it('una búsqueda vacía no llama a yt-search', async () => {
+    clearSearchCache();
 
     let calls = 0;
+
     const result = await searchYoutube(
-      'consulta mientras circuito está abierto',
+      '   ',
       {
         searchFn: async () => {
           calls += 1;
-          return { videos: [] };
-        },
-        timeoutMs: 100
+          return {
+            videos: []
+          };
+        }
       }
     );
 
-    assert.deepEqual(result, {
-      videos: [],
-      cached: false,
-      status: 'PROVIDER_UNAVAILABLE'
-    });
     assert.equal(calls, 0);
-  });
-
-  it('una búsqueda exitosa reinicia el estado del circuit breaker', async () => {
-    clearSearchCache();
-
-    for (let index = 0; index < PROVIDER_FAILURE_THRESHOLD - 1; index += 1) {
-      recordProviderFailure();
-    }
-
-    const result = await searchYoutube(
-      'consulta recuperada',
-      {
-        searchFn: async () => ({
-          videos: [
-            {
-              videoId: 'abc123XYZ09',
-              title: 'Recuperada',
-              author: { name: 'Canal' },
-              thumbnail: 'https://i.ytimg.com/vi/abc123XYZ09/hqdefault.jpg'
-            }
-          ]
-        }),
-        timeoutMs: 100
-      }
-    );
-
-    assert.equal(result.videos.length, 1);
-    assert.equal(isProviderCircuitOpen(), false);
-  });
-
-  it('una búsqueda vacía no llama a YouTube y devuelve cero resultados', async () => {
-    clearSearchCache();
-    const result = await searchYoutube('   ');
 
     assert.deepEqual(result, {
       videos: [],
       cached: false,
       status: 'EMPTY_QUERY'
     });
-  });
-
-  it('prioriza coincidencias de canción sobre mixes y compilaciones', () => {
-    const videos = [
-      {
-        videoId: 'Mix00000001',
-        title: 'Shakira Greatest Hits Mix 2 Hours',
-        author: { name: 'Music Mix' },
-        duration: { seconds: 600 }
-      },
-      {
-        videoId: 'Song0000002',
-        title: 'Shakira - Antologia (Official Audio)',
-        author: { name: 'Shakira' },
-        duration: { seconds: 252 }
-      },
-      {
-        videoId: 'Song0000003',
-        title: 'Antologia lyrics',
-        author: { name: 'Fan Lyrics' },
-        duration: { seconds: 250 }
-      }
-    ];
-
-    const ranked = rankYoutubeResults(
-      videos,
-      'shakira antologia'
-    );
-
-    assert.equal(
-      ranked[0].videoId,
-      'Song0000002'
-    );
-
-    assert.ok(
-      scoreYoutubeResult(
-        videos[1],
-        'shakira antologia'
-      ) >
-      scoreYoutubeResult(
-        videos[0],
-        'shakira antologia'
-      )
-    );
   });
 });
