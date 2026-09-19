@@ -17,14 +17,31 @@ function getCookieValue(req, name) {
   );
 }
 
+function isBearerAdminAuthEnabled() {
+  return (
+    process.env.ENABLE_BEARER_ADMIN_AUTH === 'true'
+  );
+}
+
 function getMasterAdminToken(req) {
-  const header = req.headers.authorization || '';
+  const cookieToken =
+    getCookieValue(
+      req,
+      MASTER_ADMIN_COOKIE
+    );
+
+  if (!isBearerAdminAuthEnabled()) {
+    return cookieToken;
+  }
+
+  const header =
+    req.headers.authorization || '';
 
   if (header.startsWith('Bearer ')) {
     return header.slice(7).trim();
   }
 
-  return getCookieValue(req, MASTER_ADMIN_COOKIE);
+  return cookieToken;
 }
 
 async function requireMasterAdmin(req, res, next) {
@@ -89,5 +106,6 @@ module.exports = {
   MASTER_ADMIN_COOKIE,
   getCookieValue,
   getMasterAdminToken,
+  isBearerAdminAuthEnabled,
   requireMasterAdmin
 };
