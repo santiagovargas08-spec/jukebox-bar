@@ -10,6 +10,7 @@ const {
 describe('admin audit', () => {
   let prisma;
   let auditAdminAction;
+  let auditSocketAdminAction;
   let listAdminAuditLogs;
   let normalizeDetails;
 
@@ -21,6 +22,7 @@ describe('admin audit', () => {
 
     ({
       auditAdminAction,
+      auditSocketAdminAction,
       listAdminAuditLogs,
       normalizeDetails
     } = require('../lib/adminAudit.js'));
@@ -163,6 +165,45 @@ describe('admin audit', () => {
     assert.ok(row.action.length <= 120);
     assert.ok(row.entityType.length <= 80);
     assert.ok(row.entityId.length <= 120);
+  });
+
+  it('persiste una acción desde socket de operador', async () => {
+    const socketId = `socket-audit-${Date.now()}`;
+
+    const ok = await auditSocketAdminAction({
+      socket: {
+        id: socketId,
+        data: {
+          operator: {
+            id: 21,
+            email: 'operator@example.com',
+            role: 'BAR_ADMIN'
+          }
+        }
+      },
+      action: 'queue.clear',
+      barId: 12,
+      entityType: 'queue',
+      details: { removedCount: 2 }
+    });
+
+    assert.equal(ok, true);
+
+    const row = await prisma.adminAuditLog.findFirst({
+      where: {
+        actorId: 21,
+        action: 'queue.clear'
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+
+    assert.ok(row);
+    assert.equal(row.actorEmail, 'operator@example.com');
+    assert.equal(row.actorRole, 'BAR_ADMIN');
+    assert.equal(row.barId, 12);
+    assert.match(row.requestId, /^socket:/);
   });
 
   it('redacta metadatos sensibles antes de persistir', () => {
