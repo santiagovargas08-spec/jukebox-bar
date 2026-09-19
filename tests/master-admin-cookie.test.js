@@ -1,6 +1,6 @@
 'use strict';
 
-const { describe, it } = require('node:test');
+const { describe, it, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
 
 const {
@@ -10,6 +10,9 @@ const {
 } = require('../middleware/masterAdminAuth.js');
 
 describe('master admin cookie auth helpers', () => {
+  afterEach(() => {
+    delete process.env.ENABLE_BEARER_ADMIN_AUTH;
+  });
   it('extrae la sesión desde cookie HttpOnly transportada por HTTP', () => {
     const req = {
       headers: {
@@ -28,7 +31,23 @@ describe('master admin cookie auth helpers', () => {
     );
   });
 
-  it('Bearer conserva prioridad para compatibilidad', () => {
+  it('cookie tiene prioridad porque Bearer está deshabilitado por defecto', () => {
+    const req = {
+      headers: {
+        authorization: 'Bearer bearer-token',
+        cookie: `${MASTER_ADMIN_COOKIE}=cookie-token`
+      }
+    };
+
+    assert.equal(
+      getMasterAdminToken(req),
+      'cookie-token'
+    );
+  });
+
+  it('Bearer puede habilitarse explícitamente por compatibilidad', () => {
+    process.env.ENABLE_BEARER_ADMIN_AUTH = 'true';
+
     const req = {
       headers: {
         authorization: 'Bearer bearer-token',
