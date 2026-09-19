@@ -2,6 +2,11 @@
 
 const ytSearch = require('yt-search');
 const { logWarn } = require('../lib/logger.js');
+const {
+  getPersistentSearchCache,
+  setPersistentSearchCache,
+  normalizeSearchQuery
+} = require('./searchCacheService.js');
 
 const CACHE_TTL_MS = 60 * 60 * 1000;
 const MAX_CACHE_ENTRIES = 500;
@@ -53,13 +58,34 @@ async function searchYoutube(
     };
   }
 
-  const key = text.toLowerCase();
+  const key = normalizeSearchQuery(text);
   const cachedVideos = getCached(key);
 
   if (cachedVideos) {
     return {
       videos: cachedVideos,
       cached: true,
+      cacheLayer: 'memory',
+      status: 'OK'
+    };
+  }
+
+  const persistentVideos =
+    await getPersistentSearchCache(text);
+
+  if (
+    Array.isArray(persistentVideos) &&
+    persistentVideos.length > 0
+  ) {
+    setCached(
+      key,
+      persistentVideos
+    );
+
+    return {
+      videos: persistentVideos,
+      cached: true,
+      cacheLayer: 'database',
       status: 'OK'
     };
   }
@@ -83,10 +109,17 @@ async function searchYoutube(
 
         if (videos.length > 0) {
           setCached(key, videos);
+
+          // Guardado asíncrono: no retrasa la respuesta al cliente.
+          void setPersistentSearchCache(
+            text,
+            videos
+          );
         }
 
         return {
           videos,
+          cacheLayer: 'youtube',
           status:
             videos.length > 0
               ? 'OK'
@@ -106,6 +139,7 @@ async function searchYoutube(
 
         return {
           videos: [],
+          cacheLayer: 'youtube',
           status: 'PROVIDER_ERROR',
           elapsedMs:
             Date.now() - startedAt
@@ -123,6 +157,9 @@ async function searchYoutube(
   return {
     videos: result.videos,
     cached: false,
+    cacheLayer:
+      result.cacheLayer ||
+      'youtube',
     status: result.status,
     elapsedMs: result.elapsedMs || 0
   };
