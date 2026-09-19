@@ -399,8 +399,7 @@ document.addEventListener('error', (event) => {
       query
     ) {
 
-      resultsList.innerHTML =
-        '';
+      resultsList.replaceChildren();
 
 
       if (
@@ -408,8 +407,18 @@ document.addEventListener('error', (event) => {
         items.length === 0
       ) {
 
-        resultsList.innerHTML =
-          '<p class="no-results">Sin resultados. Prueba con otra búsqueda.</p>';
+        const empty =
+          document.createElement('p');
+
+        empty.className =
+          'no-results';
+
+        empty.textContent =
+          'Sin resultados. Prueba con otra búsqueda.';
+
+        resultsList.appendChild(
+          empty
+        );
 
 
         resultsSection.classList.remove(
@@ -473,58 +482,99 @@ document.addEventListener('error', (event) => {
             `${index * 0.05}s`;
 
 
-          card.innerHTML = `
+          let thumbElement;
 
-            ${
-              thumb
+          if (thumb) {
+            thumbElement =
+              document.createElement('img');
 
-              ? `
-                <img
-                  class="result-thumb"
-                  src="${escapeHtml(thumb)}"
-                  alt="${escapeHtml(titulo)}"
-                  loading="lazy"
-                >
-              `
+            thumbElement.className =
+              'result-thumb';
 
-              : `
-                <div
-                  class="result-thumb result-thumb-placeholder"
-                >
-                  🎵
-                </div>
-              `
-            }
+            thumbElement.src =
+              thumb;
 
+            thumbElement.alt =
+              titulo;
 
-            <div class="result-info">
+            thumbElement.loading =
+              'lazy';
+          } else {
+            thumbElement =
+              document.createElement('div');
 
-              <div
-                class="result-title"
-                title="${escapeHtml(titulo)}"
-              >
-                ${escapeHtml(titulo)}
-              </div>
+            thumbElement.className =
+              'result-thumb result-thumb-placeholder';
+
+            thumbElement.textContent =
+              '🎵';
+          }
 
 
-              <div class="result-channel">
-                ${escapeHtml(canal)}
-              </div>
+          const info =
+            document.createElement('div');
+
+          info.className =
+            'result-info';
 
 
-              <button
-                class="btn-add"
-                data-video-id="${escapeHtml(videoId)}"
-                data-titulo="${escapeHtml(titulo)}"
-                data-thumb="${escapeHtml(thumb)}"
-                aria-label="Añadir ${escapeHtml(titulo)} a la fila"
-              >
-                ➕ Añadir a la Fila
-              </button>
+          const title =
+            document.createElement('div');
 
-            </div>
+          title.className =
+            'result-title';
 
-          `;
+          title.title =
+            titulo;
+
+          title.textContent =
+            titulo;
+
+
+          const channel =
+            document.createElement('div');
+
+          channel.className =
+            'result-channel';
+
+          channel.textContent =
+            canal;
+
+
+          const addButton =
+            document.createElement('button');
+
+          addButton.className =
+            'btn-add';
+
+          addButton.dataset.videoId =
+            String(videoId);
+
+          addButton.dataset.titulo =
+            titulo;
+
+          addButton.dataset.thumb =
+            thumb || '';
+
+          addButton.setAttribute(
+            'aria-label',
+            `Añadir ${titulo} a la fila`
+          );
+
+          addButton.textContent =
+            '➕ Añadir a la Fila';
+
+
+          info.append(
+            title,
+            channel,
+            addButton
+          );
+
+          card.append(
+            thumbElement,
+            info
+          );
 
 
           resultsList.appendChild(
@@ -783,44 +833,77 @@ document.addEventListener('error', (event) => {
       );
 
 
-      liveQueueList.innerHTML =
-        cola
-          .map(
-            (c, i) => `
+      liveQueueList.replaceChildren();
 
-              <div
-                class="live-queue-item"
-                role="listitem"
-              >
+      cola.forEach((song, index) => {
+        const item =
+          document.createElement('div');
 
-                <span
-                  class="lq-num"
-                  aria-hidden="true"
-                >
-                  ${i + 1}
-                </span>
+        item.className =
+          'live-queue-item';
+
+        item.setAttribute(
+          'role',
+          'listitem'
+        );
 
 
-                <div class="lq-info">
+        const number =
+          document.createElement('span');
 
-                  <div class="lq-title">
-                    ${escapeHtml(c.titulo)}
-                  </div>
+        number.className =
+          'lq-num';
+
+        number.setAttribute(
+          'aria-hidden',
+          'true'
+        );
+
+        number.textContent =
+          String(index + 1);
 
 
-                  <div class="lq-who">
-                    📍 ${escapeHtml(c.nombre)}
-                    ·
-                    ${escapeHtml(c.timestamp)}
-                  </div>
+        const info =
+          document.createElement('div');
 
-                </div>
+        info.className =
+          'lq-info';
 
-              </div>
 
-            `
-          )
-          .join('');
+        const title =
+          document.createElement('div');
+
+        title.className =
+          'lq-title';
+
+        title.textContent =
+          String(song.titulo || '');
+
+
+        const who =
+          document.createElement('div');
+
+        who.className =
+          'lq-who';
+
+        who.textContent =
+          `📍 ${String(song.nombre || '')} · ${String(song.timestamp || '')}`;
+
+
+        info.append(
+          title,
+          who
+        );
+
+        item.append(
+          number,
+          info
+        );
+
+        liveQueueList.appendChild(
+          item
+        );
+      });
 
     }
 
@@ -898,8 +981,7 @@ document.addEventListener('error', (event) => {
       );
 
 
-      resultsList.innerHTML =
-        '';
+      resultsList.replaceChildren();
 
     }
 
