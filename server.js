@@ -29,7 +29,6 @@ const {
 } = require('./services/operatorAuthService.js');
 
 const {
-  getPlaybackState,
   setNowPlaying,
   clearPlaybackState
 } = require('./services/playbackService.js');
@@ -46,7 +45,6 @@ const { logError, logInfo } = require('./lib/logger.js');
 const { securityHeaders } = require('./lib/securityHeaders.js');
 const { prisma, pool } = require('./db.js');
 const { searchYoutube } = require('./services/youtubeSearchService.js');
-const { validarAccesoBar } = require('./services/barAccessService.js');
 const { canRequestSong, isBlockedSong } = require('./services/songRequestPolicy.js');
 const { createSocketStateService, HISTORIAL_MAX } = require('./services/socketStateService.js');
 
@@ -97,10 +95,6 @@ io.use(async (socket, next) => {
 
 
 // ============================================================
-// CONFIGURACIÓN
-// ============================================================
-
-// ============================================================
 // MIDDLEWARE
 // ============================================================
 
@@ -126,7 +120,16 @@ app.get('/ready', async (req, res) => {
 
 app.use(
   express.static(
-    path.join(__dirname, 'public')
+    path.join(__dirname, 'public'),
+    {
+      etag: true,
+      maxAge: '5m',
+      setHeaders(res, filePath) {
+        if (filePath.endsWith('.html')) {
+          res.setHeader('Cache-Control', 'no-cache');
+        }
+      }
+    }
   )
 );
 
