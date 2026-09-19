@@ -23,6 +23,16 @@ try {
         return { addToQueue: async () => ({ created: true, item: {} }) };
       }
 
+      if (request === '../services/playbackService.js') {
+        return {
+          startPlaybackIfIdle: async () => ({
+            started: false,
+            playback: null,
+            item: null
+          })
+        };
+      }
+
       if (request === '../services/youtubeSearchService.js') {
         return { searchYoutube: async () => ({ videos: [], cached: false }) };
       }
