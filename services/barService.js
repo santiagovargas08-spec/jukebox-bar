@@ -140,8 +140,14 @@ async function getBarById(id) {
     include: {
       settings: true,
       license: true,
-      users: true,
-      _count: { select: { users: true, queue: true, history: true, payments: true } }
+      _count: {
+        select: {
+          users: true,
+          queue: true,
+          history: true,
+          payments: true
+        }
+      }
     }
   });
 }
