@@ -67,7 +67,7 @@ describe('operator logout HTTP', () => {
     await prisma.$disconnect();
   });
 
-  it('revoca el token del operador al cerrar sesión', async () => {
+  it('usa cookie HttpOnly y la revoca al cerrar sesión', async () => {
     const loginResponse = await fetch(
       `${baseUrl}/api/public/bars/${encodeURIComponent(bar.slug)}/operator/login`,
       {
@@ -83,18 +83,36 @@ describe('operator logout HTTP', () => {
     assert.equal(loginResponse.status, 200);
 
     const loginBody = await loginResponse.json();
-    const token = loginBody.data.token;
+    assert.equal(loginBody.data.token, undefined);
+    assert.ok(loginBody.data.admin);
 
-    assert.ok(
-      await authService.getActiveAdminFromToken(token)
+    const setCookie =
+      loginResponse.headers.get('set-cookie');
+
+    assert.ok(setCookie);
+    assert.match(setCookie, /jukebox_operator=/);
+    assert.match(setCookie, /HttpOnly/i);
+    assert.match(setCookie, /SameSite=Strict/i);
+
+    const sessionCookie = setCookie.split(';')[0];
+
+    const sessionBefore = await fetch(
+      `${baseUrl}/api/public/bars/${encodeURIComponent(bar.slug)}/operator/session`,
+      {
+        headers: {
+          Cookie: sessionCookie
+        }
+      }
     );
+
+    assert.equal(sessionBefore.status, 200);
 
     const logoutResponse = await fetch(
       `${baseUrl}/api/public/bars/${encodeURIComponent(bar.slug)}/operator/logout`,
       {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${token}`
+          Cookie: sessionCookie
         }
       }
     );
@@ -105,13 +123,19 @@ describe('operator logout HTTP', () => {
       'no-store, max-age=0'
     );
 
-    const revoked =
-      await authService.getActiveAdminFromToken(token);
+    const sessionAfter = await fetch(
+      `${baseUrl}/api/public/bars/${encodeURIComponent(bar.slug)}/operator/session`,
+      {
+        headers: {
+          Cookie: sessionCookie
+        }
+      }
+    );
 
-    assert.equal(revoked, null);
+    assert.equal(sessionAfter.status, 401);
   });
 
-  it('rechaza logout sin Bearer token', async () => {
+  it('rechaza logout sin sesión', async () => {
     const response = await fetch(
       `${baseUrl}/api/public/bars/${encodeURIComponent(bar.slug)}/operator/logout`,
       { method: 'POST' }
