@@ -26,7 +26,7 @@ const {
 
 const { logError, logInfo } = require('../lib/logger.js');
 
-const SEARCH_COOLDOWN_MS = 500;
+const SEARCH_COOLDOWN_MS = 0;
 
 function registerPublicSocketHandlers({
   socket,
@@ -205,6 +205,7 @@ function registerPublicSocketHandlers({
       const ahoraBusqueda = Date.now();
 
       if (
+        SEARCH_COOLDOWN_MS > 0 &&
         socket.data.lastSearchAt &&
         ahoraBusqueda - socket.data.lastSearchAt <
           SEARCH_COOLDOWN_MS
