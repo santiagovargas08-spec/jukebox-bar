@@ -131,6 +131,26 @@ async function getBarBySlug(slug) {
   });
 }
 
+async function getBarAccessRecord(id) {
+  const barId = Number(id);
+
+  if (
+    !Number.isInteger(barId) ||
+    barId <= 0
+  ) {
+    return null;
+  }
+
+  return prisma.bar.findUnique({
+    where: { id: barId },
+    select: {
+      id: true,
+      active: true,
+      license: true
+    }
+  });
+}
+
 async function getBarById(id) {
   const barId = Number(id);
   if (!Number.isInteger(barId) || barId <= 0) return null;
@@ -290,6 +310,7 @@ module.exports = {
   createBar,
   getBarBySlug,
   getBarById,
+  getBarAccessRecord,
   listBars,
   listBarsPage,
   updateBar,
