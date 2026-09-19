@@ -18,7 +18,7 @@ const CACHE_TTL_MS = 60 * 60 * 1000;
 const NEGATIVE_CACHE_TTL_MS = 2 * 60 * 1000;
 const MAX_CACHE_ENTRIES = 500;
 const MAX_NEGATIVE_CACHE_ENTRIES = 200;
-const MAX_SEARCH_RESULTS = 25;
+const MAX_SEARCH_RESULTS = 10;
 
 const cache = new Map();
 const negativeCache = new Map();
