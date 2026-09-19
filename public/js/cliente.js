@@ -74,7 +74,6 @@ document.addEventListener('error', (event) => {
     const cacheBusquedas = {};
     let searchRequestCounter = 0;
     let activeSearchRequestId = '';
-    let searchFallbackTimer = null;
 
 
     // ============================================================
@@ -281,11 +280,6 @@ document.addEventListener('error', (event) => {
           return;
         }
 
-        if (searchFallbackTimer) {
-          clearTimeout(searchFallbackTimer);
-          searchFallbackTimer = null;
-        }
-
         const clave =
           String(query || '')
             .toLowerCase();
@@ -327,11 +321,6 @@ document.addEventListener('error', (event) => {
         mostrarLoading(
           false
         );
-
-        if (searchFallbackTimer) {
-          clearTimeout(searchFallbackTimer);
-          searchFallbackTimer = null;
-        }
 
         if (codigo === 'COOLDOWN') {
           return;
@@ -415,30 +404,8 @@ document.addEventListener('error', (event) => {
       activeSearchRequestId =
         `client-${searchRequestCounter}`;
 
-      if (searchFallbackTimer) {
-        clearTimeout(searchFallbackTimer);
-      }
-
       const requestId =
         activeSearchRequestId;
-
-      searchFallbackTimer =
-        setTimeout(() => {
-          if (
-            requestId !==
-            activeSearchRequestId
-          ) {
-            return;
-          }
-
-          mostrarLoading(false);
-
-          mostrarError(
-            'La búsqueda tardó demasiado. Intenta nuevamente.'
-          );
-
-          searchFallbackTimer = null;
-        }, 17000);
 
       socket.emit(
         'buscar_canciones',
@@ -1060,11 +1027,6 @@ document.addEventListener('error', (event) => {
           searchRequestCounter += 1;
           activeSearchRequestId =
             `client-${searchRequestCounter}`;
-
-          if (searchFallbackTimer) {
-            clearTimeout(searchFallbackTimer);
-            searchFallbackTimer = null;
-          }
 
           mostrarLoading(false);
           ocultarResultados();
