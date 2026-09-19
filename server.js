@@ -29,6 +29,7 @@ const { createSocketStateService } = require('./services/socketStateService.js')
 const { registerPlaybackAdminHandlers } = require('./socket/playbackAdminHandlers.js');
 const { registerPublicSocketHandlers } = require('./socket/publicHandlers.js');
 const { allowConnection } = require('./services/socketConnectionPolicy.js');
+const { withTimeout } = require('./lib/promiseTimeout.js');
 
 
 // ============================================================
@@ -112,7 +113,15 @@ app.get('/ready', async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
 
   try {
-    await prisma.$queryRaw`SELECT 1`;
+    await withTimeout(
+      prisma.$queryRaw`SELECT 1`,
+      3000,
+      {
+        message: 'DATABASE_READY_TIMEOUT',
+        code: 'DATABASE_READY_TIMEOUT'
+      }
+    );
+
     res.status(200).json({ ok: true, database: 'ready' });
   } catch (error) {
     logError('[READY] Base de datos no disponible', {
