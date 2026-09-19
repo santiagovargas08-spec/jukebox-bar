@@ -8,8 +8,7 @@ const {
 const {
   removeFromQueue,
   clearQueue,
-  reorderQueue,
-  takeNextFromQueue
+  reorderQueue
 } = require('../services/queueService.js');
 
 const {
@@ -18,8 +17,7 @@ const {
 } = require('../services/historyService.js');
 
 const {
-  setNowPlaying,
-  clearPlaybackState,
+  advancePlayback,
   clearPlaybackStateIfMatches
 } = require('../services/playbackService.js');
 
@@ -59,11 +57,9 @@ function registerPlaybackAdminHandlers({
     return false;
   }
   async function reproducirSiguiente(id, logPrefix) {
-    const siguiente = await takeNextFromQueue(id);
+    const result = await advancePlayback(id);
 
-    if (!siguiente) {
-      await clearPlaybackState(id);
-
+    if (!result) {
       io.to(`bar:${id}`).emit('cola_actualizada', {
         cola: [],
         reproduciendo: null
@@ -72,7 +68,10 @@ function registerPlaybackAdminHandlers({
       return;
     }
 
-    const reproduciendo = await setNowPlaying(id, siguiente);
+    const {
+      item: siguiente,
+      playback: reproduciendo
+    } = result;
 
     logInfo('Reproduciendo siguiente canción', {
       event: 'playback_next',
@@ -83,13 +82,7 @@ function registerPlaybackAdminHandlers({
 
     io.to(`bar:${id}`).emit(
       'nueva_reproduccion',
-      reproduciendo || {
-        id: siguiente.id,
-        videoId: siguiente.videoId,
-        titulo: siguiente.title,
-        nombre: siguiente.name,
-        thumbnail: siguiente.thumbnail
-      }
+      reproduciendo
     );
 
     await emitirEstadoBar(id);
