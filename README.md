@@ -50,6 +50,7 @@ Ver `.env.example`:
 | `DATABASE_URL` | Conexión PostgreSQL |
 | `DATABASE_SSL` | `true` en Render/producción |
 | `ENABLE_LEGACY_COMMERCIAL_API` | Habilita la API legacy; `false` por defecto |
+| `ENABLE_BEARER_ADMIN_AUTH` | Compatibilidad opcional con Bearer para admin/operador; `false` por defecto |
 | `ADMIN_API_KEY` | Clave de la API legacy cuando está habilitada |
 | `OPERATOR_TOKEN_SECRET` | Secreto HMAC tokens operador (≥32 chars) |
 | `MASTER_ADMIN_TOKEN_SECRET` | Secreto independiente del SUPER_ADMIN (≥32 chars) |
@@ -159,6 +160,7 @@ La cola usa `QueueItem.position` como orden explícito por bar. `createdAt` cons
 ## Sesiones administrativas
 
 - Operadores y SUPER_ADMIN usan cookies `HttpOnly`, `SameSite=Strict` y `Secure` en producción.
+- La autenticación Bearer administrativa está deshabilitada por defecto; solo se habilita explícitamente con `ENABLE_BEARER_ADMIN_AUTH=true`.
 - Las respuestas de autenticación no se cachean.
 - Las acciones sensibles verifican origen y Fetch Metadata.
 - Los tokens siguen siendo revocables mediante `tokenVersion`.
