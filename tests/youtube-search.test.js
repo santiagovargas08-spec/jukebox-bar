@@ -9,6 +9,11 @@ const {
   MAX_SEARCH_RESULTS
 } = require('../services/youtubeSearchService.js');
 
+const {
+  canonicalSearchKey,
+  approximateQueryScore
+} = require('../services/searchCacheService.js');
+
 describe('youtube search service', () => {
   it('devuelve los primeros resultados tal como los entrega yt-search', async () => {
     clearSearchCache();
@@ -214,4 +219,75 @@ describe('youtube search service', () => {
       status: 'EMPTY_QUERY'
     });
   });
+
+  it('normaliza el orden de palabras para reutilizar cache', () => {
+    assert.equal(
+      canonicalSearchKey(
+        'Karol G Provenza'
+      ),
+      canonicalSearchKey(
+        'provenza karol g'
+      )
+    );
+  });
+
+  it('acepta coincidencias aproximadas fuertes y rechaza coincidencias débiles', () => {
+    assert.ok(
+      approximateQueryScore(
+        'karol provenza',
+        'karol g provenza'
+      ) >= 0.72
+    );
+
+    assert.ok(
+      approximateQueryScore(
+        'bad bunny dtmf',
+        'bad bunny monaco'
+      ) < 0.72
+    );
+  });
+
+  it('evita repetir inmediatamente una consulta que ya devolvió cero resultados', async () => {
+    clearSearchCache();
+
+    let calls = 0;
+
+    const searchFn = async () => {
+      calls += 1;
+      return {
+        videos: []
+      };
+    };
+
+    const options = {
+      searchFn,
+      usePersistentCache: false,
+      useKnownSongs: false
+    };
+
+    const first =
+      await searchYoutube(
+        'consulta inexistente',
+        options
+      );
+
+    const second =
+      await searchYoutube(
+        'consulta inexistente',
+        options
+      );
+
+    assert.equal(
+      first.status,
+      'NO_RESULTS'
+    );
+
+    assert.equal(
+      second.cacheLayer,
+      'negative-memory'
+    );
+
+    assert.equal(calls, 1);
+  });
+
 });
