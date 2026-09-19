@@ -1,7 +1,9 @@
 'use strict';
 const $=id=>document.getElementById(id);
 const BARS_PAGE_SIZE=25;
+const AUDIT_PAGE_SIZE=50;
 let barsOffset=0;
+let auditOffset=0;
 function setLoggedIn(value){$('login').classList.toggle('hidden',value);$('app').classList.toggle('hidden',!value)}
 async function api(path,options={}){
   const headers={
@@ -148,11 +150,62 @@ async function loadBars(){
   renderBarsPager(page);
 }
 
+
+function renderAudit(page){
+  const items=Array.isArray(page.items)?page.items:[];
+  const total=Number(page.total)||0;
+  const offset=Number(page.offset)||0;
+  const limit=Number(page.limit)||AUDIT_PAGE_SIZE;
+  const start=total===0?0:offset+1;
+  const end=Math.min(offset+items.length,total);
+
+  $('audit-page').textContent=total===0?'0 eventos':`${start}–${end} de ${total}`;
+  $('audit-prev').disabled=offset<=0;
+  $('audit-next').disabled=offset+limit>=total;
+
+  $('audit-list').innerHTML=items.length
+    ?items.map(item=>`<article class="audit-item">
+      <div class="audit-main">
+        <strong>${escapeHtml(item.action)}</strong>
+        <span class="muted">· ${escapeHtml(item.createdAt)}</span>
+      </div>
+      <div class="audit-meta">
+        <span>Actor: ${escapeHtml(item.actorEmail||'—')}</span>
+        <span>Rol: ${escapeHtml(item.actorRole||'—')}</span>
+        <span>Bar: ${escapeHtml(item.barId??'—')}</span>
+        <span>Entidad: ${escapeHtml(item.entityType||'—')} ${escapeHtml(item.entityId||'')}</span>
+        <span>Request: ${escapeHtml(item.requestId||'—')}</span>
+      </div>
+    </article>`).join('')
+    :'<p class="muted">Todavía no hay eventos de auditoría.</p>';
+}
+
+async function loadAudit(){
+  const page=await api(
+    `/audit?limit=${AUDIT_PAGE_SIZE}&offset=${auditOffset}`
+  );
+
+  if(
+    auditOffset>0 &&
+    page.items.length===0 &&
+    page.total>0
+  ){
+    auditOffset=Math.max(
+      0,
+      auditOffset-AUDIT_PAGE_SIZE
+    );
+    return loadAudit();
+  }
+
+  renderAudit(page);
+}
+
 async function load(){
   const [s,me]=await Promise.all([
     api('/dashboard'),
     api('/me'),
-    loadBars()
+    loadBars(),
+    loadAudit()
   ]);
   renderStats(s);
   $('who').textContent=`Sesión: ${me.email} · SUPER_ADMIN`;
@@ -161,6 +214,8 @@ $('loginForm').onsubmit=async e=>{e.preventDefault();$('loginError').textContent
 $('createForm').onsubmit=async e=>{e.preventDefault();$('createMessage').textContent='';try{const b=await api('/bars',{method:'POST',body:JSON.stringify({name:$('barName').value,displayName:$('displayName').value,welcomeMessage:$('welcomeMessage').value})});$('createMessage').className='ok';$('createMessage').textContent=`BAR CREADO · ID ${b.id} · slug ${b.slug}`;e.target.reset();barsOffset=0;await load()}catch(err){$('createMessage').className='error';$('createMessage').textContent=err.message}};
 $('bars-prev').onclick=async()=>{if(barsOffset<=0)return;barsOffset=Math.max(0,barsOffset-BARS_PAGE_SIZE);try{await loadBars()}catch(e){await AdminDialog.message('No se pudieron cargar los bares',e.message)}};
 $('bars-next').onclick=async()=>{barsOffset+=BARS_PAGE_SIZE;try{await loadBars()}catch(e){barsOffset=Math.max(0,barsOffset-BARS_PAGE_SIZE);await AdminDialog.message('No se pudieron cargar los bares',e.message)}};
+$('audit-prev').onclick=async()=>{if(auditOffset<=0)return;auditOffset=Math.max(0,auditOffset-AUDIT_PAGE_SIZE);try{await loadAudit()}catch(e){await AdminDialog.message('No se pudo cargar la auditoría',e.message)}};
+$('audit-next').onclick=async()=>{auditOffset+=AUDIT_PAGE_SIZE;try{await loadAudit()}catch(e){auditOffset=Math.max(0,auditOffset-AUDIT_PAGE_SIZE);await AdminDialog.message('No se pudo cargar la auditoría',e.message)}};
 $('logout').onclick=async()=>{try{await api('/logout',{method:'POST'})}catch(e){console.warn('No se pudo revocar la sesión en servidor:',e.message)}finally{setLoggedIn(false)}};
 (async()=>{
   try{
