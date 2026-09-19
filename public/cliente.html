@@ -72,30 +72,18 @@
   ============================================================ -->
 
   <header
-    class="cliente-header"
+    class="cliente-header cliente-header-stack"
     role="banner"
-    style="
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      gap:8px;
-    "
   >
 
     <img
       src="GENESIS 2.0.png"
       alt="Logo Genesis 2.0"
-      style="
-        width:90px;
-        height:auto;
-        object-fit:contain;
-        filter:drop-shadow(0 0 8px var(--neon-cyan));
-      "
+      class="cliente-logo-img"
     >
 
     <div
-      class="header-logo"
-      style="margin-top:0;"
+      class="header-logo header-logo-compact"
     >
       GENESIS<span>2.0</span>
     </div>
@@ -124,12 +112,8 @@
     <div class="identity-card card">
 
       <label
-        class="campo-label"
+        class="campo-label campo-label-bright"
         for="input-nombre"
-        style="
-          color:#ffffff;
-          text-shadow:0 0 8px rgba(255,255,255,0.4);
-        "
       >
         Tu nombre o número de mesa
       </label>
@@ -156,12 +140,8 @@
     <div class="search-card card">
 
       <label
-        class="campo-label"
+        class="campo-label campo-label-bright"
         for="input-buscar"
-        style="
-          color:#ffffff;
-          text-shadow:0 0 8px rgba(255,255,255,0.4);
-        "
       >
         ¿Qué quieres escuchar?
       </label>
@@ -228,9 +208,8 @@
     ======================================================== -->
 
     <div
-      class="loading-state"
+      class="loading-state is-hidden"
       id="loading-state"
-      style="display:none;"
       role="status"
       aria-live="polite"
     >
@@ -252,9 +231,8 @@
     ======================================================== -->
 
     <div
-      class="error-state card"
+      class="error-state card is-hidden"
       id="error-state"
-      style="display:none;"
       role="alert"
     >
 
@@ -270,9 +248,8 @@
     ======================================================== -->
 
     <section
-      class="results-section"
+      class="results-section is-hidden"
       id="results-section"
-      style="display:none;"
       aria-label="Resultados de búsqueda"
     >
 
@@ -298,17 +275,12 @@
     ======================================================== -->
 
     <div
-      class="live-queue-card card"
+      class="live-queue-card card is-hidden"
       id="live-queue-section"
-      style="display:none;"
     >
 
       <h3
-        class="section-title-sm"
-        style="
-          color:#ffffff;
-          text-shadow:0 0 8px rgba(255,255,255,0.4);
-        "
+        class="section-title-sm section-title-sm-bright"
       >
 
         <span class="neon-dot">
@@ -369,12 +341,7 @@
         <br>
 
         ¡Disfruta la noche en GENESIS
-        <span
-          style="
-            color:var(--neon-cyan);
-            text-shadow:0 0 5px var(--neon-cyan);
-          "
-        >
+        <span class="success-brand-accent">
           2.0
         </span>
         ! 🎉
