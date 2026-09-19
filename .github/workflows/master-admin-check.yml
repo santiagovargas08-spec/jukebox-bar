@@ -79,11 +79,12 @@ jobs:
       - run: node --check public/js/admin-dialog.js
       - run: node --check scripts/audit-dependencies.js
       - run: node scripts/audit-public-html.js
-      - run: node --test tests/security.test.js tests/security-headers.test.js tests/youtube-search.test.js tests/song-request-policy.test.js tests/search-request-policy.test.js tests/socket-connection-policy.test.js tests/operator-auth-http.test.js tests/config-validation.test.js tests/rate-limit-store.test.js tests/bar-urls.test.js tests/master-admin-cookie.test.js tests/origin-validation.test.js tests/qr-service.test.js tests/public-api-rate-limit.test.js tests/request-id.test.js
+      - run: node --test tests/security.test.js tests/security-headers.test.js tests/youtube-search.test.js tests/song-request-policy.test.js tests/search-request-policy.test.js tests/socket-connection-policy.test.js tests/operator-auth-http.test.js tests/config-validation.test.js tests/rate-limit-store.test.js tests/bar-urls.test.js tests/master-admin-cookie.test.js tests/origin-validation.test.js tests/qr-service.test.js tests/public-api-rate-limit.test.js tests/request-id.test.js tests/http-access-log.test.js
       - run: node --check middleware/masterAdminAuth.js
       - run: node --check middleware/operatorAuth.js
       - run: node --check middleware/publicApiRateLimit.js
       - run: node --check middleware/requestId.js
+      - run: node --check middleware/httpAccessLog.js
       - run: node --check create-master-admin.js
       - run: node --check scripts/db-smoke.js
       - name: Run full integration test suite
