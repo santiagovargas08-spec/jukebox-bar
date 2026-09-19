@@ -14,13 +14,13 @@
     <form id="loginForm" class="form-grid">
       <label>Correo<input id="email" type="email" autocomplete="username" required></label>
       <label>Contraseña<input id="password" type="password" autocomplete="current-password" required></label>
-      <div class="actions" style="align-items:end"><button>Entrar</button></div>
+      <div class="actions actions-end"><button>Entrar</button></div>
     </form>
     <p id="loginError" class="error"></p>
   </div>
 
   <main id="app" class="hidden">
-    <div class="row" style="justify-content:space-between"><div><h1>MASTER ADMIN</h1><p id="who" class="muted"></p></div><button id="logout" class="secondary">Cerrar sesión</button></div>
+    <div class="row row-space-between"><div><h1>MASTER ADMIN</h1><p id="who" class="muted"></p></div><button id="logout" class="secondary">Cerrar sesión</button></div>
     <section class="card"><h2>Resumen</h2><div id="stats" class="grid"></div></section>
     <section class="card">
       <h2>Crear bar</h2>
@@ -28,7 +28,7 @@
         <label>Nombre del bar *<input id="barName" required placeholder="La Esquina Bar"></label>
         <label>Nombre mostrado<input id="displayName" placeholder="La Esquina"></label>
         <label>Mensaje de bienvenida<input id="welcomeMessage" placeholder="Bienvenido"></label>
-        <div class="actions" style="align-items:end"><button>Crear bar</button></div>
+        <div class="actions actions-end"><button>Crear bar</button></div>
       </form>
       <p id="createMessage"></p>
     </section>
