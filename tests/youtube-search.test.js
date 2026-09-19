@@ -7,6 +7,7 @@ const {
   searchYoutube,
   clearSearchCache,
   normalizeYoutubeResult,
+  isAcceptableYoutubeResult,
   resetProviderCircuit,
   isProviderCircuitOpen,
   recordProviderFailure,
@@ -30,6 +31,68 @@ describe('youtube search service', () => {
 
   it('descarta resultados sin videoId', () => {
     assert.equal(normalizeYoutubeResult({ title: 'Sin id' }), null);
+  });
+
+  it('descarta directos y videos demasiado largos para el jukebox', () => {
+    assert.equal(
+      isAcceptableYoutubeResult({
+        videoId: 'abc123XYZ09',
+        duration: { seconds: 7200 },
+        live: false
+      }),
+      false
+    );
+
+    assert.equal(
+      isAcceptableYoutubeResult({
+        videoId: 'abc123XYZ09',
+        duration: { seconds: 240 },
+        live: true
+      }),
+      false
+    );
+
+    assert.equal(
+      isAcceptableYoutubeResult({
+        videoId: 'abc123XYZ09',
+        duration: { seconds: 240 },
+        live: false
+      }),
+      true
+    );
+  });
+
+  it('filtra resultados largos antes de devolver la búsqueda', async () => {
+    clearSearchCache();
+
+    const result = await searchYoutube(
+      'artista canción',
+      {
+        searchFn: async () => ({
+          videos: [
+            {
+              videoId: 'Long0000001',
+              title: 'Mix de dos horas',
+              author: { name: 'Canal' },
+              thumbnail: '',
+              duration: { seconds: 7200, timestamp: '2:00:00' }
+            },
+            {
+              videoId: 'Song0000001',
+              title: 'Canción',
+              author: { name: 'Artista' },
+              thumbnail: '',
+              duration: { seconds: 210, timestamp: '3:30' }
+            }
+          ]
+        }),
+        timeoutMs: 100
+      }
+    );
+
+    assert.equal(result.videos.length, 1);
+    assert.equal(result.videos[0].videoId, 'Song0000001');
+    assert.equal(result.videos[0].durationSeconds, 210);
   });
 
   it('usa valores seguros cuando faltan metadatos', () => {
