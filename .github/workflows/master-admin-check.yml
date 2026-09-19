@@ -26,6 +26,7 @@ jobs:
       - run: node --check services/operatorAuthService.js
       - run: node --check services/youtubeSearchService.js
       - run: node --check services/songRequestPolicy.js
+      - run: node --check services/barAccessService.js
       - run: node --check lib/socketBar.js
       - run: node --check lib/securityHeaders.js
       - run: node --check public/js/operator-auth.js
