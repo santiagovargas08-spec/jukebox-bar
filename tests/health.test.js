@@ -113,6 +113,21 @@ describe('health', () => {
         page
       );
       assert.doesNotMatch(response.body, /^\s*```/, page);
+      assert.match(
+        String(response.headers['cache-control'] || ''),
+        /no-cache/i,
+        page
+      );
     }
+  });
+
+  it('assets estáticos usan caché de una hora', async () => {
+    const response = await getResponse('/style.css');
+
+    assert.equal(response.status, 200);
+    assert.match(
+      String(response.headers['cache-control'] || ''),
+      /max-age=3600/i
+    );
   });
 });
