@@ -166,6 +166,50 @@ describe('license', () => {
     );
   });
 
+  it('refreshLicenseStatus expira ACTIVE vencida', async () => {
+    const expiredActiveBar = await createTestBar(prisma, {
+      slug: uniqueSlug('active-expired-bar')
+    });
+
+    await prisma.license.update({
+      where: { barId: expiredActiveBar.id },
+      data: {
+        status: 'ACTIVE',
+        plan: 'MONTHLY',
+        startedAt: new Date(Date.now() - 60 * 86400000),
+        expiresAt: new Date(Date.now() - 86400000)
+      }
+    });
+
+    const refreshed = await licenseService.refreshLicenseStatus(
+      expiredActiveBar.id
+    );
+
+    assert.equal(refreshed.status, 'EXPIRED');
+    await deleteTestBar(prisma, expiredActiveBar.id);
+  });
+
+  it('refreshLicenseStatus expira TRIAL vencida', async () => {
+    const expiredTrialBar = await createTestBar(prisma, {
+      slug: uniqueSlug('trial-expired-bar')
+    });
+
+    await prisma.license.update({
+      where: { barId: expiredTrialBar.id },
+      data: {
+        status: 'TRIAL',
+        trialEndsAt: new Date(Date.now() - 86400000)
+      }
+    });
+
+    const refreshed = await licenseService.refreshLicenseStatus(
+      expiredTrialBar.id
+    );
+
+    assert.equal(refreshed.status, 'EXPIRED');
+    await deleteTestBar(prisma, expiredTrialBar.id);
+  });
+
   it('TRIAL vigente permite uso', async () => {
     const trialBar = await createTestBar(prisma, { slug: uniqueSlug('trial-bar') });
     const valid = await licenseService.isLicenseValid(trialBar.id);
