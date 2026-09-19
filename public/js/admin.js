@@ -8,7 +8,6 @@ document.addEventListener('error', (event) => {
 }, true);
 
 
-    let barId = null;
     let barActual = null;
 
     const socket = io({ autoConnect: false });
@@ -105,7 +104,7 @@ const btnLogout        = document.getElementById('btn-logout-operator');
         skip.type = 'button';
         skip.textContent = '⏭️ Saltar';
         skip.addEventListener('click', () => {
-          socket.emit('admin_saltar', { barId });
+          socket.emit('admin_saltar');
         });
 
         nowPlaying.append(
@@ -184,7 +183,6 @@ const btnLogout        = document.getElementById('btn-logout-operator');
         );
         remove.addEventListener('click', () => {
           socket.emit('admin_eliminar_cancion', {
-            barId,
             id: Number(remove.dataset.id)
           });
         });
@@ -246,7 +244,6 @@ const btnLogout        = document.getElementById('btn-logout-operator');
       // Emitimos el evento. NOTA: Tu backend en Node.js debe escuchar 'reordenar_cola'
       // y organizar su array interno según este nuevo orden de IDs.
       socket.emit('reordenar_cola', {
-        barId,
         orderedIds: nuevoOrdenIds.map(Number)
       });
     }
@@ -358,13 +355,10 @@ const btnLogout        = document.getElementById('btn-logout-operator');
         adminResults.querySelectorAll('.btn-add-dj').forEach(btn => {
           btn.addEventListener('click', () => {
             socket.emit('agregar_cancion', {
-              barId,
-              cancion: {
-                videoId: btn.dataset.id,
-                title: btn.dataset.title,
-                name: '👑 DJ / Admin',
-                thumbnail: btn.dataset.thumb
-              }
+              videoId: btn.dataset.id,
+              title: btn.dataset.title,
+              name: '👑 DJ / Admin',
+              thumbnail: btn.dataset.thumb
             });
             
             mostrarMensajeResultados('¡Canción añadida a la fila con éxito! 🎵', 'empty-msg-success');
@@ -394,7 +388,7 @@ const btnLogout        = document.getElementById('btn-logout-operator');
       );
 
       if (confirmado) {
-        socket.emit('admin_vaciar_cola', { barId });
+        socket.emit('admin_vaciar_cola');
       }
     });
 
@@ -408,7 +402,6 @@ const btnLogout        = document.getElementById('btn-logout-operator');
         return;
       }
 
-      barId = barActual.id;
 
       try {
         await OperatorAuth.iniciarSesionOperador({ slug: barActual.slug, socket, titulo: 'Acceso al panel del bar' });
@@ -437,8 +430,9 @@ const btnLogout        = document.getElementById('btn-logout-operator');
         );
       }
 
-      BarLoader.conectarSocketBar(socket, barId);
+      BarLoader.conectarSocketBar(socket, barActual.slug);
     }
 
     inicializarAdmin();
+
 

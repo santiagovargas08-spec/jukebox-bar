@@ -541,7 +541,7 @@ router.get('/bars/:slug', async (req, res) => {
   try {
     const bar = await getBarBySlug(req.params.slug);
     if (!bar) return res.status(404).json({ ok: false, error: 'Bar no encontrado' });
-    res.json({ ok: true, data: { id: bar.id, name: bar.name, slug: bar.slug, active: bar.active, settings: bar.settings ? { displayName: bar.settings.displayName, welcomeMessage: bar.settings.welcomeMessage, primaryColor: bar.settings.primaryColor, secondaryColor: bar.settings.secondaryColor, logoUrl: bar.settings.logoUrl } : null } });
+    res.json({ ok: true, data: { name: bar.name, slug: bar.slug, active: bar.active, settings: bar.settings ? { displayName: bar.settings.displayName, welcomeMessage: bar.settings.welcomeMessage, primaryColor: bar.settings.primaryColor, secondaryColor: bar.settings.secondaryColor, logoUrl: bar.settings.logoUrl } : null } });
   } catch (error) {
     logError('[PUBLIC] Error obteniendo bar:', { requestId: req.id || null, error: error?.message || String(error) });
     res.status(500).json({ ok: false, error: 'No se pudo obtener el bar' });
@@ -594,3 +594,4 @@ router.get('/bars/:slug/urls', async (req, res) => {
 });
 
 module.exports = router;
+

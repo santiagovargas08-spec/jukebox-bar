@@ -8,6 +8,7 @@ const {
 const {
   addToQueue
 } = require('../services/queueService.js');
+const { getBarBySlug } = require('../services/barService.js');
 
 const { searchYoutube } = require('../services/youtubeSearchService.js');
 const { canSearch } = require('../services/searchRequestPolicy.js');
@@ -38,13 +39,20 @@ function registerPublicSocketHandlers({
         });
         return;
       }
-      const barId =
+      const slug =
         payload && typeof payload === 'object'
-          ? payload.barId
+          ? payload.slug
           : payload;
-
+      const bar = await getBarBySlug(slug);
       const previousBarId = socket.data.barId;
-      const id = obtenerBarIdAutorizado(socket, barId);
+      const id =
+        bar &&
+        (
+          !socket.data.operator ||
+          socket.data.operator.barId === bar.id
+        )
+          ? bar.id
+          : null;
 
       if (!id) {
         if (socket.data.operator) {
@@ -56,7 +64,7 @@ function registerPublicSocketHandlers({
         }
 
         socket.emit('error_bar', {
-          mensaje: 'barId inválido.'
+          mensaje: 'El enlace del bar no es válido.'
         });
         return;
       }
@@ -101,14 +109,9 @@ function registerPublicSocketHandlers({
         });
         return;
       }
-      const barId =
-        payload && typeof payload === 'object'
-          ? payload.barId
-          : payload;
-
       const id = obtenerBarIdAutorizado(
         socket,
-        barId
+        null
       );
 
       if (!id) {
@@ -234,20 +237,16 @@ function registerPublicSocketHandlers({
     let id = null;
 
     try {
-      let barId;
-      let cancion;
+      const cancion =
+        payload && payload.cancion
+          ? payload.cancion
+          : payload;
 
-      if (payload && payload.cancion) {
-        barId = payload.barId;
-        cancion = payload.cancion;
-      } else {
-        barId = socket.data.barId;
-        cancion = payload;
-      }
-
+      // El tenant se toma únicamente de la asociación validada del socket.
+      // Un cliente público no puede cambiar de bar enviando otro barId.
       id = obtenerBarIdAutorizado(
         socket,
-        barId
+        null
       );
 
       if (!id) {
@@ -377,3 +376,4 @@ module.exports = {
   registerPublicSocketHandlers,
   SEARCH_COOLDOWN_MS
 };
+

@@ -180,19 +180,18 @@ window.BarLoader = (function () {
     }
   }
 
-  function conectarSocketBar(socket, barId) {
+  function conectarSocketBar(socket, slug) {
     function seleccionar() {
-      socket.emit('seleccionar_bar', { barId });
+      socket.emit('seleccionar_bar', { slug });
     }
 
     if (socket.connected) {
       seleccionar();
     }
 
+    // Socket.IO vuelve a emitir "connect" después de cada reconexión.
+    // seleccionar_bar ya responde con el estado actual del bar.
     socket.on('connect', seleccionar);
-    socket.on('reconnect', () => {
-      socket.emit('solicitar_estado', { barId });
-    });
 
     socket.on('acceso_bloqueado', ({ mensaje }) => {
       mostrarErrorPantalla(
@@ -214,3 +213,4 @@ window.BarLoader = (function () {
     escapeHtml
   };
 })();
+

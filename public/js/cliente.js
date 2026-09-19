@@ -88,7 +88,7 @@ document.addEventListener('error', (event) => {
     // El slug identifica automáticamente el bar.
     // ============================================================
 
-    let barSeleccionado = null;
+    let barSlugSeleccionado = null;
 
     let barActual = null;
 
@@ -103,11 +103,10 @@ document.addEventListener('error', (event) => {
         return false;
       }
 
-      barSeleccionado = Number(bar.id);
+      barSlugSeleccionado = bar.slug;
       barActual = bar;
 
       console.log('[BAR] Bar identificado correctamente:', {
-        id: bar.id,
         slug: bar.slug,
         name: bar.name,
         licenseStatus: bar.license?.status
@@ -117,15 +116,15 @@ document.addEventListener('error', (event) => {
     }
 
     function seleccionarBarAutomaticamente() {
-      if (!barSeleccionado) {
+      if (!barSlugSeleccionado) {
         return;
       }
 
-      socket.emit('seleccionar_bar', { barId: barSeleccionado });
+      socket.emit('seleccionar_bar', { slug: barSlugSeleccionado });
     }
 
     socket.on('connect', () => {
-      if (barSeleccionado) {
+      if (barSlugSeleccionado) {
         seleccionarBarAutomaticamente();
       }
     });
@@ -158,7 +157,7 @@ document.addEventListener('error', (event) => {
     });
 
     socket.on('error_bar', ({ mensaje }) => {
-      barSeleccionado = null;
+      barSlugSeleccionado = null;
       barActual = null;
       BarLoader.mostrarErrorPantalla(
         mensaje || 'No se pudo conectar con este bar.',
@@ -667,7 +666,7 @@ document.addEventListener('error', (event) => {
       // VALIDAR BAR
       // ----------------------------------------------------------
 
-      if (!barSeleccionado) {
+      if (!barSlugSeleccionado) {
 
         mostrarError(
           '⚠️ No se pudo identificar el bar. Escanea nuevamente el código QR.'
@@ -1111,3 +1110,4 @@ document.addEventListener('error', (event) => {
 
       }
     );
+

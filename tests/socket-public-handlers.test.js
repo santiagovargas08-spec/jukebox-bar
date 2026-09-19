@@ -13,6 +13,19 @@ try {
         return { addToQueue: async () => ({ created: true, item: {} }) };
       }
 
+      if (request === '../services/barService.js') {
+        return {
+          getBarBySlug: async (slug) => {
+            const bars = {
+              'bar-uno': { id: 1, slug: 'bar-uno' },
+              'bar-dos': { id: 2, slug: 'bar-dos' }
+            };
+
+            return bars[slug] || null;
+          }
+        };
+      }
+
       if (request === '../services/youtubeSearchService.js') {
         return { searchYoutube: async () => ({ videos: [], cached: false }) };
       }
@@ -104,12 +117,25 @@ describe('public socket tenant isolation', () => {
     const stateCalls = [];
     registerHandlers(socket, stateCalls);
 
-    await socket.handlers.seleccionar_bar({ barId: 2 });
+    await socket.handlers.seleccionar_bar({ slug: 'bar-dos' });
 
     assert.deepEqual(socket.left, ['bar:1']);
     assert.deepEqual(socket.joined, ['bar:2']);
     assert.equal(socket.data.barId, 2);
     assert.deepEqual(stateCalls, [2]);
+  });
+
+  it('rejects numeric tenant selection from a public client', async () => {
+    const socket = createSocket();
+    const stateCalls = [];
+    registerHandlers(socket, stateCalls);
+
+    await socket.handlers.seleccionar_bar({ barId: 2 });
+
+    assert.deepEqual(socket.joined, []);
+    assert.deepEqual(stateCalls, []);
+    assert.equal(socket.data.barId, undefined);
+    assert.equal(socket.emitted.at(-1)?.event, 'error_bar');
   });
 
   it('serves solicitar_estado without throwing and keeps the selected bar', async () => {
@@ -124,3 +150,4 @@ describe('public socket tenant isolation', () => {
     assert.equal(socket.emitted.length, 0);
   });
 });
+

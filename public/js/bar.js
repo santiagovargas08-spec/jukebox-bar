@@ -9,7 +9,6 @@ document.addEventListener('error', (event) => {
 
 
     let barActual = null;
-    let barId = null;
     let player       = null;  
     let playerReady  = false;  
     let pendingVideo = null;   
@@ -48,7 +47,6 @@ document.addEventListener('error', (event) => {
         return;
       }
 
-      barId = barActual.id;
 
       try {
         await OperatorAuth.iniciarSesionOperador({ slug: barActual.slug, socket, titulo: 'Acceso a la pantalla del bar' });
@@ -64,7 +62,7 @@ document.addEventListener('error', (event) => {
         qrImg.alt = `QR para ${barActual.name}`;
       }
 
-      BarLoader.conectarSocketBar(socket, barId);
+      BarLoader.conectarSocketBar(socket, barActual.slug);
     }
 
     socket.on('estado_inicial', ({ cola, reproduciendo, historialReproducidas: hist }) => {
@@ -113,12 +111,6 @@ document.addEventListener('error', (event) => {
       }
     });
 
-    socket.on('reconnect', () => {
-      if (barId) {
-        socket.emit('solicitar_estado', { barId });
-      }
-    });
-
     window.onYouTubeIframeAPIReady = function () {
       player = new YT.Player('youtube-player', {
         height: '100%', width: '100%',
@@ -145,10 +137,7 @@ document.addEventListener('error', (event) => {
           const videoData = player.getVideoData();
           if (videoData.video_id && !isAutoDJ) {
             socket.emit('cancion_terminada', {
-              barId,
-              cancion: {
-                videoId: videoData.video_id
-              }
+              videoId: videoData.video_id
             });
           }
         }
@@ -168,7 +157,7 @@ document.addEventListener('error', (event) => {
 
     function onPlayerError(event) {
       if (!isEsclavo) {
-        setTimeout(() => socket.emit('siguiente_cancion', { barId }), 2000);
+        setTimeout(() => socket.emit('siguiente_cancion'), 2000);
       }
     }
 
@@ -429,3 +418,4 @@ document.addEventListener('error', (event) => {
     }
 
     inicializarPantallaBar();
+
