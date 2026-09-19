@@ -310,6 +310,10 @@ const btnLogout        = document.getElementById('btn-logout-operator');
       'input',
       (e) => {
         if (!e.target.value.trim()) {
+          searchRequestCounterAdmin += 1;
+          activeSearchRequestIdAdmin =
+            `admin-${searchRequestCounterAdmin}`;
+
           finalizarBusquedaAdmin();
 
           mostrarMensajeResultados(
