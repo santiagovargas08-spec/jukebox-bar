@@ -9,6 +9,8 @@ const {
   addToQueue
 } = require('../services/queueService.js');
 
+const { getBarBySlug } = require('../services/barService.js');
+
 const { searchYoutube } = require('../services/youtubeSearchService.js');
 const { canSearch } = require('../services/searchRequestPolicy.js');
 const { allowBarSelection, allowStateRequest } = require('../services/socketStateRequestPolicy.js');
@@ -38,13 +40,25 @@ function registerPublicSocketHandlers({
         });
         return;
       }
-      const barId =
-        payload && typeof payload === 'object'
-          ? payload.barId
-          : payload;
-
+      const isOperator = Boolean(socket.data.operator);
       const previousBarId = socket.data.barId;
-      const id = obtenerBarIdAutorizado(socket, barId);
+      let id = null;
+
+      if (isOperator) {
+        const barId =
+          payload && typeof payload === 'object'
+            ? payload.barId
+            : payload;
+
+        id = obtenerBarIdAutorizado(socket, barId);
+      } else {
+        const slug =
+          payload && typeof payload === 'object'
+            ? payload.slug
+            : payload;
+        const bar = await getBarBySlug(slug);
+        id = bar?.id || null;
+      }
 
       if (!id) {
         if (socket.data.operator) {
@@ -56,7 +70,7 @@ function registerPublicSocketHandlers({
         }
 
         socket.emit('error_bar', {
-          mensaje: 'barId inválido.'
+          mensaje: 'Bar inválido.'
         });
         return;
       }
