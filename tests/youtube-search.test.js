@@ -8,6 +8,8 @@ const {
   clearSearchCache,
   normalizeYoutubeResult,
   isAcceptableYoutubeResult,
+  scoreYoutubeResult,
+  rankYoutubeResults,
   resetProviderCircuit,
   isProviderCircuitOpen,
   recordProviderFailure,
@@ -190,7 +192,8 @@ describe('youtube search service', () => {
 
     assert.deepEqual(result, {
       videos: [],
-      cached: false
+      cached: false,
+      status: 'TIMEOUT'
     });
   });
 
@@ -218,7 +221,8 @@ describe('youtube search service', () => {
 
     assert.deepEqual(result, {
       videos: [],
-      cached: false
+      cached: false,
+      status: 'PROVIDER_UNAVAILABLE'
     });
     assert.equal(calls, 0);
   });
@@ -257,7 +261,52 @@ describe('youtube search service', () => {
 
     assert.deepEqual(result, {
       videos: [],
-      cached: false
+      cached: false,
+      status: 'EMPTY_QUERY'
     });
+  });
+
+  it('prioriza coincidencias de canción sobre mixes y compilaciones', () => {
+    const videos = [
+      {
+        videoId: 'Mix00000001',
+        title: 'Shakira Greatest Hits Mix 2 Hours',
+        author: { name: 'Music Mix' },
+        duration: { seconds: 600 }
+      },
+      {
+        videoId: 'Song0000002',
+        title: 'Shakira - Antologia (Official Audio)',
+        author: { name: 'Shakira' },
+        duration: { seconds: 252 }
+      },
+      {
+        videoId: 'Song0000003',
+        title: 'Antologia lyrics',
+        author: { name: 'Fan Lyrics' },
+        duration: { seconds: 250 }
+      }
+    ];
+
+    const ranked = rankYoutubeResults(
+      videos,
+      'shakira antologia'
+    );
+
+    assert.equal(
+      ranked[0].videoId,
+      'Song0000002'
+    );
+
+    assert.ok(
+      scoreYoutubeResult(
+        videos[1],
+        'shakira antologia'
+      ) >
+      scoreYoutubeResult(
+        videos[0],
+        'shakira antologia'
+      )
+    );
   });
 });
