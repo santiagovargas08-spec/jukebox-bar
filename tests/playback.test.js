@@ -39,11 +39,23 @@ describe('playback', () => {
       thumbnail: 'https://i.ytimg.com/vi/play-1/hqdefault.jpg'
     });
 
-    assert.equal(playing.videoId, 'play-1');
+    assert.equal(playing.videoId, 'Play0000001');
     assert.equal(playing.titulo, 'Now Playing');
 
     const restored = await playbackService.getPlaybackState(bar.id);
-    assert.equal(restored.videoId, 'play-1');
+    assert.equal(restored.videoId, 'Play0000001');
+  });
+
+  it('rechaza videoId inválido', async () => {
+    await assert.rejects(
+      () => playbackService.setNowPlaying(bar.id, {
+        id: 101,
+        videoId: '../bad-id',
+        title: 'Inválida',
+        name: 'DJ'
+      }),
+      /videoId inválido/
+    );
   });
 
   it('clearPlaybackState deja el bar en idle', async () => {
@@ -69,6 +81,6 @@ describe('playback', () => {
     playbackService = require('../services/playbackService.js');
 
     const restored = await playbackService.getPlaybackState(bar.id);
-    assert.equal(restored.videoId, 'persist-1');
+    assert.equal(restored.videoId, 'Persist00001');
   });
 });
