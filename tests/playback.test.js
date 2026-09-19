@@ -64,6 +64,45 @@ describe('playback', () => {
     assert.equal(state, null);
   });
 
+  it('clear condicional ignora finalización obsoleta', async () => {
+    await playbackService.setNowPlaying(bar.id, {
+      id: 200,
+      videoId: 'Current00001',
+      title: 'Current Song',
+      name: 'DJ'
+    });
+
+    const stale = await playbackService.clearPlaybackStateIfMatches(
+      bar.id,
+      'OldSong00001'
+    );
+
+    assert.equal(stale, false);
+
+    const stillPlaying = await playbackService.getPlaybackState(bar.id);
+    assert.equal(stillPlaying.videoId, 'Current00001');
+  });
+
+  it('clear condicional solo limpia el video actual', async () => {
+    await playbackService.setNowPlaying(bar.id, {
+      id: 201,
+      videoId: 'Finish00001',
+      title: 'Finished Song',
+      name: 'DJ'
+    });
+
+    const completed = await playbackService.clearPlaybackStateIfMatches(
+      bar.id,
+      'Finish00001'
+    );
+
+    assert.equal(completed, true);
+    assert.equal(
+      await playbackService.getPlaybackState(bar.id),
+      null
+    );
+  });
+
   it('estado sobrevive desconexión de Prisma (simula reinicio)', async () => {
     await playbackService.setNowPlaying(bar.id, {
       id: 100,
