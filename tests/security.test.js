@@ -3,7 +3,7 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 
-const { sanitizeThumbnailUrl } = require('../lib/urlValidation.js');
+const { sanitizeThumbnailUrl, isValidYoutubeVideoId } = require('../lib/urlValidation.js');
 const { getAuthorizedBarId, emitBarIdRechazado } = require('../lib/socketBar.js');
 
 describe('security', () => {
@@ -40,6 +40,13 @@ describe('security', () => {
       'https://i.ytimg.com/vi/abc123/hqdefault.jpg'
     );
     assert.ok(url?.includes('i.ytimg.com'));
+  });
+
+  it('valida IDs de video de YouTube', () => {
+    assert.equal(isValidYoutubeVideoId('dQw4w9WgXcQ'), true);
+    assert.equal(isValidYoutubeVideoId('abc123'), false);
+    assert.equal(isValidYoutubeVideoId('../etc/passwd'), false);
+    assert.equal(isValidYoutubeVideoId('dQw4w9WgXcQ<script>'), false);
   });
 
   it('operador no puede autorizar barId distinto', () => {
