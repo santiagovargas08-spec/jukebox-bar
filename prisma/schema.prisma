@@ -137,7 +137,7 @@ model Payment {
   plan      PlanType
   method    PaymentMethod
   reference      String?
-  idempotencyKey String?
+  idempotencyKey String?        @db.VarChar(128)
   createdBy       String?
   paidAt          DateTime      @default(now())
   notes     String?
