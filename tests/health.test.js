@@ -5,6 +5,10 @@ const assert = require('node:assert/strict');
 const http = require('node:http');
 
 const { ensureOperatorSecret, requireTestDatabase } = require('./helpers.js');
+const {
+  beginShutdown,
+  resetLifecycleForTests
+} = require('../lib/serviceLifecycle.js');
 
 describe('health', () => {
   let server;
@@ -91,6 +95,22 @@ describe('health', () => {
       String(data.headers['cache-control'] || ''),
       /no-store/i
     );
+  });
+
+  it('GET /ready responde 503 durante drenaje', async () => {
+    beginShutdown();
+
+    try {
+      const data = await getJson('/ready');
+
+      assert.equal(data.status, 503);
+      assert.equal(data.body.ok, false);
+      assert.equal(data.body.status, 'shutting_down');
+      assert.equal(data.body.database, 'draining');
+      assert.equal(data.headers['retry-after'], '5');
+    } finally {
+      resetLifecycleForTests();
+    }
   });
 
   it('API inexistente responde JSON 404 con requestId', async () => {
