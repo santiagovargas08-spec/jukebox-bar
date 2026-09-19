@@ -30,8 +30,25 @@ async function getUniqueSlug(tx, requestedSlug, name) {
   let candidate = base;
   let suffix = 2;
 
-  while (await tx.bar.findUnique({ where: { slug: candidate }, select: { id: true } })) {
-    candidate = `${base}-${suffix}`;
+  while (
+    await tx.bar.findUnique({
+      where: { slug: candidate },
+      select: { id: true }
+    })
+  ) {
+    const suffixText = `-${suffix}`;
+    const maxBaseLength =
+      80 - suffixText.length;
+
+    const truncatedBase =
+      base
+        .slice(0, maxBaseLength)
+        .replace(/-+$/g, '') ||
+      'bar';
+
+    candidate =
+      `${truncatedBase}${suffixText}`;
+
     suffix += 1;
   }
 
