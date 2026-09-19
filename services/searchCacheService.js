@@ -1,7 +1,17 @@
 'use strict';
 
-const { prisma } = require('../db.js');
 const { logWarn } = require('../lib/logger.js');
+
+let prismaClient = null;
+
+function getPrisma() {
+  if (!prismaClient) {
+    prismaClient =
+      require('../db.js').prisma;
+  }
+
+  return prismaClient;
+}
 
 const SEARCH_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const SEARCH_CACHE_MAX_ROWS = 500;
@@ -57,7 +67,7 @@ async function getPersistentSearchCache(query) {
 
   try {
     const cached =
-      await prisma.searchCache.findUnique({
+      await getPrisma().searchCache.findUnique({
         where: { queryKey }
       });
 
@@ -69,7 +79,7 @@ async function getPersistentSearchCache(query) {
       cached.expiresAt.getTime() <=
       Date.now()
     ) {
-      prisma.searchCache.delete({
+      getPrisma().searchCache.delete({
         where: { queryKey }
       }).catch(() => {});
 
@@ -104,7 +114,7 @@ async function cleanupPersistentSearchCache() {
   lastCleanupAt = now;
 
   try {
-    await prisma.searchCache.deleteMany({
+    await getPrisma().searchCache.deleteMany({
       where: {
         expiresAt: {
           lte: new Date(now)
@@ -113,7 +123,7 @@ async function cleanupPersistentSearchCache() {
     });
 
     const count =
-      await prisma.searchCache.count();
+      await getPrisma().searchCache.count();
 
     if (count <= SEARCH_CACHE_MAX_ROWS) {
       return;
@@ -123,7 +133,7 @@ async function cleanupPersistentSearchCache() {
       count - SEARCH_CACHE_MAX_ROWS;
 
     const oldest =
-      await prisma.searchCache.findMany({
+      await getPrisma().searchCache.findMany({
         orderBy: {
           updatedAt: 'asc'
         },
@@ -134,7 +144,7 @@ async function cleanupPersistentSearchCache() {
       });
 
     if (oldest.length > 0) {
-      await prisma.searchCache.deleteMany({
+      await getPrisma().searchCache.deleteMany({
         where: {
           queryKey: {
             in: oldest.map(
@@ -179,7 +189,7 @@ async function setPersistentSearchCache(
         SEARCH_CACHE_TTL_MS
       );
 
-    await prisma.searchCache.upsert({
+    await getPrisma().searchCache.upsert({
       where: { queryKey },
       create: {
         queryKey,
