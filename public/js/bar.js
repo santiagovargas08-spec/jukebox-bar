@@ -417,10 +417,6 @@ document.addEventListener('error', (event) => {
       }, 5000);
     }
 
-    function escapeHtml(str) {
-      if (!str) return '';
-      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-    }
 
     const logoSection = document.querySelector('.bar-logo-section');
     if (logoSection) {
