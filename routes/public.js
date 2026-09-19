@@ -1,8 +1,6 @@
 'use strict';
 
 const express = require('express');
-const QRCode = require('qrcode');
-
 const { getBarBySlug } = require('../services/barService.js');
 const {
   getLicenseStatus,
@@ -19,6 +17,7 @@ const { prisma } = require('../db.js');
 const { createBar, getBarById, listBarsPage, updateBar } = require('../services/barService.js');
 const { buildBarUrls, getAppUrl } = require('../lib/barUrls.js');
 const { requireTrustedOrigin } = require('../lib/originValidation.js');
+const { getClientQrPng } = require('../services/qrService.js');
 
 const router = express.Router();
 
@@ -430,10 +429,10 @@ router.get('/bars/:slug/qr', async (req, res) => {
     const bar = await getBarBySlug(req.params.slug);
     if (!bar) return res.status(404).json({ ok: false, error: 'Bar no encontrado' });
     const clienteUrl = buildBarUrls(bar, req).cliente;
-    const png = await QRCode.toBuffer(clienteUrl, { type: 'png', width: 400, margin: 2, color: { dark: '#00f0ff', light: '#0a0a0f' } });
+    const { buffer } = await getClientQrPng(clienteUrl);
     res.set('Content-Type', 'image/png');
     res.set('Cache-Control', 'public, max-age=3600');
-    res.send(png);
+    res.send(buffer);
   } catch (error) {
     console.error('[PUBLIC] Error generando QR:', error);
     res.status(500).json({ ok: false, error: 'No se pudo generar el QR' });
