@@ -34,6 +34,7 @@ jobs:
       - run: node --check public/js/bar.js
       - run: node --check public/js/cliente.js
       - run: node --check public/js/master-admin.js
+      - run: node scripts/audit-public-html.js
       - run: node --test tests/security.test.js tests/security-headers.test.js tests/youtube-search.test.js tests/song-request-policy.test.js
       - run: node --check middleware/masterAdminAuth.js
       - run: node --check create-master-admin.js
