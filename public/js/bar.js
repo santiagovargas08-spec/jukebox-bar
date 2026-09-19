@@ -273,31 +273,66 @@ document.addEventListener('error', (event) => {
           item.classList.add('resaltar-nueva');
         }
 
-        const thumbSafe = DomSafe.sanitizeThumbnailUrl(cancion.thumbnail || '');
-        const thumbHtml = thumbSafe
-          ? `<img class="queue-thumb" src="${escapeHtml(thumbSafe)}" alt="" loading="lazy">`
-          : `<div class="queue-thumb-placeholder">🎵</div>`;
+        const number = document.createElement('div');
+        number.className = 'queue-num';
+        number.textContent = String(index + 1);
 
-        const multiplicadorHtml = cancion.cantidad > 1 
-          ? `<span class="badge-multiplicador">(x${cancion.cantidad})</span>` 
-          : '';
+        const thumbSafe = DomSafe.sanitizeThumbnailUrl(
+          cancion.thumbnail || ''
+        );
 
-        const nuevaHtml = (hayCancionNueva && index === colaAgrupada.length - 1)
-          ? `<span class="badge-nueva">¡Nueva!</span>`
-          : '';
+        let thumb;
 
-        item.innerHTML = `
-          <div class="queue-num">${index + 1}</div>
-          ${thumbHtml}
-          <div class="queue-details">
-            <div class="queue-song-title">
-              ${escapeHtml(cancion.titulo)} ${multiplicadorHtml}
-            </div>
-            <div class="queue-song-who">
-              Pedido por: ${escapeHtml(cancion.nombre)} ${nuevaHtml}
-            </div>
-          </div>
-        `;
+        if (thumbSafe) {
+          thumb = document.createElement('img');
+          thumb.className = 'queue-thumb';
+          thumb.src = thumbSafe;
+          thumb.alt = '';
+          thumb.loading = 'lazy';
+        } else {
+          thumb = document.createElement('div');
+          thumb.className = 'queue-thumb-placeholder';
+          thumb.textContent = '🎵';
+        }
+
+        const details = document.createElement('div');
+        details.className = 'queue-details';
+
+        const title = document.createElement('div');
+        title.className = 'queue-song-title';
+        title.append(
+          document.createTextNode(
+            String(cancion.titulo || '')
+          )
+        );
+
+        if (cancion.cantidad > 1) {
+          const multiplier = document.createElement('span');
+          multiplier.className = 'badge-multiplicador';
+          multiplier.textContent = `(x${cancion.cantidad})`;
+          title.append(' ', multiplier);
+        }
+
+        const requestedBy = document.createElement('div');
+        requestedBy.className = 'queue-song-who';
+        requestedBy.append(
+          document.createTextNode(
+            `Pedido por: ${String(cancion.nombre || '')}`
+          )
+        );
+
+        if (
+          hayCancionNueva &&
+          index === colaAgrupada.length - 1
+        ) {
+          const newBadge = document.createElement('span');
+          newBadge.className = 'badge-nueva';
+          newBadge.textContent = '¡Nueva!';
+          requestedBy.append(' ', newBadge);
+        }
+
+        details.append(title, requestedBy);
+        item.append(number, thumb, details);
         listEl.appendChild(item);
       });
 
