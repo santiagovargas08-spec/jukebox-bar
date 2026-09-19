@@ -52,4 +52,32 @@ describe('bar service', () => {
       false
     );
   });
+  it('pagina la lista de bares con total y límites seguros', async () => {
+    const extra = await createTestBar(prisma, {
+      slug: uniqueSlug('bar-service-page')
+    });
+
+    try {
+      const page = await barService.listBarsPage({
+        limit: 1,
+        offset: 0
+      });
+
+      assert.equal(page.items.length, 1);
+      assert.equal(page.limit, 1);
+      assert.equal(page.offset, 0);
+      assert.ok(page.total >= 2);
+
+      const capped = await barService.listBarsPage({
+        limit: 9999,
+        offset: -20
+      });
+
+      assert.equal(capped.limit, 100);
+      assert.equal(capped.offset, 0);
+    } finally {
+      await deleteTestBar(prisma, extra.id);
+    }
+  });
+
 });
