@@ -53,7 +53,7 @@ describe('multi-tenant', () => {
     tokenA = login.token;
 
     await queueService.addToQueue(barB.id, {
-      videoId: 'video-b-1',
+      videoId: 'VidB0000001',
       title: 'Canción B',
       name: 'Cliente B'
     });
@@ -101,7 +101,7 @@ describe('multi-tenant', () => {
 
   it('historial de bar A no incluye bar B', async () => {
     await historyService.addToHistory(barB.id, {
-      videoId: 'hist-b',
+      videoId: 'HistB000001',
       title: 'Hist B',
       name: 'Cliente'
     });
@@ -113,7 +113,7 @@ describe('multi-tenant', () => {
   it('playback de bar A no lee estado de bar B', async () => {
     await playbackService.setNowPlaying(barB.id, {
       id: 1,
-      videoId: 'play-b',
+      videoId: 'PlayB000001',
       title: 'Play B',
       name: 'DJ'
     });
