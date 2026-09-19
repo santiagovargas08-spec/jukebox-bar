@@ -25,6 +25,8 @@ jobs:
       - run: node --check routes/public.js
       - run: node --check services/barService.js
       - run: node --check services/licenseService.js
+      - run: node --check services/queueService.js
+      - run: node --check services/historyService.js
       - run: node --check services/masterAdminAuthService.js
       - run: node --check services/operatorAuthService.js
       - run: node --check services/youtubeSearchService.js
@@ -35,6 +37,7 @@ jobs:
       - run: node --check socket/publicHandlers.js
       - run: node --check lib/socketBar.js
       - run: node --check lib/rateLimitStore.js
+      - run: node --check lib/urlValidation.js
       - run: node --check lib/securityHeaders.js
       - run: node --check lib/configValidation.js
       - run: node --check public/js/operator-auth.js
