@@ -286,7 +286,10 @@ async function searchYoutube(
 
         if (!result || !Array.isArray(result.videos)) {
           recordProviderFailure();
-          return [];
+          return {
+            videos: [],
+            status: 'PROVIDER_ERROR'
+          };
         }
 
         const videos = rankYoutubeResults(
