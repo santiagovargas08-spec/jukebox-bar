@@ -36,8 +36,12 @@ function normalizeEmail(email) {
 }
 
 function hashPassword(password, salt = crypto.randomBytes(16).toString('base64url')) {
-  if (typeof password !== 'string' || password.length < 12) {
-    throw new Error('La contraseña debe tener al menos 12 caracteres.');
+  if (
+    typeof password !== 'string' ||
+    password.length < 12 ||
+    password.length > 256
+  ) {
+    throw new Error('La contraseña debe tener entre 12 y 256 caracteres.');
   }
 
   const hash = crypto.scryptSync(password, salt, 64).toString('base64url');
@@ -151,7 +155,10 @@ async function createAdminUser({ barId, email, displayName, password, role = 'OP
     throw new Error('ID de bar inválido.');
   }
 
-  if (!/^\S+@\S+\.\S+$/.test(normalizedEmail)) {
+  if (
+    normalizedEmail.length > 254 ||
+    !/^\S+@\S+\.\S+$/.test(normalizedEmail)
+  ) {
     throw new Error('Correo electrónico inválido.');
   }
 
@@ -189,6 +196,16 @@ async function createAdminUser({ barId, email, displayName, password, role = 'OP
 
 async function authenticateOperator({ slug, email, password, ip = 'unknown' }) {
   const normalizedEmail = normalizeEmail(email);
+
+  if (
+    normalizedEmail.length === 0 ||
+    normalizedEmail.length > 254 ||
+    typeof password !== 'string' ||
+    password.length === 0 ||
+    password.length > 256
+  ) {
+    return null;
+  }
 
   if (!checkLoginRateLimit(slug, normalizedEmail, ip)) {
     logWarn('Login bloqueado por rate limit', {
