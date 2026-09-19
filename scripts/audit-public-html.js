@@ -38,6 +38,16 @@ for (const fileName of htmlFiles) {
     );
   }
 
+  const inlineStyles = [
+    ...content.matchAll(/\sstyle\s*=/gi)
+  ];
+
+  if (inlineStyles.length > 0) {
+    errors.push(
+      `${fileName}: contiene ${inlineStyles.length} atributo(s) style inline.`
+    );
+  }
+
   for (const match of content.matchAll(/<(?:script|link)[^>]+(?:src|href)="(\/[^"]+)"[^>]*>/gi)) {
     const assetPath = match[1].split('?')[0];
     if (
@@ -53,6 +63,25 @@ for (const fileName of htmlFiles) {
   }
 }
 
+const jsDir = path.join(publicDir, 'js');
+
+for (const fileName of fs.readdirSync(jsDir)) {
+  if (!fileName.endsWith('.js')) continue;
+
+  const filePath = path.join(jsDir, fileName);
+  const content = fs.readFileSync(filePath, 'utf8');
+
+  const markupStyleAttributes = [
+    ...content.matchAll(/\bstyle\s*=/gi)
+  ];
+
+  if (markupStyleAttributes.length > 0) {
+    errors.push(
+      `js/${fileName}: genera ${markupStyleAttributes.length} atributo(s) style inline.`
+    );
+  }
+}
+
 if (errors.length > 0) {
   console.error('Auditoría HTML pública falló:');
   errors.forEach((error) => console.error(`- ${error}`));
@@ -60,5 +89,5 @@ if (errors.length > 0) {
 }
 
 console.log(
-  `Auditoría HTML pública OK: ${htmlFiles.length} archivo(s) revisado(s).`
+  `Auditoría pública OK: ${htmlFiles.length} HTML y scripts de primer nivel revisados.`
 );
