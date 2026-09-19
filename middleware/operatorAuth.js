@@ -1,8 +1,12 @@
 'use strict';
 
 const { getActiveAdminFromToken } = require('../services/operatorAuthService.js');
+const { RateLimitStore } = require('../lib/rateLimitStore.js');
 
 const OPERATOR_COOKIE = 'jukebox_operator';
+const AUTH_WINDOW_MS = 60 * 1000;
+const MAX_AUTH_CHECKS_PER_IP = 600;
+const authLimiter = new RateLimitStore(AUTH_WINDOW_MS);
 
 function getCookieValueFromHeader(raw, name) {
   if (typeof raw !== 'string' || !raw) return '';
@@ -51,6 +55,24 @@ function getOperatorTokenFromCookieHeader(rawCookie) {
 
 async function requireOperatorHttp(req, res, next) {
   try {
+    const ip =
+      typeof req.ip === 'string' && req.ip.trim()
+        ? req.ip.trim().slice(0, 120)
+        : 'unknown';
+
+    const limit = authLimiter.hit(
+      `operator-http:${ip}`,
+      AUTH_WINDOW_MS,
+      MAX_AUTH_CHECKS_PER_IP
+    );
+
+    if (!limit.allowed) {
+      return res.status(429).json({
+        ok: false,
+        error: 'Demasiadas solicitudes de autenticación.'
+      });
+    }
+
     const token = getOperatorToken(req);
 
     if (!token) {
@@ -88,5 +110,7 @@ module.exports = {
   getBearerToken,
   getOperatorToken,
   getOperatorTokenFromCookieHeader,
-  requireOperatorHttp
+  requireOperatorHttp,
+  AUTH_WINDOW_MS,
+  MAX_AUTH_CHECKS_PER_IP
 };
