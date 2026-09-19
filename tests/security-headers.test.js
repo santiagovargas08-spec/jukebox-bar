@@ -15,6 +15,7 @@ describe('security headers', () => {
     assert.match(policy, /object-src 'none'/);
     assert.match(policy, /frame-ancestors 'self'/);
     assert.doesNotMatch(policy, /bernardo-castilho\.github\.io/);
+    assert.doesNotMatch(policy, /script-src[^;]*unsafe-inline/);
   });
 
   it('middleware añade cabeceras base', () => {
