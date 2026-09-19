@@ -13,3 +13,8 @@
 .admin-dialog-label{display:grid;gap:6px}
 .admin-dialog-input{width:100%}
 .admin-dialog-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
+
+
+.actions-end{align-items:flex-end}
+.row-space-between{justify-content:space-between}
+.qr-row{margin-top:12px}
