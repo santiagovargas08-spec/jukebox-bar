@@ -144,8 +144,13 @@ Variables en Render: `DATABASE_URL`, `OPERATOR_TOKEN_SECRET`, `MASTER_ADMIN_TOKE
 - `GET /api/public/bars/:slug` — info pública del bar
 - `POST /api/public/bars/:slug/operator/login` — login operador
 - `POST /api/public/bars/:slug/operator/logout` — revoca tokens del operador autenticado
+- `POST /api/public/master-admin/bars/:id/license/activate` — activa/renueva suscripción; acepta `Idempotency-Key` para evitar pagos/renovaciones duplicados
 - `GET /api/public/master-admin/audit` — historial paginado de auditoría administrativa (requiere SUPER_ADMIN)
 - `/api/commercial/*` — API administrativa legacy, deshabilitada por defecto
+
+## Pagos e idempotencia
+
+Las activaciones de suscripción pueden enviar un encabezado `Idempotency-Key` de 8 a 128 caracteres seguros. Repetir la misma clave para el mismo bar devuelve el pago existente y no vuelve a extender la licencia. El panel Master Admin genera una clave por envío y evita acciones de licencia simultáneas para el mismo bar.
 
 ## Cola y ordenamiento
 
