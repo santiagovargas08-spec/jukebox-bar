@@ -129,6 +129,41 @@ describe('admin audit', () => {
     );
   });
 
+  it('acota campos de auditoría antes de persistir', async () => {
+    const requestId = 'req-audit-test-' + 'x'.repeat(200);
+
+    const ok = await auditAdminAction({
+      req: {
+        id: requestId,
+        masterAdmin: {
+          id: 11,
+          email: 'a'.repeat(300) + '@example.com'
+        }
+      },
+      action: 'a'.repeat(200),
+      barId: 4,
+      entityType: 'entity'.repeat(30),
+      entityId: 'id'.repeat(100)
+    });
+
+    assert.equal(ok, true);
+
+    const row = await prisma.adminAuditLog.findFirst({
+      where: {
+        actorId: 11
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+
+    assert.ok(row.requestId.length <= 128);
+    assert.ok(row.actorEmail.length <= 254);
+    assert.ok(row.action.length <= 120);
+    assert.ok(row.entityType.length <= 80);
+    assert.ok(row.entityId.length <= 120);
+  });
+
   it('redacta metadatos sensibles antes de persistir', () => {
     assert.deepEqual(
       normalizeDetails({
