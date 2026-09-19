@@ -47,7 +47,7 @@ function registerPlaybackAdminHandlers({
     const reproduciendo = await setNowPlaying(id, siguiente);
 
     console.log(
-      `[${logPrefix}] Bar ${id} → "${siguiente.title}"`
+      `[${logPrefix}] Bar ${id} → videoId=${siguiente.videoId}`
     );
 
     io.to(`bar:${id}`).emit(
@@ -294,7 +294,7 @@ function registerPlaybackAdminHandlers({
       );
 
       console.log(
-        `[HISTORIAL] Bar ${id} → "${song.title}"`
+        `[HISTORIAL] Bar ${id} → videoId=${song.videoId}`
       );
     } catch (error) {
       console.error('[HISTORIAL] Error:', error);
