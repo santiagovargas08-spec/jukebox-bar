@@ -60,7 +60,7 @@ document.addEventListener('error', (event) => {
       const qrImg = document.getElementById('bar-qr-img');
 
       if (qrImg) {
-        qrImg.src = `/api/public/bars/${encodeURIComponent(barActual.slug)}/qr?t=${Date.now()}`;
+        qrImg.src = `/api/public/bars/${encodeURIComponent(barActual.slug)}/qr`;
         qrImg.alt = `QR para ${barActual.name}`;
       }
 
