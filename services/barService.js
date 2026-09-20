@@ -252,6 +252,29 @@ async function listBarsPage({
   };
 }
 
+
+async function deleteBar(id) {
+  const barId = Number(id);
+
+  if (
+    !Number.isInteger(barId) ||
+    barId <= 0
+  ) {
+    throw new Error('ID de bar inválido.');
+  }
+
+  return prisma.bar.delete({
+    where: {
+      id: barId
+    },
+    select: {
+      id: true,
+      name: true,
+      slug: true
+    }
+  });
+}
+
 async function updateBar(id, data) {
   const barId = Number(id);
   if (!Number.isInteger(barId) || barId <= 0) throw new Error('ID de bar inválido.');
@@ -346,6 +369,7 @@ module.exports = {
   getBarAccessRecord,
   listBars,
   listBarsPage,
+  deleteBar,
   updateBar,
   slugify,
   MAX_BAR_NAME_LENGTH,
