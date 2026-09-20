@@ -205,9 +205,28 @@ router.get('/master-admin/bars/:id', async (req, res) => {
 
 router.post('/master-admin/bars', async (req, res) => {
   try {
-    const { name, displayName, welcomeMessage, slug } = req.body || {};
-    if (typeof name !== 'string' || !name.trim()) return res.status(400).json({ ok: false, error: 'El nombre del bar es obligatorio.' });
-    const bar = await createBar({ name, slug, displayName, welcomeMessage });
+    const {
+      name,
+      displayName,
+      welcomeMessage,
+      logoUrl,
+      slug
+    } = req.body || {};
+
+    if (typeof name !== 'string' || !name.trim()) {
+      return res.status(400).json({
+        ok: false,
+        error: 'El nombre del bar es obligatorio.'
+      });
+    }
+
+    const bar = await createBar({
+      name,
+      slug,
+      displayName,
+      welcomeMessage,
+      logoUrl
+    });
 
     await auditAdminAction({
       req,
