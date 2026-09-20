@@ -143,6 +143,30 @@ function renderBars(bars){
 
     info.append(title,identity,badge);
 
+    const logoMeta=document.createElement('div');
+    logoMeta.className='muted';
+
+    if(b.settings?.logoUrl){
+      const logoPreview=document.createElement('img');
+      logoPreview.src=String(b.settings.logoUrl);
+      logoPreview.alt=`Logo de ${String(b.name||'')}`;
+      logoPreview.loading='lazy';
+      logoPreview.style.maxWidth='72px';
+      logoPreview.style.maxHeight='48px';
+      logoPreview.style.objectFit='contain';
+      logoPreview.style.display='block';
+      logoPreview.style.marginTop='8px';
+
+      const logoText=document.createElement('span');
+      logoText.textContent='Logo configurado';
+
+      info.append(logoMeta,logoPreview);
+      logoMeta.appendChild(logoText);
+    }else{
+      logoMeta.textContent='Sin logo configurado';
+      info.appendChild(logoMeta);
+    }
+
     const tableActions=document.createElement('div');
     tableActions.className='table-actions';
 
@@ -150,6 +174,7 @@ function renderBars(bars){
     edit.dataset.edit=String(b.id);
     edit.dataset.name=String(b.name||'');
     edit.dataset.display=String(b.settings?.displayName||'');
+    edit.dataset.logo=String(b.settings?.logoUrl||'');
     edit.dataset.welcome=String(b.settings?.welcomeMessage||'');
 
     const toggle=createActionButton(
@@ -274,7 +299,7 @@ function renderBars(bars){
     container.appendChild(article);
   }
 
-  document.querySelectorAll('[data-edit]').forEach(btn=>btn.onclick=()=>editBar(btn.dataset.id,btn.dataset.name,btn.dataset.display,btn.dataset.welcome));
+  document.querySelectorAll('[data-edit]').forEach(btn=>btn.onclick=()=>editBar(btn.dataset.id,btn.dataset.name,btn.dataset.display,btn.dataset.logo,btn.dataset.welcome));
   document.querySelectorAll('[data-toggle]').forEach(btn=>btn.onclick=async()=>{try{await api(`/bars/${btn.dataset.toggle}/active`,{method:'PATCH',body:JSON.stringify({active:btn.dataset.active==='true'})});await load()}catch(e){await AdminDialog.message('No se pudo cambiar el estado',e.message)}});
   document.querySelectorAll('[data-admin]').forEach(btn=>btn.onclick=async()=>{
     const values=await AdminDialog.ask('Crear BAR_ADMIN',[
@@ -308,10 +333,11 @@ function renderBars(bars){
     }
   });
 }
-async function editBar(id,name,displayName,welcomeMessage){
+async function editBar(id,name,displayName,logoUrl,welcomeMessage){
   const values=await AdminDialog.ask('Editar bar',[
     {name:'name',label:'Nombre del bar',value:name,required:true},
     {name:'displayName',label:'Nombre mostrado',value:displayName||''},
+    {name:'logoUrl',label:'URL del logo (Cloudinary)',type:'url',value:logoUrl||''},
     {name:'welcomeMessage',label:'Mensaje de bienvenida',value:welcomeMessage||''}
   ]);
   if(!values)return;
@@ -536,7 +562,7 @@ async function load(){
   $('who').textContent=`Sesión: ${me.email} · SUPER_ADMIN`;
 }
 $('loginForm').onsubmit=async e=>{e.preventDefault();$('loginError').textContent='';try{await api('/login',{method:'POST',body:JSON.stringify({email:$('email').value,password:$('password').value})});setLoggedIn(true);await load()}catch(err){$('loginError').textContent=err.message}};
-$('createForm').onsubmit=async e=>{e.preventDefault();$('createMessage').textContent='';try{const b=await api('/bars',{method:'POST',body:JSON.stringify({name:$('barName').value,displayName:$('displayName').value,welcomeMessage:$('welcomeMessage').value})});$('createMessage').className='ok';$('createMessage').textContent=`BAR CREADO · ID ${b.id} · slug ${b.slug}`;e.target.reset();barsOffset=0;await load()}catch(err){$('createMessage').className='error';$('createMessage').textContent=err.message}};
+$('createForm').onsubmit=async e=>{e.preventDefault();$('createMessage').textContent='';try{const b=await api('/bars',{method:'POST',body:JSON.stringify({name:$('barName').value,displayName:$('displayName').value,logoUrl:$('logoUrl').value,welcomeMessage:$('welcomeMessage').value})});$('createMessage').className='ok';$('createMessage').textContent=`BAR CREADO · ID ${b.id} · slug ${b.slug}`;e.target.reset();barsOffset=0;await load()}catch(err){$('createMessage').className='error';$('createMessage').textContent=err.message}};
 $('bars-prev').onclick=async()=>{if(barsOffset<=0)return;barsOffset=Math.max(0,barsOffset-BARS_PAGE_SIZE);try{await loadBars()}catch(e){await AdminDialog.message('No se pudieron cargar los bares',e.message)}};
 $('bars-next').onclick=async()=>{barsOffset+=BARS_PAGE_SIZE;try{await loadBars()}catch(e){barsOffset=Math.max(0,barsOffset-BARS_PAGE_SIZE);await AdminDialog.message('No se pudieron cargar los bares',e.message)}};
 $('audit-prev').onclick=async()=>{if(auditOffset<=0)return;auditOffset=Math.max(0,auditOffset-AUDIT_PAGE_SIZE);try{await loadAudit()}catch(e){await AdminDialog.message('No se pudo cargar la auditoría',e.message)}};
