@@ -217,11 +217,23 @@ describe('youtube search service', () => {
 
     assert.equal(calls, 0);
 
-    assert.deepEqual(result, {
-      videos: [],
-      cached: false,
-      status: 'EMPTY_QUERY'
-    });
+    assert.deepEqual(
+      {
+        videos: result.videos,
+        cached: result.cached,
+        status: result.status
+      },
+      {
+        videos: [],
+        cached: false,
+        status: 'EMPTY_QUERY'
+      }
+    );
+
+    assert.equal(
+      typeof result.timings?.totalMs,
+      'number'
+    );
   });
 
   it('normaliza el orden de palabras para reutilizar cache', () => {
