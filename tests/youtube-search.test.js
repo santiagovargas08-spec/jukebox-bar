@@ -15,7 +15,10 @@ const {
 } = require('../services/searchCacheService.js');
 
 const {
-  searchWithYoutubeProvider
+  searchWithYoutubeProvider,
+  getYoutubeSearchTimeoutMs,
+  DEFAULT_YOUTUBE_SEARCH_TIMEOUT_MS,
+  MIN_YOUTUBE_SEARCH_TIMEOUT_MS
 } = require('../services/youtubeSearchProvider.js');
 
 describe('youtube search service', () => {
@@ -306,6 +309,39 @@ describe('youtube search service', () => {
     assert.equal(calls, 1);
   });
 
+
+
+  it('mantiene un timeout de producción suficientemente amplio para yt-search', () => {
+    assert.equal(
+      DEFAULT_YOUTUBE_SEARCH_TIMEOUT_MS,
+      15000
+    );
+
+    assert.ok(
+      MIN_YOUTUBE_SEARCH_TIMEOUT_MS >= 10000
+    );
+
+    const previous =
+      process.env.YOUTUBE_SEARCH_TIMEOUT_MS;
+
+    process.env.YOUTUBE_SEARCH_TIMEOUT_MS =
+      '4500';
+
+    try {
+      assert.ok(
+        getYoutubeSearchTimeoutMs() >=
+          MIN_YOUTUBE_SEARCH_TIMEOUT_MS
+      );
+    } finally {
+      if (previous === undefined) {
+        delete process.env
+          .YOUTUBE_SEARCH_TIMEOUT_MS;
+      } else {
+        process.env.YOUTUBE_SEARCH_TIMEOUT_MS =
+          previous;
+      }
+    }
+  });
 
   it('corta una búsqueda del proveedor que supera el timeout configurado', async () => {
     const startedAt = Date.now();
