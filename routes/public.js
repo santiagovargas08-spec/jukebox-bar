@@ -14,7 +14,13 @@ const { authenticateMasterAdmin, revokeMasterAdminToken } = require('../services
 const { requireMasterAdmin, MASTER_ADMIN_COOKIE } = require('../middleware/masterAdminAuth.js');
 const { requireOperatorHttp, OPERATOR_COOKIE } = require('../middleware/operatorAuth.js');
 const { prisma } = require('../db.js');
-const { createBar, getBarById, listBarsPage, updateBar } = require('../services/barService.js');
+const {
+  createBar,
+  getBarById,
+  listBarsPage,
+  updateBar,
+  deleteBar
+} = require('../services/barService.js');
 const { buildBarUrls, getAppUrl } = require('../lib/barUrls.js');
 const { requireTrustedOrigin } = require('../lib/originValidation.js');
 const { getClientQrPng } = require('../services/qrService.js');
@@ -290,6 +296,67 @@ router.put('/master-admin/bars/:id', async (req, res) => {
   } catch (error) {
     logError('[MASTER_ADMIN] Error actualizando bar:', { requestId: req.id || null, error: error?.message || String(error) });
     res.status(error.code === 'P2025' ? 404 : 400).json({ ok: false, error: error.message || 'No se pudo actualizar el bar.' });
+  }
+});
+
+
+router.delete('/master-admin/bars/:id', async (req, res) => {
+  try {
+    const bar =
+      await getBarById(req.params.id);
+
+    if (!bar) {
+      return res.status(404).json({
+        ok: false,
+        error: 'Bar no encontrado.'
+      });
+    }
+
+    // Se registra antes del borrado. AdminAuditLog no depende
+    // de Bar y conserva la trazabilidad de la acción.
+    await auditAdminAction({
+      req,
+      action: 'bar.delete',
+      barId: bar.id,
+      entityType: 'bar',
+      entityId: String(bar.id),
+      details: {
+        name: bar.name,
+        slug: bar.slug,
+        users: bar._count?.users || 0,
+        queue: bar._count?.queue || 0,
+        history: bar._count?.history || 0,
+        payments: bar._count?.payments || 0
+      }
+    });
+
+    const deleted =
+      await deleteBar(bar.id);
+
+    res.json({
+      ok: true,
+      data: deleted
+    });
+  } catch (error) {
+    logError('[MASTER_ADMIN] Error eliminando bar:', {
+      requestId: req.id || null,
+      error:
+        error?.message ||
+        String(error)
+    });
+
+    res.status(
+      error?.code === 'P2025'
+        ? 404
+        : 400
+    ).json({
+      ok: false,
+      error:
+        error?.code === 'P2025'
+          ? 'Bar no encontrado.'
+          : error.message ||
+            'No se pudo eliminar el bar.'
+    });
   }
 });
 
