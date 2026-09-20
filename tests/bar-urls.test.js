@@ -35,6 +35,25 @@ describe('barUrls', () => {
     process.env.APP_URL = previous;
   });
 
+  it('versiona el QR cuando cambia la configuración del bar', () => {
+    const previous = process.env.APP_URL;
+    process.env.APP_URL = 'https://jukebox.example.com';
+
+    const urls = buildBarUrls({
+      slug: 'demo',
+      settings: {
+        updatedAt: '2026-09-20T12:00:00.000Z'
+      }
+    });
+
+    assert.equal(
+      urls.qr,
+      'https://jukebox.example.com/api/public/bars/demo/qr?v=1789905600000'
+    );
+
+    process.env.APP_URL = previous;
+  });
+
   it('usa request como fallback fuera de configuración explícita', () => {
     const previous = process.env.APP_URL;
     process.env.APP_URL = '';

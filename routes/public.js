@@ -674,7 +674,9 @@ router.get('/bars/:slug/qr', async (req, res) => {
     const bar = await getBarBySlug(req.params.slug);
     if (!bar) return res.status(404).json({ ok: false, error: 'Bar no encontrado' });
     const clienteUrl = buildBarUrls(bar, req).cliente;
-    const { buffer } = await getClientQrPng(clienteUrl);
+    const { buffer } = await getClientQrPng(clienteUrl, {
+      logoUrl: bar.settings?.logoUrl || null
+    });
     res.set('Content-Type', 'image/png');
     res.set('Cache-Control', 'public, max-age=3600');
     res.send(buffer);
