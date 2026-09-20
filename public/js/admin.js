@@ -456,7 +456,7 @@ const btnLogout        = document.getElementById('btn-logout-operator');
 
     async function inicializarAdmin() {
       barActual = await BarLoader.inicializarBar({
-        titulo: 'GENESIS 2.0 — Admin',
+        titulo: 'Jukebox Digital — Admin',
         mensajeSinSlug: 'Abre el panel con la URL del bar, por ejemplo: /admin.html?bar=mi-bar'
       });
 
@@ -476,25 +476,15 @@ const btnLogout        = document.getElementById('btn-logout-operator');
         return;
       }
 
-      const titulo = document.querySelector('.admin-title');
-
-      if (titulo) {
-        titulo.replaceChildren(
-          document.createTextNode(
-            'GENESIS 2.0 '
-          )
-        );
-
-        const barName =
-          document.createElement('span');
-
-        barName.textContent =
-          String(barActual.name || '');
-
-        titulo.appendChild(
-          barName
-        );
-      }
+      BarLoader.aplicarMarcaBar(
+        barActual,
+        {
+          titleSuffix:
+            'Panel de Control',
+          nameElementId:
+            'admin-bar-name'
+        }
+      );
 
       BarLoader.conectarSocketBar(socket, {
         slug: barActual.slug,
