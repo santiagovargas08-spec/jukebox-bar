@@ -246,7 +246,18 @@ function registerPublicSocketHandlers({
         queryLength: texto.length,
         status,
         elapsedMs,
-        timings: timings || null
+        memoryMs:
+          timings?.memoryMs || 0,
+        catalogMs:
+          timings?.catalogMs || 0,
+        databaseExactMs:
+          timings?.databaseExactMs || 0,
+        youtubeMs:
+          timings?.youtubeMs || 0,
+        databaseApproxMs:
+          timings?.databaseApproxMs || 0,
+        totalSearchMs:
+          timings?.totalMs || elapsedMs || 0
       });
 
       if (videos.length === 0) {
