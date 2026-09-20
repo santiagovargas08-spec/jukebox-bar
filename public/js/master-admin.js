@@ -307,7 +307,7 @@ function renderBars(bars){
     container.appendChild(article);
   }
 
-  document.querySelectorAll('[data-edit]').forEach(btn=>btn.onclick=()=>editBar(btn.dataset.id,btn.dataset.name,btn.dataset.display,btn.dataset.logo,btn.dataset.welcome));
+  document.querySelectorAll('[data-edit]').forEach(btn=>btn.onclick=()=>editBar(btn.dataset.edit,btn.dataset.name,btn.dataset.display,btn.dataset.logo,btn.dataset.welcome));
   document.querySelectorAll('[data-toggle]').forEach(btn=>btn.onclick=async()=>{try{await api(`/bars/${btn.dataset.toggle}/active`,{method:'PATCH',body:JSON.stringify({active:btn.dataset.active==='true'})});await load()}catch(e){await AdminDialog.message('No se pudo cambiar el estado',e.message)}});
   document.querySelectorAll('[data-admin]').forEach(btn=>btn.onclick=async()=>{
     const values=await AdminDialog.ask('Crear BAR_ADMIN',[
