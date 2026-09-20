@@ -28,6 +28,8 @@ services:
         generateValue: true
       - key: APP_URL
         sync: false
+      - key: YOUTUBE_SEARCH_TIMEOUT_MS
+        value: "4500"
       - key: PORT
         value: "3000"
 
