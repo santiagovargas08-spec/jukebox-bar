@@ -55,7 +55,7 @@ window.BarLoader = (function () {
     const heading = document.createElement('h1');
     heading.className = 'app-error-title';
     heading.textContent =
-      titulo || 'GENESIS 2.0';
+      titulo || 'Jukebox Digital';
 
     const message = document.createElement('p');
     message.className = 'app-error-message';
@@ -180,6 +180,83 @@ window.BarLoader = (function () {
     }
   }
 
+
+  function obtenerNombreMostrado(bar) {
+    return String(
+      bar?.settings?.displayName ||
+      bar?.name ||
+      'Jukebox'
+    ).trim();
+  }
+
+  function aplicarMarcaBar(
+    bar,
+    {
+      titleSuffix = '',
+      nameElementId = null,
+      logoSelector = null,
+      extraNameElementIds = []
+    } = {}
+  ) {
+    if (!bar) {
+      return;
+    }
+
+    const nombre =
+      obtenerNombreMostrado(bar);
+
+    document.title =
+      titleSuffix
+        ? `${nombre} — ${titleSuffix}`
+        : nombre;
+
+    const ids = [
+      nameElementId,
+      ...extraNameElementIds
+    ].filter(Boolean);
+
+    for (const id of ids) {
+      const element =
+        document.getElementById(id);
+
+      if (element) {
+        element.textContent =
+          nombre;
+      }
+    }
+
+    const logoUrl =
+      typeof bar?.settings?.logoUrl === 'string'
+        ? bar.settings.logoUrl.trim()
+        : '';
+
+    if (
+      logoSelector &&
+      logoUrl
+    ) {
+      const logo =
+        document.querySelector(
+          logoSelector
+        );
+
+      if (logo) {
+        logo.src = logoUrl;
+        logo.alt =
+          `Logo de ${nombre}`;
+      }
+    } else if (logoSelector) {
+      const logo =
+        document.querySelector(
+          logoSelector
+        );
+
+      if (logo) {
+        logo.alt =
+          `Logo de ${nombre}`;
+      }
+    }
+  }
+
   function conectarSocketBar(socket, barReference) {
     const payload =
       barReference && typeof barReference === 'object'
@@ -205,7 +282,7 @@ window.BarLoader = (function () {
     socket.on('acceso_bloqueado', ({ mensaje }) => {
       mostrarErrorPantalla(
         mensaje || 'El acceso a este bar no está disponible.',
-        'GENESIS 2.0'
+        'Jukebox Digital'
       );
     });
 
@@ -219,6 +296,8 @@ window.BarLoader = (function () {
     inicializarBar,
     conectarSocketBar,
     mostrarErrorPantalla,
+    obtenerNombreMostrado,
+    aplicarMarcaBar,
     escapeHtml
   };
 })();
