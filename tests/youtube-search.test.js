@@ -14,6 +14,10 @@ const {
   approximateQueryScore
 } = require('../services/searchCacheService.js');
 
+const {
+  searchWithYoutubeProvider
+} = require('../services/youtubeSearchProvider.js');
+
 describe('youtube search service', () => {
   it('devuelve los primeros resultados tal como los entrega yt-search', async () => {
     clearSearchCache();
@@ -288,6 +292,67 @@ describe('youtube search service', () => {
     );
 
     assert.equal(calls, 1);
+  });
+
+
+  it('corta una búsqueda del proveedor que supera el timeout configurado', async () => {
+    const startedAt = Date.now();
+
+    await assert.rejects(
+      searchWithYoutubeProvider(
+        'proveedor lento',
+        {
+          timeoutMs: 25,
+          searchFn: async () =>
+            new Promise(() => {})
+        }
+      ),
+      (error) =>
+        error?.code ===
+        'YOUTUBE_SEARCH_TIMEOUT'
+    );
+
+    assert.ok(
+      Date.now() - startedAt < 500,
+      'el timeout del proveedor debe responder rápidamente'
+    );
+  });
+
+  it('incluye tiempos por capa en una búsqueda exitosa', async () => {
+    clearSearchCache();
+
+    const result = await searchYoutube(
+      'latencia por capas',
+      {
+        usePersistentCache: false,
+        useKnownSongs: false,
+        searchFn: async () => ({
+          videos: [
+            {
+              videoId: 'abc123XYZ09',
+              title: 'Canción',
+              author: {
+                name: 'Artista'
+              }
+            }
+          ]
+        })
+      }
+    );
+
+    assert.equal(result.status, 'OK');
+    assert.equal(
+      typeof result.timings?.memoryMs,
+      'number'
+    );
+    assert.equal(
+      typeof result.timings?.youtubeMs,
+      'number'
+    );
+    assert.equal(
+      typeof result.timings?.totalMs,
+      'number'
+    );
   });
 
 });
