@@ -29,7 +29,7 @@ services:
       - key: APP_URL
         sync: false
       - key: YOUTUBE_SEARCH_TIMEOUT_MS
-        value: "4500"
+        value: "15000"
       - key: PORT
         value: "3000"
 
