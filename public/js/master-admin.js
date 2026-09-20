@@ -187,7 +187,15 @@ function renderBars(bars){
     const admin=createActionButton('Crear BAR_ADMIN');
     admin.dataset.admin=String(b.id);
 
-    tableActions.append(edit,toggle,admin);
+    const remove=createActionButton(
+      'Eliminar bar',
+      'danger'
+    );
+    remove.dataset.delete=String(b.id);
+    remove.dataset.name=String(b.name||'');
+    remove.dataset.slug=String(b.slug||'');
+
+    tableActions.append(edit,toggle,admin,remove);
     head.append(info,tableActions);
 
     const urls=document.createElement('div');
@@ -317,6 +325,11 @@ function renderBars(bars){
       await load();
     }catch(e){await AdminDialog.message('No se pudo crear el administrador',e.message)}
   });
+  document.querySelectorAll('[data-delete]').forEach(btn=>btn.onclick=()=>deleteBarPermanent(
+    btn.dataset.delete,
+    btn.dataset.name,
+    btn.dataset.slug
+  ));
   document.querySelectorAll('[data-license-action]').forEach(btn=>btn.onclick=()=>licenseAction(btn.dataset.id,btn.dataset.licenseAction));
   document.querySelectorAll('[data-payments]').forEach(btn=>btn.onclick=()=>loadPayments(btn.dataset.payments));
   document.querySelectorAll('[data-copy]').forEach(btn=>btn.onclick=async()=>{
@@ -333,6 +346,65 @@ function renderBars(bars){
     }
   });
 }
+
+async function deleteBarPermanent(id,name,slug){
+  const first=await AdminDialog.confirm(
+    'Eliminar bar permanentemente',
+    `Vas a eliminar "${name}". También se borrarán su licencia, administradores, cola, historial, usuarios, pagos y estado de reproducción. Esta acción no se puede deshacer.`,
+    {
+      confirmText:'Continuar',
+      danger:true
+    }
+  );
+
+  if(!first)return;
+
+  const values=await AdminDialog.ask(
+    'Confirmación final',
+    [
+      {
+        name:'confirmation',
+        label:`Escribe exactamente: ${name}`,
+        value:'',
+        required:true
+      }
+    ]
+  );
+
+  if(!values)return;
+
+  if(
+    String(values.confirmation||'').trim()!==
+    String(name||'').trim()
+  ){
+    await AdminDialog.message(
+      'No se eliminó el bar',
+      'El nombre escrito no coincide exactamente.'
+    );
+    return;
+  }
+
+  try{
+    const deleted=await api(
+      `/bars/${id}`,
+      {method:'DELETE'}
+    );
+
+    await AdminDialog.message(
+      'Bar eliminado',
+      `Se eliminó "${deleted.name}" (${slug}).`
+    );
+
+    barsOffset=0;
+    await load();
+  }catch(e){
+    await AdminDialog.message(
+      'No se pudo eliminar el bar',
+      e.message
+    );
+  }
+}
+
 async function editBar(id,name,displayName,logoUrl,welcomeMessage){
   const values=await AdminDialog.ask('Editar bar',[
     {name:'name',label:'Nombre del bar',value:name,required:true},
