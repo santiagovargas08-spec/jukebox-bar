@@ -3,9 +3,9 @@
 const ytSearch = require('yt-search');
 const { withTimeout } = require('../lib/promiseTimeout.js');
 
-const DEFAULT_YOUTUBE_SEARCH_TIMEOUT_MS = 4500;
-const MIN_YOUTUBE_SEARCH_TIMEOUT_MS = 1000;
-const MAX_YOUTUBE_SEARCH_TIMEOUT_MS = 10000;
+const DEFAULT_YOUTUBE_SEARCH_TIMEOUT_MS = 15000;
+const MIN_YOUTUBE_SEARCH_TIMEOUT_MS = 5000;
+const MAX_YOUTUBE_SEARCH_TIMEOUT_MS = 30000;
 
 function getYoutubeSearchTimeoutMs() {
   const configured = Number(
