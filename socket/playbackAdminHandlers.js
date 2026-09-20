@@ -25,7 +25,10 @@ const {
 const { HISTORIAL_MAX } = require('../services/socketStateService.js');
 const { logError, logInfo } = require('../lib/logger.js');
 const { auditSocketAdminAction } = require('../lib/adminAudit.js');
-const { allowOperatorAction } = require('../services/operatorActionPolicy.js');
+const {
+  allowOperatorAction,
+  allowPlaybackControllerAction
+} = require('../services/operatorActionPolicy.js');
 
 function registerPlaybackAdminHandlers({
   socket,
@@ -57,6 +60,27 @@ function registerPlaybackAdminHandlers({
 
     return false;
   }
+  function enforcePlaybackControllerLimit(
+    id,
+    event = 'error_autorizacion'
+  ) {
+    if (
+      allowPlaybackControllerAction(
+        socket,
+        id
+      )
+    ) {
+      return true;
+    }
+
+    socket.emit(event, {
+      mensaje:
+        'Demasiadas señales de reproducción. Intenta nuevamente en un momento.'
+    });
+
+    return false;
+  }
+
   async function reproducirSiguiente(
     id,
     logPrefix,
@@ -126,7 +150,7 @@ function registerPlaybackAdminHandlers({
       }
 
       if (!requirePlaybackControllerSocket(socket, id)) return;
-      if (!enforceOperatorActionLimit(id)) return;
+      if (!enforcePlaybackControllerLimit(id)) return;
 
       const acceso = await verificarLicenciaSocket(socket, id);
       if (!acceso) return;
@@ -379,7 +403,7 @@ function registerPlaybackAdminHandlers({
 
       if (!id || !cancion?.videoId) return;
       if (!requirePlaybackControllerSocket(socket, id)) return;
-      if (!enforceOperatorActionLimit(id)) return;
+      if (!enforcePlaybackControllerLimit(id)) return;
 
       const acceso = await verificarLicenciaSocket(socket, id);
       if (!acceso) return;

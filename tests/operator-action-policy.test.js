@@ -79,6 +79,72 @@ describe('operator action policy', () => {
     );
   });
 
+  it('permite señales de reproducción de la pantalla Smart TV', () => {
+    const policy = createOperatorActionPolicy();
+    const screen = {
+      data: {
+        screenController: {
+          barId: 7
+        }
+      }
+    };
+
+    assert.equal(
+      policy.allowPlaybackControllerAction(
+        screen,
+        7
+      ),
+      true
+    );
+    assert.equal(
+      policy.allowPlaybackControllerAction(
+        screen,
+        8
+      ),
+      false
+    );
+    assert.equal(
+      policy.allowOperatorAction(
+        screen,
+        7
+      ),
+      false
+    );
+  });
+
+  it('limita también las señales repetidas de Smart TV', () => {
+    const policy = createOperatorActionPolicy();
+    const screen = {
+      data: {
+        screenController: {
+          barId: 9
+        }
+      }
+    };
+
+    for (
+      let index = 0;
+      index < MAX_OPERATOR_ACTIONS_PER_WINDOW;
+      index += 1
+    ) {
+      assert.equal(
+        policy.allowPlaybackControllerAction(
+          screen,
+          9
+        ),
+        true
+      );
+    }
+
+    assert.equal(
+      policy.allowPlaybackControllerAction(
+        screen,
+        9
+      ),
+      false
+    );
+  });
+
   it('separa los presupuestos entre bares', () => {
     const policy = createOperatorActionPolicy();
     const s = socket();

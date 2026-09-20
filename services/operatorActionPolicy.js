@@ -10,6 +10,14 @@ function createOperatorActionPolicy() {
   const generalLimits = new RateLimitStore(ACTION_WINDOW_MS);
   const destructiveLimits = new RateLimitStore(ACTION_WINDOW_MS);
 
+  function hitGeneralLimit(key) {
+    return generalLimits.hit(
+      key,
+      ACTION_WINDOW_MS,
+      MAX_OPERATOR_ACTIONS_PER_WINDOW
+    ).allowed;
+  }
+
   function allowOperatorAction(socket, barId, {
     destructive = false
   } = {}) {
@@ -28,13 +36,7 @@ function createOperatorActionPolicy() {
     const key =
       `operator:${operatorId}:bar:${normalizedBarId}`;
 
-    const general = generalLimits.hit(
-      key,
-      ACTION_WINDOW_MS,
-      MAX_OPERATOR_ACTIONS_PER_WINDOW
-    );
-
-    if (!general.allowed) {
+    if (!hitGeneralLimit(key)) {
       return false;
     }
 
@@ -51,8 +53,47 @@ function createOperatorActionPolicy() {
     return destructiveResult.allowed;
   }
 
+  function allowPlaybackControllerAction(
+    socket,
+    barId
+  ) {
+    const normalizedBarId = Number(barId);
+    const operatorId =
+      Number(socket?.data?.operator?.id);
+
+    if (
+      Number.isInteger(operatorId) &&
+      operatorId > 0
+    ) {
+      return allowOperatorAction(
+        socket,
+        normalizedBarId
+      );
+    }
+
+    const screenBarId =
+      Number(
+        socket?.data
+          ?.screenController
+          ?.barId
+      );
+
+    if (
+      !Number.isInteger(normalizedBarId) ||
+      normalizedBarId <= 0 ||
+      screenBarId !== normalizedBarId
+    ) {
+      return false;
+    }
+
+    return hitGeneralLimit(
+      `screen:bar:${normalizedBarId}`
+    );
+  }
+
   return {
-    allowOperatorAction
+    allowOperatorAction,
+    allowPlaybackControllerAction
   };
 }
 
@@ -60,6 +101,8 @@ const defaultPolicy = createOperatorActionPolicy();
 
 module.exports = {
   allowOperatorAction: defaultPolicy.allowOperatorAction,
+  allowPlaybackControllerAction:
+    defaultPolicy.allowPlaybackControllerAction,
   createOperatorActionPolicy,
   ACTION_WINDOW_MS,
   MAX_OPERATOR_ACTIONS_PER_WINDOW,
