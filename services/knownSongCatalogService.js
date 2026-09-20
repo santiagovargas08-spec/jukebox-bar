@@ -6,7 +6,7 @@ const {
   tokenizeSearchQuery
 } = require('./searchCacheService.js');
 
-const MAX_KNOWN_SONGS = 100;
+const MAX_KNOWN_SONGS = 1000;
 const PRELOAD_HISTORY_ROWS = 250;
 const MIN_LOCAL_QUERY_TOKENS = 2;
 
