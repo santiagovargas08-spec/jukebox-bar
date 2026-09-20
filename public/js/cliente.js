@@ -97,7 +97,7 @@ document.addEventListener('error', (event) => {
 
     async function cargarBarDesdeQR() {
       const bar = await BarLoader.inicializarBar({
-        titulo: 'GENESIS 2.0',
+        titulo: 'Jukebox Digital',
         mensajeSinSlug: 'Este enlace no identifica ningún bar. Escanea nuevamente el código QR del establecimiento.'
       });
 
@@ -107,6 +107,21 @@ document.addEventListener('error', (event) => {
 
       barSeleccionado = bar.slug;
       barActual = bar;
+
+      BarLoader.aplicarMarcaBar(
+        barActual,
+        {
+          titleSuffix:
+            'Pide tu canción',
+          nameElementId:
+            'cliente-bar-name',
+          extraNameElementIds: [
+            'success-bar-name'
+          ],
+          logoSelector:
+            '.cliente-logo-img'
+        }
+      );
 
       console.log('[BAR] Bar identificado correctamente:', {
         slug: bar.slug,
@@ -134,7 +149,7 @@ document.addEventListener('error', (event) => {
     socket.on('acceso_bloqueado', ({ mensaje }) => {
       BarLoader.mostrarErrorPantalla(
         mensaje || 'El acceso a este bar no está disponible.',
-        'GENESIS 2.0'
+        barActual?.name || 'Jukebox Digital'
       );
     });
 
@@ -163,7 +178,7 @@ document.addEventListener('error', (event) => {
       barActual = null;
       BarLoader.mostrarErrorPantalla(
         mensaje || 'No se pudo conectar con este bar.',
-        'GENESIS 2.0'
+        barActual?.name || 'Jukebox Digital'
       );
     });
 
