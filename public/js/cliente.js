@@ -146,6 +146,13 @@ document.addEventListener('error', (event) => {
       }
     });
 
+    // search-ui-reset-on-disconnect
+    socket.on('disconnect', () => {
+      mostrarLoading(false);
+      btnBuscar.disabled = false;
+      btnBuscar.removeAttribute('aria-busy');
+    });
+
     socket.on('acceso_bloqueado', ({ mensaje }) => {
       BarLoader.mostrarErrorPantalla(
         mensaje || 'El acceso a este bar no está disponible.',
@@ -308,6 +315,9 @@ document.addEventListener('error', (event) => {
           false
         );
 
+        btnBuscar.disabled = false;
+        btnBuscar.removeAttribute('aria-busy');
+
 
         renderizarResultados(
           items,
@@ -337,6 +347,9 @@ document.addEventListener('error', (event) => {
           false
         );
 
+        btnBuscar.disabled = false;
+        btnBuscar.removeAttribute('aria-busy');
+
         if (codigo === 'COOLDOWN') {
           return;
         }
@@ -354,6 +367,10 @@ document.addEventListener('error', (event) => {
     // ============================================================
 
     function buscarVideos(query) {
+
+      if (btnBuscar.disabled) {
+        return;
+      }
 
       query =
         String(query || '')
@@ -412,6 +429,12 @@ document.addEventListener('error', (event) => {
 
       mostrarLoading(
         true
+      );
+
+      btnBuscar.disabled = true;
+      btnBuscar.setAttribute(
+        'aria-busy',
+        'true'
       );
 
 
@@ -1044,6 +1067,8 @@ document.addEventListener('error', (event) => {
             `client-${searchRequestCounter}`;
 
           mostrarLoading(false);
+          btnBuscar.disabled = false;
+          btnBuscar.removeAttribute('aria-busy');
           ocultarResultados();
           ocultarError();
         }
