@@ -2,6 +2,7 @@
 
 const { prisma } = require('../db.js');
 const { normalizeBarSlug } = require('../lib/barSlug.js');
+const { sanitizeBarLogoUrl } = require('../lib/urlValidation.js');
 
 const TRIAL_DAYS = 14;
 const MAX_BAR_NAME_LENGTH = 120;
@@ -59,7 +60,8 @@ async function createBar({
   name,
   slug = null,
   displayName = null,
-  welcomeMessage = null
+  welcomeMessage = null,
+  logoUrl = null
 }) {
   if (typeof name !== 'string' || !name.trim()) {
     throw new Error('El nombre del bar es obligatorio.');
@@ -89,6 +91,9 @@ async function createBar({
       ? welcomeMessage.trim()
       : null;
 
+  const cleanLogoUrl =
+    sanitizeBarLogoUrl(logoUrl);
+
   if (
     cleanWelcomeMessage &&
     cleanWelcomeMessage.length > MAX_WELCOME_MESSAGE_LENGTH
@@ -112,7 +117,8 @@ async function createBar({
             settings: {
               create: {
                 displayName: cleanDisplayName,
-                welcomeMessage: cleanWelcomeMessage
+                welcomeMessage: cleanWelcomeMessage,
+                logoUrl: cleanLogoUrl
               }
             },
             license: {
@@ -280,6 +286,16 @@ async function updateBar(id, data) {
     }
 
     settingsData.displayName = displayName || null;
+  }
+
+  if (
+    typeof data.logoUrl === 'string' ||
+    data.logoUrl === null
+  ) {
+    settingsData.logoUrl =
+      sanitizeBarLogoUrl(
+        data.logoUrl
+      );
   }
 
   if (typeof data.welcomeMessage === 'string') {
