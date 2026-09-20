@@ -255,14 +255,129 @@ const btnLogout        = document.getElementById('btn-logout-operator');
     //  BUSCADOR DEL DJ
     //  Solo busca al pulsar Buscar o Enter.
     // ─────────────────────────────────────────────────────────
+    const cacheBusquedasAdmin = new Map();
+    const MAX_ADMIN_SEARCH_CACHE = 80;
     let searchRequestCounterAdmin = 0;
     let activeSearchRequestIdAdmin = '';
 
-    function finalizarBusquedaAdmin() {}
+    function claveBusquedaAdmin(query) {
+      return String(query || '')
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, ' ');
+    }
+
+    function guardarCacheAdmin(query, items) {
+      const key = claveBusquedaAdmin(query);
+      if (!key || !Array.isArray(items)) return;
+
+      cacheBusquedasAdmin.delete(key);
+      cacheBusquedasAdmin.set(key, items);
+
+      if (
+        cacheBusquedasAdmin.size >
+        MAX_ADMIN_SEARCH_CACHE
+      ) {
+        const oldestKey =
+          cacheBusquedasAdmin.keys().next().value;
+        cacheBusquedasAdmin.delete(oldestKey);
+      }
+    }
+
+    function finalizarBusquedaAdmin() {
+      btnBuscarAdmin.disabled = false;
+      btnBuscarAdmin.removeAttribute('aria-busy');
+    }
+
+    function renderizarResultadosAdmin(items) {
+      if (!items || items.length === 0) {
+        mostrarMensajeResultados('Sin resultados.');
+        return;
+      }
+
+      adminResults.replaceChildren();
+
+      items.slice(0, 5).forEach((item) => {
+        const row = document.createElement('div');
+        row.className = 'admin-queue-item';
+
+        const thumbSrc =
+          DomSafe.safeThumbnailAttr(
+            item.thumbnail
+          );
+
+        let thumb;
+
+        if (thumbSrc) {
+          thumb = document.createElement('img');
+          thumb.className = 'admin-thumb';
+          thumb.src = thumbSrc;
+          thumb.alt = '';
+          thumb.loading = 'lazy';
+        } else {
+          thumb = document.createElement('div');
+          thumb.className =
+            'admin-thumb admin-thumb-placeholder';
+          thumb.textContent = '🎵';
+        }
+
+        const main = document.createElement('div');
+        main.className = 'admin-item-main';
+
+        const title = document.createElement('div');
+        title.className =
+          'admin-item-title admin-item-title-sm';
+        title.textContent =
+          String(item.title || '');
+
+        main.appendChild(title);
+
+        const add = document.createElement('button');
+        add.type = 'button';
+        add.className = 'btn-admin btn-add-dj';
+        add.dataset.id = String(item.videoId || '');
+        add.dataset.title = String(item.title || '');
+        add.dataset.thumb =
+          DomSafe.sanitizeThumbnailUrl(
+            item.thumbnail
+          ) || '';
+        add.textContent = '➕ Añadir';
+
+        row.append(
+          thumb,
+          main,
+          add
+        );
+
+        adminResults.appendChild(row);
+      });
+
+      adminResults
+        .querySelectorAll('.btn-add-dj')
+        .forEach((btn) => {
+          btn.addEventListener('click', () => {
+            socket.emit('agregar_cancion', {
+              barId,
+              cancion: {
+                videoId: btn.dataset.id,
+                title: btn.dataset.title,
+                name: '👑 DJ / Admin',
+                thumbnail: btn.dataset.thumb
+              }
+            });
+
+            mostrarMensajeResultados(
+              '¡Canción añadida a la fila con éxito! 🎵',
+              'empty-msg-success'
+            );
+            inputBuscarAdmin.value = '';
+          });
+        });
+    }
 
     function emitirBusquedaAdmin(query) {
       const q = String(query || '').trim();
-      if (!q) return;
+      if (!q || btnBuscarAdmin.disabled) return;
 
       searchRequestCounterAdmin += 1;
       activeSearchRequestIdAdmin =
@@ -270,6 +385,24 @@ const btnLogout        = document.getElementById('btn-logout-operator');
 
       const requestId =
         activeSearchRequestIdAdmin;
+
+      const cacheKey =
+        claveBusquedaAdmin(q);
+
+      const cachedItems =
+        cacheBusquedasAdmin.get(cacheKey);
+
+      if (cachedItems) {
+        renderizarResultadosAdmin(cachedItems);
+        finalizarBusquedaAdmin();
+        return;
+      }
+
+      btnBuscarAdmin.disabled = true;
+      btnBuscarAdmin.setAttribute(
+        'aria-busy',
+        'true'
+      );
 
       mostrarMensajeResultados(
         'Buscando en YouTube... ⏳'
@@ -320,121 +453,59 @@ const btnLogout        = document.getElementById('btn-logout-operator');
       }
     );
 
-    // Recibir resultados del buscador
-    socket.on('resultados_busqueda', ({ items, requestId }) => {
-      if (
-        requestId &&
-        requestId !== activeSearchRequestIdAdmin
-      ) {
-        return;
-      }
-
-      finalizarBusquedaAdmin();
-
-      if (document.activeElement === inputBuscarAdmin || inputBuscarAdmin.value !== '') {
-        if (!items || items.length === 0) {
-          mostrarMensajeResultados('Sin resultados.');
+    socket.on(
+      'resultados_busqueda',
+      ({ items, query, requestId }) => {
+        if (
+          requestId &&
+          requestId !== activeSearchRequestIdAdmin
+        ) {
           return;
         }
 
-        adminResults.replaceChildren();
+        finalizarBusquedaAdmin();
 
-        items.slice(0, 5).forEach((item) => {
-          const row = document.createElement('div');
-          row.className = 'admin-queue-item';
-
-          const thumbSrc =
-            DomSafe.safeThumbnailAttr(
-              item.thumbnail
-            );
-
-          let thumb;
-
-          if (thumbSrc) {
-            thumb = document.createElement('img');
-            thumb.className = 'admin-thumb';
-            thumb.src = thumbSrc;
-            thumb.alt = '';
-            thumb.loading = 'lazy';
-          } else {
-            thumb = document.createElement('div');
-            thumb.className =
-              'admin-thumb admin-thumb-placeholder';
-            thumb.textContent = '🎵';
-          }
-
-          const main = document.createElement('div');
-          main.className = 'admin-item-main';
-
-          const title = document.createElement('div');
-          title.className =
-            'admin-item-title admin-item-title-sm';
-          title.textContent =
-            String(item.title || '');
-
-          main.appendChild(title);
-
-          const add = document.createElement('button');
-          add.type = 'button';
-          add.className = 'btn-admin btn-add-dj';
-          add.dataset.id = String(item.videoId || '');
-          add.dataset.title = String(item.title || '');
-          add.dataset.thumb =
-            DomSafe.sanitizeThumbnailUrl(
-              item.thumbnail
-            ) || '';
-          add.textContent = '➕ Añadir';
-
-          row.append(
-            thumb,
-            main,
-            add
+        if (query) {
+          guardarCacheAdmin(
+            query,
+            items
           );
+        }
 
-          adminResults.appendChild(row);
-        });
-
-        // Eventos para añadir la canción como DJ
-        adminResults.querySelectorAll('.btn-add-dj').forEach(btn => {
-          btn.addEventListener('click', () => {
-            socket.emit('agregar_cancion', {
-              barId,
-              cancion: {
-                videoId: btn.dataset.id,
-                title: btn.dataset.title,
-                name: '👑 DJ / Admin',
-                thumbnail: btn.dataset.thumb
-              }
-            });
-            
-            mostrarMensajeResultados('¡Canción añadida a la fila con éxito! 🎵', 'empty-msg-success');
-            inputBuscarAdmin.value = '';
-          });
-        });
+        if (
+          document.activeElement ===
+            inputBuscarAdmin ||
+          inputBuscarAdmin.value !== ''
+        ) {
+          renderizarResultadosAdmin(items);
+        }
       }
-    });
+    );
 
-    socket.on('error_busqueda', ({ mensaje, requestId, codigo }) => {
-      if (
-        requestId &&
-        requestId !== activeSearchRequestIdAdmin
-      ) {
-        return;
+    socket.on(
+      'error_busqueda',
+      ({ mensaje, requestId, codigo }) => {
+        if (
+          requestId &&
+          requestId !== activeSearchRequestIdAdmin
+        ) {
+          return;
+        }
+
+        finalizarBusquedaAdmin();
+
+        if (codigo === 'COOLDOWN') {
+          return;
+        }
+
+        if (inputBuscarAdmin.value !== '') {
+          mostrarMensajeResultados(
+            mensaje || 'Error en la búsqueda.',
+            'empty-msg-error'
+          );
+        }
       }
-
-      finalizarBusquedaAdmin();
-
-      if (codigo === 'COOLDOWN') {
-        return;
-      }
-
-      if (inputBuscarAdmin.value !== '') {
-        mostrarMensajeResultados(
-          mensaje || 'Error en la búsqueda.',
-          'empty-msg-error'
-        );
-      }
-    });
+    );
 
     // ─────────────────────────────────────────────────────────
     //  VACIAR COLA COMPLETA
