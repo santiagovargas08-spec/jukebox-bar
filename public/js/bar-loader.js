@@ -230,29 +230,22 @@ window.BarLoader = (function () {
         ? bar.settings.logoUrl.trim()
         : '';
 
-    if (
-      logoSelector &&
-      logoUrl
-    ) {
+    if (logoSelector) {
       const logo =
         document.querySelector(
           logoSelector
         );
 
       if (logo) {
-        logo.src = logoUrl;
-        logo.alt =
-          `Logo de ${nombre}`;
-      }
-    } else if (logoSelector) {
-      const logo =
-        document.querySelector(
-          logoSelector
-        );
-
-      if (logo) {
-        logo.alt =
-          `Logo de ${nombre}`;
+        if (logoUrl) {
+          logo.src = logoUrl;
+          logo.alt =
+            `Logo de ${nombre}`;
+          logo.hidden = false;
+        } else {
+          // No reutilizar el logo heredado de GENESIS en bares nuevos.
+          logo.hidden = true;
+        }
       }
     }
   }
