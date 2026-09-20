@@ -507,6 +507,10 @@ const btnLogout        = document.getElementById('btn-logout-operator');
       }
     );
 
+    socket.on('disconnect', () => {
+      finalizarBusquedaAdmin();
+    });
+
     // ─────────────────────────────────────────────────────────
     //  VACIAR COLA COMPLETA
     // ─────────────────────────────────────────────────────────
