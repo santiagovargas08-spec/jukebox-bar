@@ -4,7 +4,12 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 
 const { sanitizeThumbnailUrl, isValidYoutubeVideoId } = require('../lib/urlValidation.js');
-const { getAuthorizedBarId, emitBarIdRechazado } = require('../lib/socketBar.js');
+const {
+  getAuthorizedBarId,
+  emitBarIdRechazado,
+  requireOperatorSocket,
+  requirePlaybackControllerSocket
+} = require('../lib/socketBar.js');
 
 describe('security', () => {
   it('rechaza thumbnails con file:', () => {
@@ -66,6 +71,32 @@ describe('security', () => {
 
     const selected = { data: { barId: 7 } };
     assert.equal(getAuthorizedBarId(selected, 5), 7);
+  });
+
+  it('pantalla autorizada solo controla reproducción de su propio bar', () => {
+    const events = [];
+    const socket = {
+      data: {
+        screenController: { barId: 7 }
+      },
+      emit(name, payload) {
+        events.push({ name, payload });
+      }
+    };
+
+    assert.equal(
+      requirePlaybackControllerSocket(socket, 7),
+      true
+    );
+    assert.equal(
+      requirePlaybackControllerSocket(socket, 8),
+      false
+    );
+    assert.equal(
+      requireOperatorSocket(socket, 7),
+      false
+    );
+    assert.equal(events.length, 2);
   });
 
   it('emitBarIdRechazado notifica al operador con error_autorizacion', () => {

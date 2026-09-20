@@ -30,6 +30,14 @@ const { logError } = require('../lib/logger.js');
 
 const router = express.Router();
 
+function buildMasterBarUrls(bar, req) {
+  return buildBarUrls(
+    bar,
+    req,
+    { includeScreenAccessKey: true }
+  );
+}
+
 function noStore(req, res, next) {
   res.set('Cache-Control', 'no-store, max-age=0');
   res.set('Pragma', 'no-cache');
@@ -188,7 +196,7 @@ router.get('/master-admin/bars', async (req, res) => {
         ...page,
         items: page.items.map((bar) => ({
           ...bar,
-          urls: buildBarUrls(bar, req)
+          urls: buildMasterBarUrls(bar, req)
         }))
       }
     });
@@ -202,7 +210,7 @@ router.get('/master-admin/bars/:id', async (req, res) => {
   try {
     const bar = await getBarById(req.params.id);
     if (!bar) return res.status(404).json({ ok: false, error: 'Bar no encontrado.' });
-    res.json({ ok: true, data: { ...bar, urls: buildBarUrls(bar, req) } });
+    res.json({ ok: true, data: { ...bar, urls: buildMasterBarUrls(bar, req) } });
   } catch (error) {
     logError('[MASTER_ADMIN] Error obteniendo bar:', { requestId: req.id || null, error: error?.message || String(error) });
     res.status(500).json({ ok: false, error: 'No se pudo obtener el bar.' });
@@ -243,7 +251,7 @@ router.post('/master-admin/bars', async (req, res) => {
       details: { slug: bar.slug }
     });
 
-    res.status(201).json({ ok: true, data: { ...bar, urls: buildBarUrls(bar, req) } });
+    res.status(201).json({ ok: true, data: { ...bar, urls: buildMasterBarUrls(bar, req) } });
   } catch (error) {
     logError('[MASTER_ADMIN] Error creando bar:', { requestId: req.id || null, error: error?.message || String(error) });
     res.status(400).json({ ok: false, error: error.message || 'No se pudo crear el bar.' });
@@ -292,7 +300,7 @@ router.put('/master-admin/bars/:id', async (req, res) => {
       }
     });
 
-    res.json({ ok: true, data: { ...bar, urls: buildBarUrls(bar, req) } });
+    res.json({ ok: true, data: { ...bar, urls: buildMasterBarUrls(bar, req) } });
   } catch (error) {
     logError('[MASTER_ADMIN] Error actualizando bar:', { requestId: req.id || null, error: error?.message || String(error) });
     res.status(error.code === 'P2025' ? 404 : 400).json({ ok: false, error: error.message || 'No se pudo actualizar el bar.' });
@@ -374,7 +382,7 @@ router.patch('/master-admin/bars/:id/active', async (req, res) => {
       details: { active: bar.active }
     });
 
-    res.json({ ok: true, data: { ...bar, urls: buildBarUrls(bar, req) } });
+    res.json({ ok: true, data: { ...bar, urls: buildMasterBarUrls(bar, req) } });
   } catch (error) {
     logError('[MASTER_ADMIN] Error cambiando estado:', { requestId: req.id || null, error: error?.message || String(error) });
     res.status(error.code === 'P2025' ? 404 : 400).json({ ok: false, error: error.message || 'No se pudo cambiar el estado.' });
@@ -495,7 +503,7 @@ router.get('/master-admin/bars/:id/urls', async (req, res) => {
   try {
     const bar = await getBarById(req.params.id);
     if (!bar) return res.status(404).json({ ok: false, error: 'Bar no encontrado.' });
-    res.json({ ok: true, data: buildBarUrls(bar, req) });
+    res.json({ ok: true, data: buildMasterBarUrls(bar, req) });
   } catch (error) {
     logError('[MASTER_ADMIN] Error construyendo URLs:', { requestId: req.id || null, error: error?.message || String(error) });
     res.status(500).json({ ok: false, error: 'No se pudieron construir las URLs.' });
@@ -639,7 +647,9 @@ router.get('/bars/:slug', async (req, res) => {
               welcomeMessage: bar.settings.welcomeMessage,
               primaryColor: bar.settings.primaryColor,
               secondaryColor: bar.settings.secondaryColor,
-              logoUrl: bar.settings.logoUrl
+              logoUrl: bar.settings.logoUrl,
+              screenAuthRequired:
+                bar.settings.screenAuthRequired !== false
             }
           : null
       }

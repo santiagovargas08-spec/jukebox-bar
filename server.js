@@ -33,6 +33,7 @@ const { allowConnection } = require('./services/socketConnectionPolicy.js');
 const { withTimeout } = require('./lib/promiseTimeout.js');
 const { beginShutdown, isShuttingDown } = require('./lib/serviceLifecycle.js');
 const { warmKnownSongs } = require('./services/knownSongCatalogService.js');
+const { authenticateScreenAccess } = require('./services/screenAccessService.js');
 
 
 // ============================================================
@@ -87,10 +88,47 @@ io.use(async (socket, next) => {
         socket.handshake.headers?.cookie
       );
 
-    if (!token) return next();
-    const operator = await getActiveAdminFromToken(token);
-    if (!operator) return next(new Error('UNAUTHORIZED_OPERATOR'));
-    socket.data.operator = operator;
+    if (token) {
+      const operator =
+        await getActiveAdminFromToken(token);
+
+      if (operator) {
+        socket.data.operator = operator;
+        return next();
+      }
+    }
+
+    const screenSlug =
+      socket.handshake.auth?.screenSlug;
+    const screenAccessKey =
+      socket.handshake.auth?.screenAccessKey;
+    const hasScreenCredentials =
+      Boolean(screenSlug || screenAccessKey);
+
+    if (hasScreenCredentials) {
+      const screenController =
+        await authenticateScreenAccess({
+          slug: screenSlug,
+          accessKey: screenAccessKey
+        });
+
+      if (screenController) {
+        socket.data.screenController =
+          screenController;
+        return next();
+      }
+
+      return next(
+        new Error('UNAUTHORIZED_SCREEN')
+      );
+    }
+
+    if (token) {
+      return next(
+        new Error('UNAUTHORIZED_OPERATOR')
+      );
+    }
+
     next();
   } catch (error) {
     logError('Error validando operador Socket.IO', {

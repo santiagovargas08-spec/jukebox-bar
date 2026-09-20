@@ -132,6 +132,21 @@ describe('public socket tenant isolation', () => {
     assert.deepEqual(stateCalls, [2]);
   });
 
+  it('impide que una pantalla autorizada cambie a otro bar', async () => {
+    const socket = createSocket();
+    socket.data.screenController = { barId: 1 };
+    const stateCalls = [];
+    registerHandlers(socket, stateCalls);
+
+    await socket.handlers.seleccionar_bar({
+      slug: 'bar-dos'
+    });
+
+    assert.deepEqual(socket.joined, []);
+    assert.deepEqual(stateCalls, []);
+    assert.equal(socket.emitted.at(-1).event, 'error_bar');
+  });
+
   it('rechaza barId numérico enviado por un cliente público', async () => {
     const socket = createSocket();
     const stateCalls = [];

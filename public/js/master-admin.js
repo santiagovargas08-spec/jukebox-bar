@@ -141,7 +141,14 @@ function renderBars(bars){
     badge.textContent=
       `${b.active?'ACTIVO':'INACTIVO'} · ${b.license?.status||'SIN LICENCIA'}`;
 
-    info.append(title,identity,badge);
+    const screenBadge=document.createElement('span');
+    screenBadge.className='badge';
+    screenBadge.textContent=
+      b.settings?.screenAuthRequired===false
+        ?'PANTALLA TV · SIN CORREO'
+        :'PANTALLA · CORREO REQUERIDO';
+
+    info.append(title,identity,badge,screenBadge);
 
     const logoMeta=document.createElement('div');
     logoMeta.className='muted';
@@ -177,6 +184,20 @@ function renderBars(bars){
     edit.dataset.logo=String(b.settings?.logoUrl||'');
     edit.dataset.welcome=String(b.settings?.welcomeMessage||'');
 
+    const screenAuth=createActionButton(
+      b.settings?.screenAuthRequired===false
+        ?'Exigir correo en TV'
+        :'Quitar correo en TV',
+      b.settings?.screenAuthRequired===false
+        ?'secondary'
+        :''
+    );
+    screenAuth.dataset.screenAuth=String(b.id);
+    screenAuth.dataset.required=String(
+      b.settings?.screenAuthRequired!==false
+    );
+    screenAuth.dataset.name=String(b.name||'');
+
     const toggle=createActionButton(
       b.active?'Desactivar':'Activar',
       'secondary'
@@ -195,7 +216,13 @@ function renderBars(bars){
     remove.dataset.name=String(b.name||'');
     remove.dataset.slug=String(b.slug||'');
 
-    tableActions.append(edit,toggle,admin,remove);
+    tableActions.append(
+      edit,
+      screenAuth,
+      toggle,
+      admin,
+      remove
+    );
     head.append(info,tableActions);
 
     const urls=document.createElement('div');
@@ -308,6 +335,11 @@ function renderBars(bars){
   }
 
   document.querySelectorAll('[data-edit]').forEach(btn=>btn.onclick=()=>editBar(btn.dataset.edit,btn.dataset.name,btn.dataset.display,btn.dataset.logo,btn.dataset.welcome));
+  document.querySelectorAll('[data-screen-auth]').forEach(btn=>btn.onclick=()=>toggleScreenAuth(
+    btn.dataset.screenAuth,
+    btn.dataset.name,
+    btn.dataset.required==='true'
+  ));
   document.querySelectorAll('[data-toggle]').forEach(btn=>btn.onclick=async()=>{try{await api(`/bars/${btn.dataset.toggle}/active`,{method:'PATCH',body:JSON.stringify({active:btn.dataset.active==='true'})});await load()}catch(e){await AdminDialog.message('No se pudo cambiar el estado',e.message)}});
   document.querySelectorAll('[data-admin]').forEach(btn=>btn.onclick=async()=>{
     const values=await AdminDialog.ask('Crear BAR_ADMIN',[
@@ -345,6 +377,40 @@ function renderBars(bars){
       }
     }
   });
+}
+
+async function toggleScreenAuth(id,name,isRequired){
+  const nextRequired=!isRequired;
+  const confirmed=await AdminDialog.confirm(
+    nextRequired
+      ?'Exigir correo en la pantalla'
+      :'Activar pantalla de Smart TV',
+    nextRequired
+      ?`La pantalla de "${name}" volverá a solicitar correo y contraseña.`
+      :`La URL Bar de "${name}" podrá abrirse en el Smart TV sin correo. Solo tendrá permisos mínimos de reproducción; el panel Admin seguirá protegido.`,
+    {
+      confirmText:nextRequired
+        ?'Exigir correo'
+        :'Quitar correo'
+    }
+  );
+
+  if(!confirmed)return;
+
+  try{
+    await api(`/bars/${id}`,{
+      method:'PUT',
+      body:JSON.stringify({
+        screenAuthRequired:nextRequired
+      })
+    });
+    await loadBars();
+  }catch(e){
+    await AdminDialog.message(
+      'No se pudo cambiar el acceso',
+      e.message
+    );
+  }
 }
 
 async function deleteBarPermanent(id,name,slug){

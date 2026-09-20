@@ -64,14 +64,37 @@ document.addEventListener('error', (event) => {
       );
 
       try {
-        const operator = await OperatorAuth.iniciarSesionOperador({
-          slug: barActual.slug,
-          socket,
-          titulo: 'Acceso a la pantalla del bar'
-        });
-        barId = operator.barId;
+        const requiresEmail =
+          barActual.settings?.screenAuthRequired !== false;
+
+        if (requiresEmail) {
+          const operator =
+            await OperatorAuth.iniciarSesionOperador({
+              slug: barActual.slug,
+              socket,
+              titulo: 'Acceso a la pantalla del bar'
+            });
+
+          barId = operator.barId;
+        } else {
+          const screenAccessKey =
+            new URLSearchParams(
+              window.location.hash.slice(1)
+            ).get('screenKey');
+
+          await OperatorAuth.iniciarPantallaSinCorreo({
+            slug: barActual.slug,
+            accessKey: screenAccessKey,
+            socket
+          });
+
+          barId = null;
+        }
       } catch (error) {
-        BarLoader.mostrarErrorPantalla(error.message, 'Acceso de operador');
+        BarLoader.mostrarErrorPantalla(
+          error.message,
+          'Acceso a la pantalla'
+        );
         return;
       }
 

@@ -98,6 +98,39 @@ describe('bar service', () => {
     }
   });
 
+  it('activa el acceso de Smart TV sin correo con una clave segura', async () => {
+    const disabled =
+      await barService.updateBar(bar.id, {
+        screenAuthRequired: false
+      });
+
+    assert.equal(
+      disabled.settings.screenAuthRequired,
+      false
+    );
+    assert.match(
+      disabled.settings.screenAccessKey,
+      /^[A-Za-z0-9_-]{32}$/
+    );
+
+    const accessKey =
+      disabled.settings.screenAccessKey;
+
+    const enabled =
+      await barService.updateBar(bar.id, {
+        screenAuthRequired: true
+      });
+
+    assert.equal(
+      enabled.settings.screenAuthRequired,
+      true
+    );
+    assert.equal(
+      enabled.settings.screenAccessKey,
+      accessKey
+    );
+  });
+
   it('pagina la lista de bares con total y límites seguros', async () => {
     const extra = await createTestBar(prisma, {
       slug: uniqueSlug('bar-service-page')

@@ -110,13 +110,13 @@ window.OperatorAuth = (function () {
     });
   }
 
-  function conectarSocket(socket) {
+  function conectarSocket(socket, auth = {}) {
     if (socket.connected) {
       return Promise.resolve();
     }
 
     // La autenticación viaja únicamente en la cookie HttpOnly.
-    socket.auth = {};
+    socket.auth = auth;
 
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
@@ -238,6 +238,23 @@ window.OperatorAuth = (function () {
     return admin;
   }
 
+  async function iniciarPantallaSinCorreo({
+    slug,
+    accessKey,
+    socket
+  }) {
+    if (!slug || !accessKey || !socket) {
+      throw new Error(
+        'Abre la URL de pantalla generada por el Master Admin.'
+      );
+    }
+
+    await conectarSocket(socket, {
+      screenSlug: slug,
+      screenAccessKey: accessKey
+    });
+  }
+
   async function cerrarSesion({ slug, socket } = {}) {
     if (!slug) return;
 
@@ -264,6 +281,7 @@ window.OperatorAuth = (function () {
 
   return {
     iniciarSesionOperador,
+    iniciarPantallaSinCorreo,
     cerrarSesion
   };
 })();

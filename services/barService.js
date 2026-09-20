@@ -3,6 +3,7 @@
 const { prisma } = require('../db.js');
 const { normalizeBarSlug } = require('../lib/barSlug.js');
 const { sanitizeBarLogoUrl } = require('../lib/urlValidation.js');
+const { createScreenAccessKey } = require('./screenAccessService.js');
 
 const TRIAL_DAYS = 14;
 const MAX_BAR_NAME_LENGTH = 120;
@@ -321,6 +322,11 @@ async function updateBar(id, data) {
       );
   }
 
+  if (typeof data.screenAuthRequired === 'boolean') {
+    settingsData.screenAuthRequired =
+      data.screenAuthRequired;
+  }
+
   if (typeof data.welcomeMessage === 'string') {
     const welcomeMessage = data.welcomeMessage.trim();
 
@@ -334,6 +340,19 @@ async function updateBar(id, data) {
   }
 
   return prisma.$transaction(async (tx) => {
+    if (settingsData.screenAuthRequired === false) {
+      const currentSettings =
+        await tx.barSettings.findUnique({
+          where: { barId },
+          select: { screenAccessKey: true }
+        });
+
+      if (!currentSettings?.screenAccessKey) {
+        settingsData.screenAccessKey =
+          createScreenAccessKey();
+      }
+    }
+
     if (Object.keys(barData).length === 0 && Object.keys(settingsData).length === 0) {
       return tx.bar.findUniqueOrThrow({
         where: { id: barId },

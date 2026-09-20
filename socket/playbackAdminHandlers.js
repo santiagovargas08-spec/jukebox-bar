@@ -2,7 +2,8 @@
 
 const {
   obtenerBarIdAutorizado,
-  requireOperatorSocket
+  requireOperatorSocket,
+  requirePlaybackControllerSocket
 } = require('../lib/socketBar.js');
 
 const {
@@ -124,7 +125,7 @@ function registerPlaybackAdminHandlers({
         return;
       }
 
-      if (!requireOperatorSocket(socket, id)) return;
+      if (!requirePlaybackControllerSocket(socket, id)) return;
       if (!enforceOperatorActionLimit(id)) return;
 
       const acceso = await verificarLicenciaSocket(socket, id);
@@ -377,7 +378,7 @@ function registerPlaybackAdminHandlers({
       );
 
       if (!id || !cancion?.videoId) return;
-      if (!requireOperatorSocket(socket, id)) return;
+      if (!requirePlaybackControllerSocket(socket, id)) return;
       if (!enforceOperatorActionLimit(id)) return;
 
       const acceso = await verificarLicenciaSocket(socket, id);

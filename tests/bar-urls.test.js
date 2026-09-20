@@ -54,6 +54,30 @@ describe('barUrls', () => {
     process.env.APP_URL = previous;
   });
 
+  it('incluye acceso de pantalla solo en URLs privadas del Master Admin', () => {
+    const previous = process.env.APP_URL;
+    process.env.APP_URL = 'https://jukebox.example.com';
+
+    const bar = {
+      slug: 'demo',
+      settings: {
+        screenAuthRequired: false,
+        screenAccessKey: 'abcdefghijklmnopqrstuvwxyzABCDEF'
+      }
+    };
+
+    assert.equal(
+      buildBarUrls(bar).bar,
+      'https://jukebox.example.com/bar.html?bar=demo'
+    );
+    assert.equal(
+      buildBarUrls(bar, null, { includeScreenAccessKey: true }).bar,
+      'https://jukebox.example.com/bar.html?bar=demo#screenKey=abcdefghijklmnopqrstuvwxyzABCDEF'
+    );
+
+    process.env.APP_URL = previous;
+  });
+
   it('usa request como fallback fuera de configuración explícita', () => {
     const previous = process.env.APP_URL;
     process.env.APP_URL = '';

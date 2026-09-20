@@ -62,6 +62,13 @@ function registerPublicSocketHandlers({
             : payload;
         const bar = await getBarBySlug(slug);
         id = bar?.id || null;
+
+        if (
+          socket.data.screenController &&
+          socket.data.screenController.barId !== id
+        ) {
+          id = null;
+        }
       }
 
       if (!id) {
