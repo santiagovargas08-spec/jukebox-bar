@@ -226,7 +226,11 @@ function registerPublicSocketHandlers({
         cached,
         cacheLayer,
         status,
-        elapsedMs
+        elapsedMs,
+        timings,
+        degraded,
+        providerStatus,
+        stale
       } = await searchYoutube(texto);
 
       logInfo('Búsqueda YouTube completada', {
@@ -234,17 +238,23 @@ function registerPublicSocketHandlers({
         socketId: clienteId,
         barId: id,
         cached,
+        stale: Boolean(stale),
+        degraded: Boolean(degraded),
+        providerStatus: providerStatus || null,
         cacheLayer,
         results: videos.length,
         queryLength: texto.length,
         status,
-        elapsedMs
+        elapsedMs,
+        timings: timings || null
       });
 
       if (videos.length === 0) {
         const mensajes = {
           NO_RESULTS:
             'No encontramos canciones relacionadas. Prueba escribiendo artista y canción.',
+          PROVIDER_TIMEOUT:
+            'La búsqueda tardó demasiado. Intenta nuevamente en unos segundos.',
           PROVIDER_ERROR:
             'YouTube no respondió correctamente. Intenta nuevamente.'
         };
