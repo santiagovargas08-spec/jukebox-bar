@@ -43,13 +43,25 @@ document.addEventListener('error', (event) => {
 
     async function inicializarPantallaBar() {
       barActual = await BarLoader.inicializarBar({
-        titulo: 'GENESIS 2.0 — Pantalla',
+        titulo: 'Jukebox Digital — Pantalla',
         mensajeSinSlug: 'Abre esta pantalla con la URL del bar, por ejemplo: /bar.html?bar=mi-bar'
       });
 
       if (!barActual) {
         return;
       }
+
+      BarLoader.aplicarMarcaBar(
+        barActual,
+        {
+          titleSuffix:
+            'Pantalla',
+          nameElementId:
+            'screen-bar-name',
+          logoSelector:
+            '.bar-logo-img'
+        }
+      );
 
       try {
         const operator = await OperatorAuth.iniciarSesionOperador({
