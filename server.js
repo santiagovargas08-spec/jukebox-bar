@@ -236,6 +236,13 @@ function crearConsultasRecomendacion(semilla) {
     consultas.push({ q: `${titulo} canciones similares`, peso: 38 });
     consultas.push({ q: `${titulo} artistas relacionados`, peso: 30 });
   }
+  const generos = detectarGeneros(semilla);
+  if (generos.length) {
+    consultas.push({
+      q: `${artista ? artista + ' ' : ''}${generos[0]} canciones similares a ${titulo}`,
+      peso: 32
+    });
+  }
   // No usar búsquedas genéricas ni semillas aleatorias. Sin canción semilla,
   // el motor espera una canción solicitada por el público.
   return consultas;
