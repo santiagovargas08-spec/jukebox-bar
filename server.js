@@ -351,6 +351,13 @@ async function rellenarColaAutoDJ() {
       console.log('[AUTO-DJ] Solicitud del público detectada; recomendación descartada.');
       return;
     }
+    if (
+      reproduciendo &&
+      String(reproduciendo.videoId) !== String(semilla.videoId)
+    ) {
+      console.log('[AUTO-DJ] La canción de referencia cambió; se descarta la recomendación obsoleta.');
+      return;
+    }
 
     const ranking = Array.from(candidatos.values()).sort((a, b) => b.score - a.score);
     const elegido = ranking.find(item => {
