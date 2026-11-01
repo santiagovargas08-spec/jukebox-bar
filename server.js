@@ -99,7 +99,7 @@ function nombreArtista(video) {
 }
 
 function claveArtista(nombre) {
-  return normalizarTexto(nombre).replace(/\\b(official|vevo|topic|records|music)\\b/g, '').trim();
+  return normalizarTexto(nombre).replace(/\b(official|vevo|topic|records|music)\b/g, '').trim();
 }
 
 const MAPA_GENEROS = {
@@ -134,9 +134,9 @@ function detectarGeneros(video) {
 
 function detectarEpoca(video) {
   const texto = normalizarTexto(video && video.title);
-  const anio = texto.match(/\\b(19[5-9]\\d|20[0-2]\\d)\\b/);
+  const anio = texto.match(/\b(19[5-9]\d|20[0-2]\d)\b/);
   if (anio) return Math.floor(Number(anio[1]) / 10) * 10;
-  const decada = texto.match(/\\b(50|60|70|80|90)s\\b/);
+  const decada = texto.match(/\b(50|60|70|80|90)s\b/);
   return decada ? Number(decada[1]) + 1900 : null;
 }
 
