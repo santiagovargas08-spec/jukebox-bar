@@ -134,7 +134,7 @@ function tituloCanonico(video) {
   let titulo = String(video && (video.titulo || video.title) || '');
   // Los textos entre paréntesis/corchetes suelen describir el tipo de publicación,
   // no la identidad de la canción.
-  titulo = titulo.replace(/[[(]([^\])]*[)\]]/g, ' $1 ');
+  titulo = titulo.replace(/\([^)]*\)|\[[^\]]*\]/g, ' ');
   titulo = normalizarTexto(titulo);
   titulo = titulo.replace(/\b(official|video|music|audio|lyrics|lyric|letra|hd|4k|remaster|remastered|visualizer|karaoke|cover|topic|vevo|clip|subtitulado|subtitulada|live|en vivo|con letra)\b/g, ' ');
   const artista = normalizarTexto(nombreArtista(video));
