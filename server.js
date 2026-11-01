@@ -123,6 +123,50 @@ function similitudTexto(a, b) {
   return comunes / Math.max(1, Math.min(A.size, B.size));
 }
 
+const SUFIJOS_VIDEO = new Set([
+  'official','video','music','audio','lyrics','lyric','letra','hd','4k',
+  'remaster','remastered','version','visualizer','karaoke','cover','topic',
+  'vevo','clip','video oficial','audio oficial','letra oficial','subtitulado',
+  'subtitulada','con letra','video letra','en vivo','live'
+]);
+
+function tituloCanonico(video) {
+  let titulo = String(video && (video.titulo || video.title) || '');
+  // Los textos entre paréntesis/corchetes suelen describir el tipo de publicación,
+  // no la identidad de la canción.
+  titulo = titulo.replace(/[[(]([^\])]*[)\]]/g, ' $1 ');
+  titulo = normalizarTexto(titulo);
+  titulo = titulo.replace(/\b(official|video|music|audio|lyrics|lyric|letra|hd|4k|remaster|remastered|visualizer|karaoke|cover|topic|vevo|clip|subtitulado|subtitulada|live|en vivo|con letra)\b/g, ' ');
+  const artista = normalizarTexto(nombreArtista(video));
+  if (artista && artista.length > 2) {
+    titulo = titulo.replace(new RegExp('\\b' + artista.split(' ').filter(Boolean).join('\\s+') + '\\b', 'g'), ' ');
+  }
+  return titulo.replace(/\s+/g, ' ').trim();
+}
+
+function mismaCancion(a, b) {
+  const tituloA = tituloCanonico(a);
+  const tituloB = tituloCanonico(b);
+  if (!tituloA || !tituloB) return false;
+  if (tituloA === tituloB) return true;
+
+  const tokensA = new Set(tituloA.split(' ').filter(t => t.length > 1));
+  const tokensB = new Set(tituloB.split(' ').filter(t => t.length > 1));
+  if (tokensA.size < 2 || tokensB.size < 2) return false;
+
+  let comunes = 0;
+  tokensA.forEach(token => { if (tokensB.has(token)) comunes++; });
+  const cobertura = comunes / Math.min(tokensA.size, tokensB.size);
+  const jaccard = comunes / (tokensA.size + tokensB.size - comunes);
+
+  // Alta cobertura evita aceptar otra canción del mismo artista.
+  return cobertura >= 0.88 && jaccard >= 0.65;
+}
+
+function esVersionDuplicada(video, canciones) {
+  return canciones.some(cancion => mismaCancion(video, cancion));
+}
+
 function nombreArtista(video) {
   return String(
     video && (video.artista || video.artist || (video.author && video.author.name)) || ''
@@ -307,6 +351,12 @@ async function rellenarColaAutoDJ() {
   autoDjEnCurso = true;
 
   try {
+    const cancionesConocidas = [
+      ...historialReproducidas,
+      ...cola,
+      ...(reproduciendo ? [reproduciendo] : []),
+      ...(autoDjPreparada ? [autoDjPreparada] : [])
+    ];
     const excluidos = new Set([
       ...videosYaReproducidos,
       ...historialReproducidas.map(c => String(c.videoId)),
@@ -335,6 +385,10 @@ async function rellenarColaAutoDJ() {
           if (!video || !video.videoId || !video.title) return;
           const id = String(video.videoId);
           if (excluidos.has(id)) return;
+          // No aceptar la misma canción subida como lyrics, audio, cover,
+          // video oficial o por un canal diferente.
+          if (esVersionDuplicada(video, cancionesConocidas)) return;
+          if (Array.from(candidatos.values()).some(item => mismaCancion(video, item.video))) return;
           const score = puntuarCandidato(
             video, semilla, fuente, artistasSet,
             feedbackAutoDj.get('artist:' + claveArtista(nombreArtista(video))) || feedbackAutoDj.get(id)
