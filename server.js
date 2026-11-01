@@ -135,6 +135,7 @@ function puntuarCandidato(video, semilla, fuente, artistasRecientes, feedback) {
 function registrarFeedback(cancion, motivo) {
   if (!cancion || !cancion.videoId) return;
   const key = String(cancion.videoId);
+  const artistaKey = claveArtista(nombreArtista(cancion));
   const previo = feedbackAutoDj.get(key) || { score: 0, completadas: 0, saltos: 0 };
   const razon = String(motivo || '').toLowerCase();
 
@@ -144,8 +145,7 @@ function registrarFeedback(cancion, motivo) {
     previo.score = Math.min(12, previo.score + 3);
     previo.completadas++;
   } else if (razon.includes('admin') || razon.includes('skip')) {
-    previo.saltos++;
-    previo.score = Math.max(-12, previo.score - 0.5);
+    previo.saltos++; // El salto administrativo no se interpreta como rechazo de la audiencia.
   } else if (razon.includes('error') || razon.includes('timeout')) {
     videosFallidos.unshift(key);
     while (videosFallidos.length > 60) videosFallidos.pop();
@@ -153,6 +153,18 @@ function registrarFeedback(cancion, motivo) {
 
   feedbackAutoDj.delete(key);
   feedbackAutoDj.set(key, previo);
+  if (artistaKey) {
+    const artistFeedbackKey = 'artist:' + artistaKey;
+    const artistFeedback = feedbackAutoDj.get(artistFeedbackKey) || { score: 0, completadas: 0, saltos: 0 };
+    if (razon === 'ended' || razon === 'natural_end') {
+      artistFeedback.score = Math.min(12, artistFeedback.score + 1.5);
+      artistFeedback.completadas++;
+    } else if (razon.includes('admin') || razon.includes('skip')) {
+      artistFeedback.saltos++;
+    }
+    feedbackAutoDj.delete(artistFeedbackKey);
+    feedbackAutoDj.set(artistFeedbackKey, artistFeedback);
+  }
   while (feedbackAutoDj.size > MAX_FEEDBACK) {
     feedbackAutoDj.delete(feedbackAutoDj.keys().next().value);
   }
@@ -227,7 +239,7 @@ async function rellenarColaAutoDJ() {
           if (excluidos.has(id)) return;
           const existente = candidatos.get(id);
           const score = puntuarCandidato(
-            video, semilla, fuente, artistasSet, feedbackAutoDj.get(id)
+            video, semilla, fuente, artistasSet, feedbackAutoDj.get('artist:' + claveArtista(nombreArtista(video))) || feedbackAutoDj.get(id)
           );
           if (!existente || score > existente.score) {
             candidatos.set(id, { video, score, fuente: fuente.q });
