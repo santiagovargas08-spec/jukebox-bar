@@ -206,7 +206,6 @@
     let tiempoDescanso = 30000; // 30 segundos de espera entre barridos
 
     const isEsclavo  = new URLSearchParams(window.location.search).has('esclavo');
-    let pendingAutoDJ = false;
 
     // Semillas AutoDJ (fallback si historial vacío)
     const semillasMix = [
@@ -280,9 +279,6 @@
         pendingVideo = null;
         pendingVideoForce = false;
         cargarVideo(video, force);
-      } else if (pendingAutoDJ && !isEsclavo) {
-        iniciarAutoDJ();
-        pendingAutoDJ = false;
       }
     }
 
@@ -404,27 +400,7 @@
       mostrarIdleScreen(false);
     }
 
-    // 🔥 NUEVA FUNCIÓN: Obtener semilla del historial
-    function obtenerSemillaDelHistorial() {
-      if (historialReproducidas && historialReproducidas.length > 0) {
-        // Seleccionar una canción aleatoria del historial para mayor variedad
-        const semilla = historialReproducidas[Math.floor(Math.random() * historialReproducidas.length)];
-        console.log(`🎲 Semilla Auto-DJ del historial: "${semilla.titulo}"`);
-        return semilla.videoId;
-      }
-      // Fallback: semillas predefinidas
-      const seed = semillasMix[Math.floor(Math.random() * semillasMix.length)];
-      console.log('🎲 Usando semilla fallback (historial vacío)');
-      return seed;
-    }
-
-    function iniciarAutoDJ() {
-      if (!playerReady || !player) return;
-      isAutoDJ = true;
-      mostrarIdleScreen(false);
-      player.loadPlaylist({ list: 'RD' + lastVideoId, listType: 'playlist' });
-      actualizarNowPlayingBar({ titulo: 'Cargando mix personalizado...', nombre: '🔥 Auto-DJ' });
-    }
+    // El Auto-DJ se genera en el servidor; el cliente solo reproduce la cola.
 
     function mostrarIdleScreen(visible) {
       const el = document.getElementById('idle-screen');
