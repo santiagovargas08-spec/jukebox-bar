@@ -102,6 +102,44 @@ function claveArtista(nombre) {
   return normalizarTexto(nombre).replace(/\\b(official|vevo|topic|records|music)\\b/g, '').trim();
 }
 
+const MAPA_GENEROS = {
+  reggaeton: ['reggaeton','regueton','urbano latino','perreo'],
+  salsa: ['salsa','salsa romantica','salsa brava'],
+  bachata: ['bachata'],
+  merengue: ['merengue'],
+  vallenato: ['vallenato'],
+  cumbia: ['cumbia'],
+  regional: ['regional mexicano','banda','norteno','corridos','ranchera'],
+  pop: ['pop','pop latino','dance pop'],
+  rock: ['rock','hard rock','alternative rock','indie rock','punk'],
+  electronica: ['electronica','edm','house','techno','trance'],
+  hiphop: ['hip hop','hip-hop','rap','trap'],
+  jazz: ['jazz','smooth jazz'],
+  reggae: ['reggae','dancehall'],
+  balada: ['balada','romantica','bolero']
+};
+
+function detectarGeneros(video) {
+  const texto = normalizarTexto([
+    video && video.title,
+    video && video.description,
+    nombreArtista(video)
+  ].filter(Boolean).join(' '));
+  const encontrados = [];
+  for (const [genero, claves] of Object.entries(MAPA_GENEROS)) {
+    if (claves.some(clave => texto.includes(normalizarTexto(clave)))) encontrados.push(genero);
+  }
+  return encontrados;
+}
+
+function detectarEpoca(video) {
+  const texto = normalizarTexto(video && video.title);
+  const anio = texto.match(/\\b(19[5-9]\\d|20[0-2]\\d)\\b/);
+  if (anio) return Math.floor(Number(anio[1]) / 10) * 10;
+  const decada = texto.match(/\\b(50|60|70|80|90)s\\b/);
+  return decada ? Number(decada[1]) + 1900 : null;
+}
+
 function puntuarCandidato(video, semilla, fuente, artistasRecientes, feedback) {
   const titulo = String(video.title || '');
   const artista = nombreArtista(video);
