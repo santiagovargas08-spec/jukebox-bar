@@ -46,6 +46,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 function intentarReproducir() {
   if (!reproduciendo && cola.length > 0) {
     reproduciendo = cola.shift();
+    reproduciendo.inicioMs = Date.now();
     console.log(`\n[►] Auto-inicio → "${reproduciendo.titulo}" (${reproduciendo.nombre})`);
     io.emit('nueva_reproduccion', reproduciendo);
     io.emit('cola_actualizada', { cola, reproduciendo });
@@ -67,8 +68,8 @@ function agregarAlHistorial(cancion) {
 
 function normalizarTexto(valor) {
   return String(valor || '').toLowerCase()
-    .normalize('NFD').replace(/[\\u0300-\\u036f]/g, '')
-    .replace(/[^a-z0-9 ]/g, ' ').replace(/\\s+/g, ' ').trim();
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
 const PALABRAS_COMUNES = new Set([
@@ -407,7 +408,8 @@ io.on('connection', (socket) => {
   // Saltar canción desde el panel
   socket.on('admin_saltar', () => {
     console.log(`[⚡ ADMIN] Forzó saltar canción actual.`);
-    if (reproduciendo) registrarFeedback(reproduciendo, 'admin_skip');\n    avanzarCola('admin_saltar');
+    if (reproduciendo) registrarFeedback(reproduciendo, 'admin_skip');
+    avanzarCola('admin_saltar');
   });
 
   // Eliminar una canción específica de la fila usando su ID
@@ -457,6 +459,7 @@ io.on('connection', (socket) => {
   function avanzarCola(motivo = '') {
     if (cola.length > 0) {
       reproduciendo = cola.shift();
+      reproduciendo.inicioMs = Date.now();
       console.log(`[►] Reproduciendo → "${reproduciendo.titulo}"`);
       io.emit('nueva_reproduccion', reproduciendo);
     } else {
