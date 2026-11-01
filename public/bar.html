@@ -201,7 +201,8 @@
     // Variables para el control de la Cola y Barrido
     let totalCancionesAnterior = 0;
     let intervaloBarrido = null;
-    let timeoutReinicio = null; 
+    let timeoutReinicio = null;
+    let timeoutReproduccion = null;
     let tiempoDescanso = 30000; // 30 segundos de espera entre barridos
 
     const isEsclavo  = new URLSearchParams(window.location.search).has('esclavo');
@@ -226,13 +227,9 @@
       if (reproduciendo) {
         cargarVideo(reproduciendo);
       } else {
-        if (!isEsclavo) {
-          lastVideoId = obtenerSemillaDelHistorial();
-          if (playerReady) iniciarAutoDJ();
-          else pendingAutoDJ = true; 
-        } else {
-          mostrarIdleScreen(true);
-        }
+        // El Auto-DJ ahora lo administra el servidor; la TV solo reproduce la cola.
+        actualizarNowPlayingBar(null);
+        mostrarIdleScreen(true);
       }
     });
 
@@ -241,12 +238,9 @@
       if (reproduciendo) actualizarNowPlayingBar(reproduciendo);
 
       if (!reproduciendo) {
-        if (lastVideoId && !isAutoDJ) {
-          if (!isEsclavo) iniciarAutoDJ();
-        } else if (!lastVideoId && !isAutoDJ) {
-          actualizarNowPlayingBar(null);
-          mostrarIdleScreen(true);
-        }
+        // Esperar la tanda Auto-DJ que prepara el servidor.
+        actualizarNowPlayingBar(null);
+        mostrarIdleScreen(true);
       }
     });
 
@@ -294,7 +288,8 @@
 
     function onPlayerStateChange(event) {
       if (event.data === YT.PlayerState.ENDED) {
-        if (!isAutoDJ && !isEsclavo) {
+        clearTimeout(timeoutReproduccion);
+        if (!isEsclavo) {
           // Registrar el historial una sola vez por reproducción.
           if (player.getVideoData && player.getVideoData()) {
             const videoData = player.getVideoData();
@@ -310,6 +305,7 @@
           solicitarSiguienteUnaVez('ended');
         }
       } else if (event.data === YT.PlayerState.PLAYING) {
+        clearTimeout(timeoutReproduccion);
         mostrarIdleScreen(false);
         if (isAutoDJ && player.getVideoData) {
           const videoData = player.getVideoData();
@@ -321,7 +317,7 @@
     }
 
     function solicitarSiguienteUnaVez(motivo) {
-      if (isAutoDJ || isEsclavo || currentPlaybackId === null) return;
+      if (isEsclavo || currentPlaybackId === null) return;
 
       const playbackKey = String(currentPlaybackId);
       if (advanceSentForPlaybackId === playbackKey) return;
@@ -334,7 +330,7 @@
     }
 
     function onPlayerError(event) {
-      if (isEsclavo || isAutoDJ) return;
+      if (isEsclavo) return;
 
       const failedPlaybackId = currentPlaybackId;
       setTimeout(() => {
@@ -392,7 +388,18 @@
       currentPlaybackId = playbackId;
       advanceSentForPlaybackId = null;
       lastVideoId = cancion.videoId;
+      clearTimeout(timeoutReproduccion);
       player.loadVideoById({ videoId: cancion.videoId });
+      const playbackEsperado = String(playbackId);
+      timeoutReproduccion = setTimeout(() => {
+        if (String(currentPlaybackId) !== playbackEsperado) return;
+        let estado = null;
+        try { estado = player && player.getPlayerState ? player.getPlayerState() : null; } catch (error) {}
+        if (estado !== YT.PlayerState.PLAYING && estado !== YT.PlayerState.PAUSED) {
+          console.warn('[PLAYER] Tiempo de espera agotado; se avanzará la cola.');
+          solicitarSiguienteUnaVez('playback_timeout');
+        }
+      }, 25000);
       actualizarNowPlayingBar(cancion);
       mostrarIdleScreen(false);
     }
