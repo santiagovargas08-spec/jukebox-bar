@@ -31,25 +31,48 @@ const CACHE_TTL = 3600000; // 1 hora en milisegundos
 
 // Motor Auto-DJ: recomendaciones locales, sin servicios ni APIs externas.
 const HISTORIAL_MAX = 60;
-const AUTO_DJ_COLA_OBJETIVO = 4;
-const AUTO_DJ_UMBRAL_RECARGA = 2;
-const AUTO_DJ_REINTENTO_MS = 12000;
+const AUTO_DJ_REINTENTO_MS = 10000;
+const AUTO_DJ_BUSQUEDA_TIMEOUT_MS = 9000;
 let autoDjEnCurso = false;
-let autoDjUltimoIntento = 0;
+let autoDjPreparada = null;
 let autoDjRetryTimer = null;
+// Evita repetir cualquier video durante la sesión, aunque salga del historial visible.
+const videosYaReproducidos = new Set();
 const videosFallidos = [];
 const feedbackAutoDj = new Map();
 const MAX_FEEDBACK = 300;
 
 app.use(express.static(path.join(__dirname, 'public')));
 
+function marcarComoReproducido(cancion) {
+  if (cancion && cancion.videoId) videosYaReproducidos.add(String(cancion.videoId));
+}
+
+function emitirReproduccion(cancion) {
+  reproduciendo = cancion;
+  reproduciendo.inicioMs = Date.now();
+  marcarComoReproducido(reproduciendo);
+  io.emit('nueva_reproduccion', reproduciendo);
+  io.emit('cola_actualizada', { cola, reproduciendo });
+}
+
+function reproducirAutoDjPreparada() {
+  if (reproduciendo || cola.length > 0 || !autoDjPreparada) return false;
+  const siguiente = autoDjPreparada;
+  autoDjPreparada = null;
+  emitirReproduccion(siguiente);
+  console.log(`[AUTO-DJ] Reproduciendo: "${siguiente.titulo}"`);
+  rellenarColaAutoDJ();
+  return true;
+}
+
 function intentarReproducir() {
   if (!reproduciendo && cola.length > 0) {
-    reproduciendo = cola.shift();
-    reproduciendo.inicioMs = Date.now();
-    console.log(`\n[►] Auto-inicio → "${reproduciendo.titulo}" (${reproduciendo.nombre})`);
-    io.emit('nueva_reproduccion', reproduciendo);
-    io.emit('cola_actualizada', { cola, reproduciendo });
+    autoDjPreparada = null;
+    const siguiente = cola.shift();
+    emitirReproduccion(siguiente);
+    console.log(`[►] Auto-inicio → "${siguiente.titulo}" (${siguiente.nombre})`);
+    if (cola.length === 0) rellenarColaAutoDJ();
     return true;
   }
   return false;
@@ -57,6 +80,7 @@ function intentarReproducir() {
 
 function agregarAlHistorial(cancion) {
   if (!cancion || !cancion.videoId) return;
+  marcarComoReproducido(cancion);
   if (historialReproducidas[0] && String(historialReproducidas[0].videoId) === String(cancion.videoId)) return;
   historialReproducidas.unshift({
     ...cancion,
@@ -217,22 +241,23 @@ function registrarFeedback(cancion, motivo) {
 }
 
 function programarReintentoAutoDJ() {
-  if (autoDjRetryTimer || reproduciendo || cola.length > 0) return;
+  if (autoDjRetryTimer || cola.length > 0 || autoDjPreparada) return;
   autoDjRetryTimer = setTimeout(() => {
     autoDjRetryTimer = null;
-    if (!reproduciendo && cola.length === 0) rellenarColaAutoDJ();
+    if (cola.length === 0 && !autoDjPreparada) rellenarColaAutoDJ();
   }, AUTO_DJ_REINTENTO_MS);
 }
 
 function crearConsultasRecomendacion(semilla) {
   const titulo = String(semilla && semilla.titulo || '').trim();
   const artista = nombreArtista(semilla);
+  if (!titulo) return [];
   const consultas = [];
-  if (titulo && artista) {
+  if (artista) {
     consultas.push({ q: `"${artista}" "${titulo}" canciones similares`, peso: 42 });
     consultas.push({ q: `${artista} artistas similares canciones`, peso: 34 });
     consultas.push({ q: `${artista} mejores canciones`, peso: 26 });
-  } else if (titulo) {
+  } else {
     consultas.push({ q: `${titulo} canciones similares`, peso: 38 });
     consultas.push({ q: `${titulo} artistas relacionados`, peso: 30 });
   }
@@ -246,28 +271,42 @@ function crearConsultasRecomendacion(semilla) {
   return consultas;
 }
 
-// Auto-DJ reproduce una sola recomendación cada vez. Nunca inserta
-// canciones automáticas en la cola pública de solicitudes.
-async function rellenarColaAutoDJ() {
-  if (autoDjEnCurso || reproduciendo || cola.length > 0) return;
+async function buscarAutoDjConTimeout(query) {
+  let timer;
+  try {
+    return await Promise.race([
+      ytSearch(query),
+      new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error('Tiempo de búsqueda agotado')), AUTO_DJ_BUSQUEDA_TIMEOUT_MS);
+      })
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
-  const semilla = historialReproducidas[0] || null;
+// Prepara una recomendación mientras suena la canción actual.
+// La recomendación nunca se inserta en la cola pública de clientes.
+async function rellenarColaAutoDJ() {
+  if (autoDjEnCurso || autoDjPreparada || cola.length > 0) return;
+  const semilla = reproduciendo || historialReproducidas[0] || null;
   if (!semilla || !semilla.titulo) {
-    console.log('[AUTO-DJ] En espera: todavía no hay historial para recomendar.');
+    console.log('[AUTO-DJ] En espera: necesita una primera canción como referencia.');
     return;
   }
 
   const consultas = crearConsultasRecomendacion(semilla);
   if (!consultas.length) return;
-
   autoDjEnCurso = true;
-  autoDjUltimoIntento = Date.now();
 
   try {
     const excluidos = new Set([
-      ...historialReproducidas.slice(0, 35).map(c => String(c.videoId)),
+      ...videosYaReproducidos,
+      ...historialReproducidas.map(c => String(c.videoId)),
       ...videosFallidos,
-      ...cola.map(c => String(c.videoId))
+      ...cola.map(c => String(c.videoId)),
+      ...(reproduciendo ? [String(reproduciendo.videoId)] : []),
+      ...(autoDjPreparada ? [String(autoDjPreparada.videoId)] : [])
     ]);
 
     const artistasRecientes = new Map();
@@ -281,13 +320,11 @@ async function rellenarColaAutoDJ() {
 
     const candidatos = new Map();
     for (const fuente of consultas) {
-      // Si alguien solicita una canción durante la búsqueda, no seguir
-      // generando Auto-DJ: la petición del público tiene prioridad.
       if (cola.length > 0) break;
       try {
-        const resultado = await ytSearch(fuente.q);
+        const resultado = await buscarAutoDjConTimeout(fuente.q);
         const videos = resultado && Array.isArray(resultado.videos) ? resultado.videos : [];
-        videos.slice(0, 18).forEach(video => {
+        videos.slice(0, 20).forEach(video => {
           if (!video || !video.videoId || !video.title) return;
           const id = String(video.videoId);
           if (excluidos.has(id)) return;
@@ -299,29 +336,29 @@ async function rellenarColaAutoDJ() {
           if (!previo || score > previo.score) candidatos.set(id, { video, score });
         });
       } catch (error) {
-        console.warn('[AUTO-DJ] Falló una consulta relacionada:', error.message);
+        console.warn('[AUTO-DJ] Consulta fallida:', error.message);
       }
     }
 
-    if (cola.length > 0 || reproduciendo) {
-      console.log('[AUTO-DJ] Se cancela la recomendación: hay una canción solicitada.');
+    if (cola.length > 0) {
+      console.log('[AUTO-DJ] Solicitud del público detectada; recomendación descartada.');
       return;
     }
 
     const ranking = Array.from(candidatos.values()).sort((a, b) => b.score - a.score);
-    let elegido = ranking.find(item => {
+    const elegido = ranking.find(item => {
       const artista = claveArtista(nombreArtista(item.video));
       return !artista || !artistasSet.has(artista);
     }) || ranking[0];
 
     if (!elegido) {
-      console.warn('[AUTO-DJ] No se encontraron canciones similares; se reintentará.');
+      console.warn('[AUTO-DJ] Sin candidatos nuevos; se reintentará.');
       programarReintentoAutoDJ();
       return;
     }
 
     const video = elegido.video;
-    const cancionAuto = {
+    autoDjPreparada = {
       id: `autodj-${Date.now()}-${video.videoId}`,
       videoId: String(video.videoId),
       titulo: String(video.title).slice(0, 100),
@@ -331,18 +368,11 @@ async function rellenarColaAutoDJ() {
       duracion: video.timestamp || (video.duration && video.duration.timestamp) || '',
       timestamp: new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
       origen: 'autodj',
-      scoreRecomendacion: Math.round(elegido.score),
-      inicioMs: Date.now()
+      scoreRecomendacion: Math.round(elegido.score)
     };
+    console.log(`[AUTO-DJ] Siguiente canción preparada: "${autoDjPreparada.titulo}"`);
 
-    // Comprobación final antes de tomar el reproductor: la cola de usuarios
-    // siempre gana, incluso si la búsqueda terminó en el mismo instante.
-    if (cola.length > 0 || reproduciendo) return;
-
-    reproduciendo = cancionAuto;
-    console.log(`[AUTO-DJ] Reproducción directa: "${video.title}" | afinidad ${Math.round(elegido.score)}`);
-    io.emit('nueva_reproduccion', reproduciendo);
-    io.emit('cola_actualizada', { cola, reproduciendo });
+    if (!reproduciendo && cola.length === 0) reproducirAutoDjPreparada();
   } catch (error) {
     console.error('[AUTO-DJ] Error generando recomendación:', error.message);
     programarReintentoAutoDJ();
@@ -422,6 +452,7 @@ io.on('connection', (socket) => {
     };
 
     cola.push(nueva);
+    autoDjPreparada = null;
     console.log(`[+] Cola: "${nueva.titulo}" por "${nueva.nombre}"`);
     socket.emit('cancion_confirmada', { titulo: nueva.titulo });
 
@@ -518,17 +549,19 @@ io.on('connection', (socket) => {
     reproduciendo = null;
 
     if (cola.length > 0) {
-      reproduciendo = cola.shift();
-      reproduciendo.inicioMs = Date.now();
-      console.log(`[►] Reproduciendo solicitud → "${reproduciendo.titulo}"`);
-      io.emit('nueva_reproduccion', reproduciendo);
-      io.emit('cola_actualizada', { cola, reproduciendo });
+      autoDjPreparada = null;
+      const siguiente = cola.shift();
+      emitirReproduccion(siguiente);
+      console.log(`[►] Reproduciendo solicitud → "${siguiente.titulo}"`);
+      if (cola.length === 0) rellenarColaAutoDJ();
       return;
     }
 
-    console.log('[AUTO-DJ] Cola de usuarios vacía. Iniciando recomendación directa.');
-    io.emit('cola_actualizada', { cola, reproduciendo: null });
-    rellenarColaAutoDJ();
+    console.log('[AUTO-DJ] Cola pública vacía. Continuando reproducción automática.');
+    if (!reproducirAutoDjPreparada()) {
+      io.emit('cola_actualizada', { cola, reproduciendo: null });
+      rellenarColaAutoDJ();
+    }
   }
 
   socket.on('solicitar_estado', () => {
