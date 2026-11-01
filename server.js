@@ -146,8 +146,16 @@ function puntuarCandidato(video, semilla, fuente, artistasRecientes, feedback) {
   const artistaSemilla = nombreArtista(semilla);
   let score = fuente.peso;
 
-  // Relación de título: favorece canciones del mismo universo musical.
+  // Relación de título, género inferido y época cuando el texto los declara.
   score += Math.round(similitudTexto(semilla.titulo, titulo) * 18);
+  const generosSemilla = detectarGeneros(semilla);
+  const generosCandidato = detectarGeneros(video);
+  if (generosSemilla.length && generosCandidato.length) {
+    score += generosSemilla.some(g => generosCandidato.includes(g)) ? 12 : -5;
+  }
+  const epocaSemilla = detectarEpoca(semilla);
+  const epocaCandidato = detectarEpoca(video);
+  if (epocaSemilla && epocaCandidato) score += epocaSemilla === epocaCandidato ? 5 : -2;
 
   const artistaKey = claveArtista(artista);
   const semillaKey = claveArtista(artistaSemilla);
