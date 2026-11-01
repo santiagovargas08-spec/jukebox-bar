@@ -56,6 +56,7 @@ function marcarComoReproducido(cancion) {
 }
 
 function emitirReproduccion(cancion) {
+  console.log(`[PLAYBACK] Emitiendo nueva_reproduccion: "${cancion && cancion.titulo}" | origen=${cancion && cancion.origen || 'solicitud'} | id=${cancion && cancion.id} | videoId=${cancion && cancion.videoId}`);
   reproduciendo = cancion;
   reproduciendo.inicioMs = Date.now();
   marcarComoReproducido(reproduciendo);
@@ -567,6 +568,7 @@ io.on('connection', (socket) => {
     };
 
     cola.push(nueva);
+    console.log(`[COLA][DIAGNOSTICO] Solicitud recibida por ${clienteId}; reproduciendo=${reproduciendo ? reproduciendo.titulo + ' (id=' + reproduciendo.id + ', origen=' + (reproduciendo.origen || 'solicitud') + ')' : 'null'}; cola=${cola.length}`);
     // Una solicitud pública reemplaza la recomendación preparada para el
     // siguiente turno, pero NUNCA interrumpe la canción que ya está sonando.
     autoDjPreparada = null;
@@ -610,6 +612,7 @@ io.on('connection', (socket) => {
     }
 
     const motivo = payload && typeof payload === 'object' ? payload.motivo : '';
+    console.warn(`[AVANCE][DIAGNOSTICO] siguiente_cancion recibido desde ${clienteId}; playbackId=${playbackId}; motivo=${motivo || 'sin motivo'}; actual=${reproduciendo ? reproduciendo.titulo + ' (id=' + reproduciendo.id + ')' : 'null'}; cola=${cola.length}`);
     if (reproduciendo) {
       registrarFeedback(reproduciendo, motivo);
       if (motivo === 'ended' || motivo === 'natural_end') agregarAlHistorial(reproduciendo);
@@ -621,6 +624,7 @@ io.on('connection', (socket) => {
   
   // Saltar canción desde el panel
   socket.on('admin_saltar', () => {
+    console.warn(`[AVANCE][DIAGNOSTICO] admin_saltar recibido desde ${clienteId}; actual=${reproduciendo ? reproduciendo.titulo + ' (id=' + reproduciendo.id + ')' : 'null'}; cola=${cola.length}`);
     console.log(`[⚡ ADMIN] Forzó saltar canción actual.`);
     if (reproduciendo) registrarFeedback(reproduciendo, 'admin_skip');
     avanzarCola('admin_saltar');
