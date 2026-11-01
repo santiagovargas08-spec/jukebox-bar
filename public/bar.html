@@ -244,7 +244,7 @@
     });
 
     socket.on('nueva_reproduccion', (cancion) => {
-      isAutoDJ = false;
+      isAutoDJ = cancion && cancion.origen === 'autodj';
       cargarVideo(cancion, true);
       mostrarNotificacion(cancion);
     });
