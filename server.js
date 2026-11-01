@@ -567,13 +567,23 @@ io.on('connection', (socket) => {
     };
 
     cola.push(nueva);
+    // Una solicitud pública reemplaza la recomendación preparada para el
+    // siguiente turno, pero NUNCA interrumpe la canción que ya está sonando.
     autoDjPreparada = null;
     console.log(`[+] Cola: "${nueva.titulo}" por "${nueva.nombre}"`);
     socket.emit('cancion_confirmada', { titulo: nueva.titulo });
 
-    if (!intentarReproducir()) {
+    if (reproduciendo) {
+      // Mientras haya una reproducción activa (incluido Auto-DJ), solo se
+      // actualiza la cola. avanzarCola() la iniciará al terminar la canción.
       io.emit('cola_actualizada', { cola, reproduciendo });
+      console.log('[COLA] Solicitud añadida; se reproducirá al terminar la pista actual.');
+      return;
     }
+
+    // Solo iniciar inmediatamente cuando realmente no hay nada reproduciéndose.
+    intentarReproducir();
+    io.emit('cola_actualizada', { cola, reproduciendo });
   });
 
   // SEÑAL DEL BAR (TERMINÓ CANCIÓN) O DEL ADMIN (SALTAR CANCIÓN)
