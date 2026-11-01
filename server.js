@@ -215,41 +215,38 @@ function detectarEpoca(video) {
   return decada ? Number(decada[1]) + 1900 : null;
 }
 
-function puntuarCandidato(video, semilla, fuente, artistasRecientes, feedback) {
+function puntuarCandidato(video, semilla, fuente, artistasRecientes, feedback, perfil = obtenerPerfilAutoDJ()) {
   const titulo = String(video.title || '');
-  const artista = nombreArtista(video);
-  const artistaSemilla = nombreArtista(semilla);
+  const artistaKey = claveArtista(nombreArtista(video));
   let score = fuente.peso;
 
-  // Relación de título, género inferido y época cuando el texto los declara.
-  score += Math.round(similitudTexto(semilla.titulo, titulo) * 18);
-  const generosSemilla = detectarGeneros(semilla);
+  // Afinidad con el promedio musical de las últimas canciones.
   const generosCandidato = detectarGeneros(video);
-  if (generosSemilla.length && generosCandidato.length) {
-    score += generosSemilla.some(g => generosCandidato.includes(g)) ? 12 : -5;
+  const pesosGenero = perfil.generos || [];
+  if (pesosGenero.length && generosCandidato.length) {
+    const totalPeso = pesosGenero.reduce((suma, item) => suma + item[1], 0) || 1;
+    const afinidad = pesosGenero.reduce((suma, [genero, peso]) =>
+      suma + (generosCandidato.includes(genero) ? peso : 0), 0) / totalPeso;
+    score += Math.round(afinidad * 24);
+    if (afinidad === 0) score -= 5;
+  } else if (semilla) {
+    score += Math.round(similitudTexto(semilla.titulo, titulo) * 8);
   }
-  const epocaSemilla = detectarEpoca(semilla);
-  const epocaCandidato = detectarEpoca(video);
-  if (epocaSemilla && epocaCandidato) score += epocaSemilla === epocaCandidato ? 5 : -2;
 
-  const artistaKey = claveArtista(artista);
-  const semillaKey = claveArtista(artistaSemilla);
-  if (artistaKey && semillaKey && artistaKey === semillaKey) score += 7;
-  else if (artistaKey && artistasRecientes.has(artistaKey)) score -= 18;
-  else if (artistaKey) score += 9; // descubrir otro artista relacionado
+  // Favorecer artistas relacionados, sin encadenar siempre al mismo cantante.
+  const pesoArtista = (perfil.artistas || []).find(([artista]) => artista === artistaKey);
+  if (artistaKey && artistasRecientes.has(artistaKey)) score -= 12;
+  else if (pesoArtista) score += Math.min(5, Math.round(pesoArtista[1] * 2));
+  else if (artistaKey) score += 5;
 
   // Popularidad como señal secundaria, no como criterio dominante.
   const vistas = Number(video.views || 0);
   if (vistas > 0) score += Math.min(8, Math.log10(vistas + 1) * 1.1);
-
-  // Señales aprendidas durante esta sesión: finalización/skip.
   if (feedback) score += Math.max(-12, Math.min(12, feedback.score || 0));
 
-  // Evitar resultados excesivamente cortos (clips, intros, etc.).
   const segundos = Number(video.seconds || (video.duration && video.duration.seconds) || 0);
   if (segundos > 0 && segundos < 75) score -= 25;
   if (segundos >= 150) score += 2;
-
   return score;
 }
 
@@ -299,25 +296,67 @@ function programarReintentoAutoDJ() {
   }, AUTO_DJ_REINTENTO_MS);
 }
 
-function crearConsultasRecomendacion(semilla) {
-  const titulo = String(semilla && semilla.titulo || '').trim();
-  const artista = nombreArtista(semilla);
-  if (!titulo) return [];
-  const consultas = [];
-  if (artista) {
-    consultas.push({ q: `"${artista}" "${titulo}" canciones similares`, peso: 42 });
-    consultas.push({ q: `${artista} artistas similares canciones`, peso: 34 });
-    consultas.push({ q: `${artista} mejores canciones`, peso: 26 });
-  } else {
-    consultas.push({ q: `${titulo} canciones similares`, peso: 38 });
-    consultas.push({ q: `${titulo} artistas relacionados`, peso: 30 });
-  }
-  const generos = detectarGeneros(semilla);
-  if (generos.length) {
-    consultas.push({
-      q: `${artista ? artista + ' ' : ''}${generos[0]} canciones similares a ${titulo}`,
-      peso: 32
+function obtenerPerfilAutoDJ() {
+  // La pista actual y las últimas diez terminadas forman el gusto musical reciente.
+  const recientes = [
+    ...(reproduciendo ? [reproduciendo] : []),
+    ...historialReproducidas
+  ].filter(c => c && c.videoId).slice(0, 11);
+
+  const pesosGenero = new Map();
+  const pesosArtista = new Map();
+  recientes.forEach((cancion, indice) => {
+    const peso = Math.max(0.35, 1 - indice * 0.065);
+    detectarGeneros(cancion).forEach(genero => {
+      pesosGenero.set(genero, (pesosGenero.get(genero) || 0) + peso);
     });
+    const artista = claveArtista(nombreArtista(cancion));
+    if (artista) pesosArtista.set(artista, (pesosArtista.get(artista) || 0) + peso);
+  });
+
+  const generos = Array.from(pesosGenero.entries()).sort((a, b) => b[1] - a[1]);
+  const artistas = Array.from(pesosArtista.entries()).sort((a, b) => b[1] - a[1]);
+  return { recientes, generos, artistas };
+}
+
+function crearConsultasRecomendacion(semilla, perfil = obtenerPerfilAutoDJ()) {
+  const consultas = [];
+  const recientes = perfil.recientes || [];
+  const generos = perfil.generos || [];
+  const artistas = perfil.artistas || [];
+
+  // Las consultas se basan en la tendencia de varias canciones, no solo en la última.
+  generos.slice(0, 3).forEach(([genero, peso], indice) => {
+    const etiqueta = genero === 'hiphop' ? 'hip hop' :
+      genero === 'electronica' ? 'música electrónica' :
+      genero === 'regional' ? 'regional mexicano' : genero;
+    consultas.push({
+      q: `mejores canciones de ${etiqueta} artistas variados`,
+      peso: 46 - indice * 5 + Math.min(5, peso)
+    });
+  });
+
+  artistas.slice(0, 2).forEach(([artista], indice) => {
+    consultas.push({
+      q: `${artista} canciones similares artistas del mismo género`,
+      peso: 34 - indice * 4
+    });
+  });
+
+  // Añade una búsqueda basada en las dos pistas recientes más representativas.
+  recientes.slice(0, 2).forEach((cancion, indice) => {
+    const artista = nombreArtista(cancion);
+    const titulo = String(cancion.titulo || '').trim();
+    if (titulo && artista) {
+      consultas.push({
+        q: `canciones similares a ${artista} ${titulo}`,
+        peso: 30 - indice * 4
+      });
+    }
+  });
+
+  if (!consultas.length && semilla && semilla.titulo) {
+    consultas.push({ q: `${semilla.titulo} canciones similares`, peso: 35 });
   }
   return consultas;
 }
@@ -346,7 +385,8 @@ async function rellenarColaAutoDJ() {
     return;
   }
 
-  const consultas = crearConsultasRecomendacion(semilla);
+  const perfilMusical = obtenerPerfilAutoDJ();
+  const consultas = crearConsultasRecomendacion(semilla, perfilMusical);
   if (!consultas.length) return;
   autoDjEnCurso = true;
 
@@ -391,7 +431,8 @@ async function rellenarColaAutoDJ() {
           if (Array.from(candidatos.values()).some(item => mismaCancion(video, item.video))) return;
           const score = puntuarCandidato(
             video, semilla, fuente, artistasSet,
-            feedbackAutoDj.get('artist:' + claveArtista(nombreArtista(video))) || feedbackAutoDj.get(id)
+            feedbackAutoDj.get('artist:' + claveArtista(nombreArtista(video))) || feedbackAutoDj.get(id),
+            perfilMusical
           );
           const previo = candidatos.get(id);
           if (!previo || score > previo.score) candidatos.set(id, { video, score });
