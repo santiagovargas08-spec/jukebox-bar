@@ -94,7 +94,7 @@ function similitudTexto(a, b) {
 
 function nombreArtista(video) {
   return String(
-    video && (video.artista || video.artist || (video.author && video.author.name) || video.nombre) || ''
+    video && (video.artista || video.artist || (video.author && video.author.name)) || ''
   ).trim();
 }
 
