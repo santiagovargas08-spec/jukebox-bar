@@ -30,7 +30,14 @@ const cacheSearches = {};
 const CACHE_TTL = 3600000; // 1 hora en milisegundos
 
 // 🔥 CONSTANTES DE HISTORIAL
-const HISTORIAL_MAX = 10; // Mantener las últimas 10 canciones reproducidas
+const HISTORIAL_MAX = 40; // Ventana amplia para reducir repeticiones del Auto-DJ
+const AUTO_DJ_COLA_OBJETIVO = 4;
+const AUTO_DJ_UMBRAL_RECARGA = 2;
+const AUTO_DJ_REINTENTO_MS = 12000;
+let autoDjEnCurso = false;
+let autoDjUltimoIntento = 0;
+let autoDjRetryTimer = null;
+const videosFallidos = [];
 
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -81,6 +88,81 @@ function obtenerSemillaDelHistorial() {
   return semillasMix[Math.floor(Math.random() * semillasMix.length)];
 }
 
+// AUTO-DJ DEL SERVIDOR: mantiene una cola real, evita el historial reciente
+// y permite que la pantalla del bar avance incluso si YouTube falla.
+function programarReintentoAutoDJ() {
+  if (autoDjRetryTimer) return;
+  autoDjRetryTimer = setTimeout(() => {
+    autoDjRetryTimer = null;
+    if (cola.length < AUTO_DJ_UMBRAL_RECARGA) rellenarColaAutoDJ();
+  }, AUTO_DJ_REINTENTO_MS);
+}
+
+async function rellenarColaAutoDJ() {
+  if (autoDjEnCurso || cola.length >= AUTO_DJ_UMBRAL_RECARGA) return;
+  if (Date.now() - autoDjUltimoIntento < 5000) return;
+
+  autoDjEnCurso = true;
+  autoDjUltimoIntento = Date.now();
+  try {
+    const semilla = historialReproducidas[0] || null;
+    const consultas = semilla
+      ? [`${semilla.titulo} canciones similares`, `${semilla.titulo} mix musica`]
+      : ['éxitos musicales variados mix', 'música popular para bar mix'];
+
+    const excluidos = new Set([
+      ...historialReproducidas.slice(0, 30).map(c => String(c.videoId)),
+      ...videosFallidos,
+      ...cola.map(c => String(c.videoId)),
+      ...(reproduciendo ? [String(reproduciendo.videoId)] : [])
+    ]);
+
+    let candidatos = [];
+    for (const consulta of consultas) {
+      const resultado = await ytSearch(consulta);
+      const videos = resultado && Array.isArray(resultado.videos) ? resultado.videos : [];
+      candidatos = candidatos.concat(videos.filter(video =>
+        video && video.videoId && video.title && !excluidos.has(String(video.videoId))
+      ));
+      if (candidatos.length >= 8) break;
+    }
+
+    // Mezclar resultados para que el orden no sea siempre el de YouTube.
+    for (let i = candidatos.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [candidatos[i], candidatos[j]] = [candidatos[j], candidatos[i]];
+    }
+
+    const faltan = Math.max(0, AUTO_DJ_COLA_OBJETIVO - cola.length);
+    const seleccionados = candidatos.slice(0, faltan);
+    seleccionados.forEach((video, index) => {
+      cola.push({
+        id: `autodj-${Date.now()}-${index}-${video.videoId}`,
+        videoId: String(video.videoId),
+        titulo: String(video.title).slice(0, 100),
+        nombre: 'Auto-DJ',
+        thumbnail: video.thumbnail || '',
+        timestamp: new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
+        origen: 'autodj'
+      });
+    });
+
+    if (seleccionados.length) {
+      console.log(`[🎧 AUTO-DJ] Se agregaron ${seleccionados.length} canciones nuevas.`);
+      if (!reproduciendo) intentarReproducir();
+      io.emit('cola_actualizada', { cola, reproduciendo });
+    } else {
+      console.warn('[AUTO-DJ] No se encontraron candidatos; se reintentará.');
+      programarReintentoAutoDJ();
+    }
+  } catch (error) {
+    console.error('[AUTO-DJ] Error buscando canciones:', error.message);
+    programarReintentoAutoDJ();
+  } finally {
+    autoDjEnCurso = false;
+  }
+}
+
 // SOCKET.IO — TIEMPO REAL
 io.on('connection', (socket) => {
   const clienteId = socket.id.slice(0, 8);
@@ -88,6 +170,7 @@ io.on('connection', (socket) => {
 
   // Enviar estado inicial incluyendo historial
   socket.emit('estado_inicial', { cola, reproduciendo, historialReproducidas });
+  if (!reproduciendo && cola.length < AUTO_DJ_UMBRAL_RECARGA) rellenarColaAutoDJ();
 
   // BUSCADOR EN VIVO DESDE EL CELULAR Y ADMIN (CON CACHÉ)
   socket.on('buscar_canciones', async (query) => {
@@ -183,7 +266,12 @@ io.on('connection', (socket) => {
       return;
     }
 
-    avanzarCola();
+    const motivo = payload && typeof payload === 'object' ? payload.motivo : '';
+    if (motivo && /error|timeout/i.test(String(motivo)) && reproduciendo && reproduciendo.videoId) {
+      videosFallidos.unshift(String(reproduciendo.videoId));
+      if (videosFallidos.length > 40) videosFallidos.pop();
+    }
+    avanzarCola(motivo);
   });
 
   // ── ✨ NUEVOS EVENTOS: PANEL DE ADMINISTRACIÓN ────────────────
@@ -191,7 +279,7 @@ io.on('connection', (socket) => {
   // Saltar canción desde el panel
   socket.on('admin_saltar', () => {
     console.log(`[⚡ ADMIN] Forzó saltar canción actual.`);
-    avanzarCola();
+    avanzarCola('admin_saltar');
   });
 
   // Eliminar una canción específica de la fila usando su ID
@@ -238,16 +326,17 @@ io.on('connection', (socket) => {
   });
 
   // Función interna para avanzar la lista
-  function avanzarCola() {
+  function avanzarCola(motivo = '') {
     if (cola.length > 0) {
       reproduciendo = cola.shift();
       console.log(`[►] Reproduciendo → "${reproduciendo.titulo}"`);
       io.emit('nueva_reproduccion', reproduciendo);
     } else {
       reproduciendo = null;
-      console.log('[■] Fila vacía.');
+      console.log('[■] Fila vacía. El Auto-DJ buscará la siguiente tanda.');
     }
     io.emit('cola_actualizada', { cola, reproduciendo });
+    if (cola.length < AUTO_DJ_UMBRAL_RECARGA) rellenarColaAutoDJ();
   }
 
   socket.on('solicitar_estado', () => {
