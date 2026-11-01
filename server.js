@@ -29,8 +29,8 @@ let historialReproducidas = []; // 🔥 NUEVO: Historial de últimas canciones r
 const cacheSearches = {};
 const CACHE_TTL = 3600000; // 1 hora en milisegundos
 
-// 🔥 CONSTANTES DE HISTORIAL
-const HISTORIAL_MAX = 40; // Ventana amplia para reducir repeticiones del Auto-DJ
+// Motor Auto-DJ: recomendaciones locales, sin servicios ni APIs externas.
+const HISTORIAL_MAX = 60;
 const AUTO_DJ_COLA_OBJETIVO = 4;
 const AUTO_DJ_UMBRAL_RECARGA = 2;
 const AUTO_DJ_REINTENTO_MS = 12000;
@@ -38,6 +38,8 @@ let autoDjEnCurso = false;
 let autoDjUltimoIntento = 0;
 let autoDjRetryTimer = null;
 const videosFallidos = [];
+const feedbackAutoDj = new Map();
+const MAX_FEEDBACK = 300;
 
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -52,44 +54,109 @@ function intentarReproducir() {
   return false;
 }
 
-// 🔥 NUEVA FUNCIÓN: Agregar a historial
 function agregarAlHistorial(cancion) {
-  if (cancion && cancion.videoId) {
-    // Evitar duplicados consecutivos
-    if (historialReproducidas.length === 0 || 
-        historialReproducidas[0].videoId !== cancion.videoId) {
-      historialReproducidas.unshift(cancion);
-      // Mantener solo las últimas HISTORIAL_MAX canciones
-      if (historialReproducidas.length > HISTORIAL_MAX) {
-        historialReproducidas.pop();
-      }
-      console.log(`[📜] Historial actualizado (${historialReproducidas.length} canciones)`);
-    }
+  if (!cancion || !cancion.videoId) return;
+  if (historialReproducidas[0] && String(historialReproducidas[0].videoId) === String(cancion.videoId)) return;
+  historialReproducidas.unshift({
+    ...cancion,
+    reproducidaEn: Date.now()
+  });
+  if (historialReproducidas.length > HISTORIAL_MAX) historialReproducidas.length = HISTORIAL_MAX;
+  io.emit('historial_actualizado', { historialReproducidas });
+}
+
+function normalizarTexto(valor) {
+  return String(valor || '').toLowerCase()
+    .normalize('NFD').replace(/[\\u0300-\\u036f]/g, '')
+    .replace(/[^a-z0-9 ]/g, ' ').replace(/\\s+/g, ' ').trim();
+}
+
+const PALABRAS_COMUNES = new Set([
+  'official','video','music','audio','lyrics','lyric','hd','4k','remaster',
+  'version','live','feat','ft','the','and','de','la','el','en','del','con',
+  'song','songs','mix','topic','vevo','original','clip'
+]);
+
+function tokensMusicales(texto) {
+  return normalizarTexto(texto).split(' ')
+    .filter(t => t.length > 2 && !PALABRAS_COMUNES.has(t));
+}
+
+function similitudTexto(a, b) {
+  const A = new Set(tokensMusicales(a));
+  const B = new Set(tokensMusicales(b));
+  if (!A.size || !B.size) return 0;
+  let comunes = 0;
+  A.forEach(t => { if (B.has(t)) comunes++; });
+  return comunes / Math.max(1, Math.min(A.size, B.size));
+}
+
+function nombreArtista(video) {
+  return String(
+    video && (video.artista || video.artist || (video.author && video.author.name) || video.nombre) || ''
+  ).trim();
+}
+
+function claveArtista(nombre) {
+  return normalizarTexto(nombre).replace(/\\b(official|vevo|topic|records|music)\\b/g, '').trim();
+}
+
+function puntuarCandidato(video, semilla, fuente, artistasRecientes, feedback) {
+  const titulo = String(video.title || '');
+  const artista = nombreArtista(video);
+  const artistaSemilla = nombreArtista(semilla);
+  let score = fuente.peso;
+
+  // Relación de título: favorece canciones del mismo universo musical.
+  score += Math.round(similitudTexto(semilla.titulo, titulo) * 18);
+
+  const artistaKey = claveArtista(artista);
+  const semillaKey = claveArtista(artistaSemilla);
+  if (artistaKey && semillaKey && artistaKey === semillaKey) score += 7;
+  else if (artistaKey && artistasRecientes.has(artistaKey)) score -= 18;
+  else if (artistaKey) score += 9; // descubrir otro artista relacionado
+
+  // Popularidad como señal secundaria, no como criterio dominante.
+  const vistas = Number(video.views || 0);
+  if (vistas > 0) score += Math.min(8, Math.log10(vistas + 1) * 1.1);
+
+  // Señales aprendidas durante esta sesión: finalización/skip.
+  if (feedback) score += Math.max(-12, Math.min(12, feedback.score || 0));
+
+  // Evitar resultados excesivamente cortos (clips, intros, etc.).
+  const segundos = Number(video.seconds || (video.duration && video.duration.seconds) || 0);
+  if (segundos > 0 && segundos < 75) score -= 25;
+  if (segundos >= 150) score += 2;
+
+  return score;
+}
+
+function registrarFeedback(cancion, motivo) {
+  if (!cancion || !cancion.videoId) return;
+  const key = String(cancion.videoId);
+  const previo = feedbackAutoDj.get(key) || { score: 0, completadas: 0, saltos: 0 };
+  const razon = String(motivo || '').toLowerCase();
+
+  // Un final natural es una señal positiva. Errores técnicos nunca son
+  // interpretados como rechazo musical. El salto administrativo es neutral.
+  if (razon === 'ended' || razon === 'natural_end') {
+    previo.score = Math.min(12, previo.score + 3);
+    previo.completadas++;
+  } else if (razon.includes('admin') || razon.includes('skip')) {
+    previo.saltos++;
+    previo.score = Math.max(-12, previo.score - 0.5);
+  } else if (razon.includes('error') || razon.includes('timeout')) {
+    videosFallidos.unshift(key);
+    while (videosFallidos.length > 60) videosFallidos.pop();
+  }
+
+  feedbackAutoDj.delete(key);
+  feedbackAutoDj.set(key, previo);
+  while (feedbackAutoDj.size > MAX_FEEDBACK) {
+    feedbackAutoDj.delete(feedbackAutoDj.keys().next().value);
   }
 }
 
-// 🔥 NUEVA FUNCIÓN: Obtener una canción semilla del historial (preferiblemente la más antigua del mix)
-function obtenerSemillaDelHistorial() {
-  // Retornar la canción más antigua del historial (la última en la cola)
-  // Esto asegura variedad en el Auto-DJ
-  if (historialReproducidas.length > 0) {
-    const semilla = historialReproducidas[Math.floor(Math.random() * historialReproducidas.length)];
-    console.log(`[🎲] Semilla Auto-DJ seleccionada del historial: "${semilla.titulo}"`);
-    return semilla.videoId;
-  }
-  // Fallback: semillas predefinidas si el historial está vacío
-  const semillasMix = [
-    'nJ7rBzClyCg', 'Qk7rhW-SB1g', 'D14H7qE1Tq0', 'y9Q30K7xLko', 
-    'c8mP91kZ9C8', 'Wj6HkY10Y9U', 'z_a9OvhN168', '5R-7E5u2t8U', 
-    'wDeZiEZGS3Q', 'W0Wc3eQ0Y5k', 'lM0D-l3w-X0', 'R5j71wB27cE', 
-    'a-H_h2v4O0I', 'ca48oMV59LU', 'TapXs54Ah3E', '2aD2hYg1_n8', 
-    'eHhLzHofkE8', 'I_mQv7-QIfs', 'eM6A7gJ_U2Y', 'G8v7gBWe3c4'
-  ];
-  return semillasMix[Math.floor(Math.random() * semillasMix.length)];
-}
-
-// AUTO-DJ DEL SERVIDOR: mantiene una cola real, evita el historial reciente
-// y permite que la pantalla del bar avance incluso si YouTube falla.
 function programarReintentoAutoDJ() {
   if (autoDjRetryTimer) return;
   autoDjRetryTimer = setTimeout(() => {
@@ -98,65 +165,126 @@ function programarReintentoAutoDJ() {
   }, AUTO_DJ_REINTENTO_MS);
 }
 
+function crearConsultasRecomendacion(semilla) {
+  const titulo = String(semilla && semilla.titulo || '').trim();
+  const artista = nombreArtista(semilla);
+  const consultas = [];
+  if (titulo && artista) {
+    consultas.push({ q: `"${artista}" "${titulo}" canciones similares`, peso: 42 });
+    consultas.push({ q: `${artista} artistas similares canciones`, peso: 34 });
+    consultas.push({ q: `${artista} mejores canciones`, peso: 26 });
+  } else if (titulo) {
+    consultas.push({ q: `${titulo} canciones similares`, peso: 38 });
+    consultas.push({ q: `${titulo} artistas relacionados`, peso: 30 });
+  }
+  // No usar búsquedas genéricas ni semillas aleatorias. Sin canción semilla,
+  // el motor espera una canción solicitada por el público.
+  return consultas;
+}
+
 async function rellenarColaAutoDJ() {
   if (autoDjEnCurso || cola.length >= AUTO_DJ_UMBRAL_RECARGA) return;
-  if (Date.now() - autoDjUltimoIntento < 5000) return;
+  if (Date.now() - autoDjUltimoIntento < 4000) return;
+
+  const semilla = reproduciendo || historialReproducidas[0] || null;
+  if (!semilla || !semilla.titulo) {
+    console.log('[AUTO-DJ] Esperando una canción semilla del público.');
+    return;
+  }
+
+  const consultas = crearConsultasRecomendacion(semilla);
+  if (!consultas.length) return;
 
   autoDjEnCurso = true;
   autoDjUltimoIntento = Date.now();
-  try {
-    const semilla = historialReproducidas[0] || null;
-    const consultas = semilla
-      ? [`${semilla.titulo} canciones similares`, `${semilla.titulo} mix musica`]
-      : ['éxitos musicales variados mix', 'música popular para bar mix'];
 
+  try {
     const excluidos = new Set([
-      ...historialReproducidas.slice(0, 30).map(c => String(c.videoId)),
+      ...historialReproducidas.slice(0, 35).map(c => String(c.videoId)),
       ...videosFallidos,
       ...cola.map(c => String(c.videoId)),
       ...(reproduciendo ? [String(reproduciendo.videoId)] : [])
     ]);
 
-    let candidatos = [];
-    for (const consulta of consultas) {
-      const resultado = await ytSearch(consulta);
-      const videos = resultado && Array.isArray(resultado.videos) ? resultado.videos : [];
-      candidatos = candidatos.concat(videos.filter(video =>
-        video && video.videoId && video.title && !excluidos.has(String(video.videoId))
-      ));
-      if (candidatos.length >= 8) break;
+    const artistasRecientes = new Map();
+    historialReproducidas.slice(0, 12).forEach(c => {
+      const key = claveArtista(nombreArtista(c));
+      if (key) artistasRecientes.set(key, (artistasRecientes.get(key) || 0) + 1);
+    });
+    const artistasSet = new Set(
+      Array.from(artistasRecientes.entries()).filter(([, n]) => n >= 2).map(([k]) => k)
+    );
+
+    const candidatos = new Map();
+    for (const fuente of consultas) {
+      try {
+        const resultado = await ytSearch(fuente.q);
+        const videos = resultado && Array.isArray(resultado.videos) ? resultado.videos : [];
+        videos.slice(0, 18).forEach(video => {
+          if (!video || !video.videoId || !video.title) return;
+          const id = String(video.videoId);
+          if (excluidos.has(id)) return;
+          const existente = candidatos.get(id);
+          const score = puntuarCandidato(
+            video, semilla, fuente, artistasSet, feedbackAutoDj.get(id)
+          );
+          if (!existente || score > existente.score) {
+            candidatos.set(id, { video, score, fuente: fuente.q });
+          }
+        });
+      } catch (error) {
+        console.warn('[AUTO-DJ] Falló una consulta relacionada:', error.message);
+      }
     }
 
-    // Mezclar resultados para que el orden no sea siempre el de YouTube.
-    for (let i = candidatos.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [candidatos[i], candidatos[j]] = [candidatos[j], candidatos[i]];
-    }
-
+    const ranking = Array.from(candidatos.values()).sort((a, b) => b.score - a.score);
+    const seleccionados = [];
+    const artistasElegidos = new Set();
     const faltan = Math.max(0, AUTO_DJ_COLA_OBJETIVO - cola.length);
-    const seleccionados = candidatos.slice(0, faltan);
-    seleccionados.forEach((video, index) => {
+
+    // Selección por ranking con diversidad: máximo un tema por artista
+    // en esta tanda, salvo que no existan suficientes alternativas.
+    for (const item of ranking) {
+      if (seleccionados.length >= faltan) break;
+      const artista = claveArtista(nombreArtista(item.video));
+      if (artista && artistasElegidos.has(artista)) continue;
+      seleccionados.push(item);
+      if (artista) artistasElegidos.add(artista);
+    }
+    if (seleccionados.length < faltan) {
+      for (const item of ranking) {
+        if (seleccionados.length >= faltan) break;
+        if (seleccionados.some(x => String(x.video.videoId) === String(item.video.videoId))) continue;
+        seleccionados.push(item);
+      }
+    }
+
+    seleccionados.forEach((item, index) => {
+      const video = item.video;
       cola.push({
         id: `autodj-${Date.now()}-${index}-${video.videoId}`,
         videoId: String(video.videoId),
         titulo: String(video.title).slice(0, 100),
-        nombre: 'Auto-DJ',
+        nombre: 'Auto-DJ GENESIS',
+        artista: nombreArtista(video),
         thumbnail: video.thumbnail || '',
+        duracion: video.timestamp || (video.duration && video.duration.timestamp) || '',
         timestamp: new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
-        origen: 'autodj'
+        origen: 'autodj',
+        scoreRecomendacion: Math.round(item.score)
       });
+      console.log(`[AUTO-DJ] + "${video.title}" | afinidad ${Math.round(item.score)} | ${nombreArtista(video) || 'artista desconocido'}`);
     });
 
     if (seleccionados.length) {
-      console.log(`[🎧 AUTO-DJ] Se agregaron ${seleccionados.length} canciones nuevas.`);
       if (!reproduciendo) intentarReproducir();
       io.emit('cola_actualizada', { cola, reproduciendo });
     } else {
-      console.warn('[AUTO-DJ] No se encontraron candidatos; se reintentará.');
+      console.warn('[AUTO-DJ] Sin candidatos relacionados disponibles; se reintentará.');
       programarReintentoAutoDJ();
     }
   } catch (error) {
-    console.error('[AUTO-DJ] Error buscando canciones:', error.message);
+    console.error('[AUTO-DJ] Error generando recomendaciones:', error.message);
     programarReintentoAutoDJ();
   } finally {
     autoDjEnCurso = false;
@@ -267,9 +395,9 @@ io.on('connection', (socket) => {
     }
 
     const motivo = payload && typeof payload === 'object' ? payload.motivo : '';
-    if (motivo && /error|timeout/i.test(String(motivo)) && reproduciendo && reproduciendo.videoId) {
-      videosFallidos.unshift(String(reproduciendo.videoId));
-      if (videosFallidos.length > 40) videosFallidos.pop();
+    if (reproduciendo) {
+      registrarFeedback(reproduciendo, motivo);
+      if (motivo === 'ended' || motivo === 'natural_end') agregarAlHistorial(reproduciendo);
     }
     avanzarCola(motivo);
   });
@@ -279,7 +407,7 @@ io.on('connection', (socket) => {
   // Saltar canción desde el panel
   socket.on('admin_saltar', () => {
     console.log(`[⚡ ADMIN] Forzó saltar canción actual.`);
-    avanzarCola('admin_saltar');
+    if (reproduciendo) registrarFeedback(reproduciendo, 'admin_skip');\n    avanzarCola('admin_saltar');
   });
 
   // Eliminar una canción específica de la fila usando su ID
