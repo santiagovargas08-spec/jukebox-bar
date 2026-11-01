@@ -38,6 +38,7 @@ let autoDjPreparada = null;
 let autoDjRetryTimer = null;
 // Evita repetir cualquier video durante la sesión, aunque salga del historial visible.
 const videosYaReproducidos = new Set();
+const MAX_VIDEOS_SESION = 2000;
 const videosFallidos = [];
 const feedbackAutoDj = new Map();
 const MAX_FEEDBACK = 300;
@@ -45,7 +46,13 @@ const MAX_FEEDBACK = 300;
 app.use(express.static(path.join(__dirname, 'public')));
 
 function marcarComoReproducido(cancion) {
-  if (cancion && cancion.videoId) videosYaReproducidos.add(String(cancion.videoId));
+  if (!cancion || !cancion.videoId) return;
+  const id = String(cancion.videoId);
+  videosYaReproducidos.delete(id);
+  videosYaReproducidos.add(id);
+  while (videosYaReproducidos.size > MAX_VIDEOS_SESION) {
+    videosYaReproducidos.delete(videosYaReproducidos.values().next().value);
+  }
 }
 
 function emitirReproduccion(cancion) {
@@ -378,6 +385,11 @@ async function rellenarColaAutoDJ() {
     programarReintentoAutoDJ();
   } finally {
     autoDjEnCurso = false;
+    // Si esta búsqueda inició el Auto DJ desde reposo, empezar a preparar
+    // la siguiente pista apenas quede sonando la primera recomendación.
+    if (reproduciendo && cola.length === 0 && !autoDjPreparada && !autoDjRetryTimer) {
+      setImmediate(() => rellenarColaAutoDJ());
+    }
   }
 }
 
@@ -432,9 +444,10 @@ io.on('connection', (socket) => {
     // 🔥 VALIDACIÓN: Evitar duplicados en la fila para TODOS (sin importar quién la pidió)
     const videoIdNormalizado = String(cancion.videoId).trim();
     
-    const yaEnCola = cola.some(c => c.videoId === videoIdNormalizado);
+    const yaEnCola = cola.some(c => String(c.videoId) === videoIdNormalizado);
+    const yaSuena = reproduciendo && String(reproduciendo.videoId) === videoIdNormalizado;
 
-    if (yaEnCola) {
+    if (yaEnCola || yaSuena) {
       console.log(`[⚠️  DUPLICADO] ${cancion.nombre} intentó pedir "${cancion.titulo}" pero ya está en la fila.`);
       socket.emit('error_cancion', { 
         mensaje: `🎵 "${cancion.titulo}" ya está en la fila. ¡Todos la disfrutaremos juntos!` 
