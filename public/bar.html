@@ -218,46 +218,6 @@
 
     const socket = io({ reconnectionDelay: 1000 });
 
-    // Mantener encendida la pantalla del TV cuando el navegador lo permita.
-    // Screen Wake Lock requiere HTTPS y soporte del navegador; no sustituye
-    // la configuración de ahorro de energía propia del televisor.
-    let screenWakeLock = null;
-    let wakeLockRequestInProgress = false;
-
-    async function solicitarWakeLock() {
-      if (!('wakeLock' in navigator) || document.visibilityState !== 'visible') return;
-      if (screenWakeLock && !screenWakeLock.released) return;
-      if (wakeLockRequestInProgress) return;
-
-      wakeLockRequestInProgress = true;
-      try {
-        screenWakeLock = await navigator.wakeLock.request('screen');
-        console.log('[TV] Bloqueo de suspensión activado.');
-        screenWakeLock.addEventListener('release', () => {
-          console.warn('[TV] El sistema liberó el bloqueo de pantalla.');
-          screenWakeLock = null;
-        });
-      } catch (error) {
-        console.warn('[TV] No fue posible evitar la suspensión desde el navegador:', error.name, error.message);
-        screenWakeLock = null;
-      } finally {
-        wakeLockRequestInProgress = false;
-      }
-    }
-
-    // Intento automático y recuperación si el navegador vuelve a primer plano.
-    solicitarWakeLock();
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') solicitarWakeLock();
-    });
-    window.addEventListener('pageshow', solicitarWakeLock);
-
-    // Algunos navegadores de TV solo aceptan la solicitud tras interacción.
-    // Una tecla del control remoto o clic vuelve a intentar activar el bloqueo.
-    ['pointerdown', 'keydown', 'touchstart'].forEach(eventName => {
-      document.addEventListener(eventName, solicitarWakeLock, { passive: true });
-    });
-
     socket.on('estado_inicial', ({ cola, reproduciendo, historialReproducidas: hist }) => {
       if (hist && hist.length > 0) {
         historialReproducidas = hist;
