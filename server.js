@@ -89,6 +89,8 @@ function guardarMetadataVideo(video) {
     videoId: id,
     title: String(video.title || ''),
     artista: nombreArtista(video),
+    generos: detectarGeneros(video),
+    epoca: detectarEpoca(video),
     author: video.author || null,
     description: String(video.description || '').slice(0, 3000),
     seconds: Number(video.seconds || (video.duration && video.duration.seconds) || 0) || 0,
@@ -103,11 +105,11 @@ function enriquecerCancion(cancion) {
   const meta = metadataVideos.get(String(cancion.videoId)) || {};
   const combinada = { ...meta, ...cancion };
   combinada.titulo = String(cancion.titulo || meta.title || '');
-  combinada.artista = String(cancion.artista || cancion.artist || meta.artista || nombreArtista(meta) || '');
+  combinada.artista = String(cancion.artista || cancion.artist || meta.artista || nombreArtista(combinada) || '');
   combinada.generos = Array.isArray(cancion.generos) && cancion.generos.length
     ? cancion.generos
-    : detectarGeneros({ ...meta, ...combinada });
-  combinada.epoca = cancion.epoca || detectarEpoca({ ...meta, ...combinada });
+    : (meta.generos && meta.generos.length ? meta.generos : detectarGeneros({ ...meta, ...combinada }));
+  combinada.epoca = cancion.epoca || meta.epoca || detectarEpoca({ ...meta, ...combinada });
   combinada.duracionSegundos = Number(cancion.duracionSegundos || meta.seconds || 0) || null;
   return combinada;
 }
