@@ -756,8 +756,8 @@ io.on('connection', (socket) => {
     const repetidaEnHistorial = memoria.buscarRepetida(nueva);
     const repetidaActual = reproduciendo && mismaHuella(crearHuella(nueva), crearHuella(reproduciendo));
     const repetidaCola = cola.find(c => mismaHuella(crearHuella(nueva), crearHuella(c)));
-    const repetidaPreparada = autoDjPreparada && mismaHuella(crearHuella(nueva), crearHuella(autoDjPreparada));
-    if (repetidaEnHistorial.repetida || repetidaActual || repetidaCola || repetidaPreparada) {
+    const coincidePreparada = autoDjPreparada && mismaHuella(crearHuella(nueva), crearHuella(autoDjPreparada));
+    if (repetidaEnHistorial.repetida || repetidaActual || repetidaCola) {
       const yaSonada = repetidaEnHistorial.repetida;
       socket.emit('error_cancion', {
         mensaje: yaSonada
@@ -766,6 +766,10 @@ io.on('connection', (socket) => {
       });
       return;
     }
+
+    // Una recomendación preparada todavía no ha sonado: si el público solicita
+    // ese mismo tema, se descarta el objeto Auto DJ y se acepta la solicitud FIFO.
+    if (coincidePreparada) descartarAutoDjPreparada('la solicitud pública pidió la canción preparada');
 
     cola.push(nueva);
     console.log(`[COLA][DIAGNOSTICO] Solicitud recibida por ${clienteId}; reproduciendo=${reproduciendo ? reproduciendo.titulo + ' (id=' + reproduciendo.id + ', origen=' + (reproduciendo.origen || 'solicitud') + ')' : 'null'}; cola=${cola.length}`);
