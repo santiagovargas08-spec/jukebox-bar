@@ -97,3 +97,9 @@ test('Mixes y compilaciones no cuentan como canción', () => {
   assert.equal(pareceCancion({ title: 'Joe Arroyo - La Rebelión', seconds: 480 }), true);
   assert.equal(pareceCancion({ title: 'Clip corto', seconds: 20 }), false);
 });
+
+test('No confunde sufijos distintos de una letra dentro del título', () => {
+  const a = v('ta', 'Artista - Tema A', 'Artista');
+  const b = v('tb', 'Artista - Tema B', 'Artista');
+  assert.equal(mismaCancion(a, b), false);
+});
