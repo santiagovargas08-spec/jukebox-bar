@@ -49,6 +49,10 @@ let detenido = false;
 
 // MEMORIA PERSISTENTE: recuerda TODAS las canciones reproducidas (sin límite) y sobrevive
 // a reinicios. Detecta la misma canción aunque cambie el videoId, el canal o las etiquetas.
+const EN_RENDER = Boolean(process.env.RENDER_SERVICE_ID || process.env.RENDER === 'true');
+if (EN_RENDER && !process.env.JUKEBOX_DATA_DIR) {
+  throw new Error('Configura JUKEBOX_DATA_DIR y un Disk persistente en Render (recomendado: /var/data) antes de iniciar Jukebox Bar.');
+}
 const DATA_DIR = process.env.JUKEBOX_DATA_DIR || path.join(__dirname, 'data');
 const memoria = new MemoriaCanciones({
   archivo: path.join(DATA_DIR, 'historial-canciones.jsonl'),
