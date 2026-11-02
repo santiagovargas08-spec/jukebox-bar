@@ -38,7 +38,11 @@ let autoDjPreparada = null;
 let autoDjRetryTimer = null;
 // Evita repetir cualquier video durante la sesión, aunque salga del historial visible.
 const videosYaReproducidos = new Set();
-const MAX_VIDEOS_SESION = 2000;
+const MAX_VIDEOS_SESION = 10000;
+// Conserva títulos y artistas de toda la sesión para detectar la misma canción
+// aunque YouTube la entregue con otro videoId o desde otro canal.
+const cancionesReproducidasSesion = [];
+const MAX_CANCIONES_SESION = 5000;
 const videosFallidos = [];
 const feedbackAutoDj = new Map();
 const MAX_FEEDBACK = 300;
@@ -52,6 +56,20 @@ function marcarComoReproducido(cancion) {
   videosYaReproducidos.add(id);
   while (videosYaReproducidos.size > MAX_VIDEOS_SESION) {
     videosYaReproducidos.delete(videosYaReproducidos.values().next().value);
+  }
+
+  // No guardar dos veces el mismo video, pero conservar versiones distintas
+  // para poder compararlas por identidad musical y no solo por videoId.
+  if (!cancionesReproducidasSesion.some(item => String(item.videoId) === id)) {
+    cancionesReproducidasSesion.push({
+      videoId: id,
+      titulo: String(cancion.titulo || cancion.title || ''),
+      artista: String(cancion.artista || cancion.artist || (cancion.author && cancion.author.name) || ''),
+      title: String(cancion.title || cancion.titulo || '')
+    });
+    while (cancionesReproducidasSesion.length > MAX_CANCIONES_SESION) {
+      cancionesReproducidasSesion.shift();
+    }
   }
 }
 
@@ -393,6 +411,7 @@ async function rellenarColaAutoDJ() {
 
   try {
     const cancionesConocidas = [
+      ...cancionesReproducidasSesion,
       ...historialReproducidas,
       ...cola,
       ...(reproduciendo ? [reproduciendo] : []),
@@ -400,6 +419,7 @@ async function rellenarColaAutoDJ() {
     ];
     const excluidos = new Set([
       ...videosYaReproducidos,
+      ...cancionesReproducidasSesion.map(c => String(c.videoId)),
       ...historialReproducidas.map(c => String(c.videoId)),
       ...videosFallidos,
       ...cola.map(c => String(c.videoId)),
@@ -428,7 +448,11 @@ async function rellenarColaAutoDJ() {
           if (excluidos.has(id)) return;
           // No aceptar la misma canción subida como lyrics, audio, cover,
           // video oficial o por un canal diferente.
-          if (esVersionDuplicada(video, cancionesConocidas)) return;
+          if (esVersionDuplicada(video, cancionesConocidas)) {
+            return;
+          }
+          // También evitar que una misma canción entre dos veces en la selección
+          // actual, aunque las búsquedas la encuentren en canales diferentes.
           if (Array.from(candidatos.values()).some(item => mismaCancion(video, item.video))) return;
           const score = puntuarCandidato(
             video, semilla, fuente, artistasSet,
