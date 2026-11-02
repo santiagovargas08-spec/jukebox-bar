@@ -740,6 +740,13 @@ io.on('connection', (socket) => {
       duracionSegundos: Number(cancion.duracionSegundos || meta.seconds || 0) || null
     });
 
+    // No aceptar resultados que solo contienen etiquetas de publicación o que
+    // claramente son compilaciones/clips, aunque provengan de una búsqueda válida.
+    if (!pareceCancion(nueva)) {
+      socket.emit('error_cancion', { mensaje: 'Ese resultado no parece ser una canción individual. Elige otra versión.' });
+      return;
+    }
+
     // Una sola regla de identidad para solicitudes, Auto DJ, historial y cola.
     // Se comprueba antes de confirmar al cliente para que una repetición no entre.
     const repetidaEnHistorial = memoria.buscarRepetida(nueva);
