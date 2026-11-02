@@ -364,3 +364,20 @@ test('El perfil de artistas y géneros se reconstruye desde el historial persist
     assert.equal(perfil.total, 1);
   } finally { await srv.detener(); }
 });
+
+test('Si el público solicita la misma canción que Auto DJ tenía preparada, gana la solicitud', async () => {
+  const srv = await arrancar({ dataDir: nuevoDir(), buscar: async () => ({ videos: NUEVAS }) });
+  try {
+    const cel = await srv.celular();
+    await cel.pedir('Joe Arroyo - La Rebelión', 'seed-preparada');
+    await srv.tv.esperarReproducciones(1);
+    await esperar(() => srv.estado().autoDjPreparada);
+    const preparada = srv.estado().autoDjPreparada;
+    const respuesta = await cel.pedir(preparada.titulo + ' (Official Audio)', 'solicitud-prioritaria');
+    assert.ok(respuesta.titulo, 'la solicitud pública debe confirmarse');
+    assert.equal(srv.estado().autoDjPreparada, null, 'se descarta la recomendación automática');
+    assert.deepEqual(srv.estado().cola.map(c => c.videoId), ['solicitud-prioritaria']);
+    srv.tv.terminar();
+    await esperar(() => srv.estado().reproduciendo && srv.estado().reproduciendo.videoId === 'solicitud-prioritaria');
+  } finally { await srv.detener(); }
+});
