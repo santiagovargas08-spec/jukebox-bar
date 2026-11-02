@@ -332,3 +332,35 @@ test('Reordenar la cola desde el admin no pierde solicitudes que llegaron mientr
     assert.deepEqual(srv.estado().cola.map(c => c.videoId), ['b', 'a', 'c']);
   } finally { await srv.detener(); }
 });
+
+test('Una solicitud pública no puede volver a poner una canción ya reproducida con otro videoId', async () => {
+  const srv = await arrancar({ dataDir: nuevoDir(), buscar: async () => ({ videos: NUEVAS }) });
+  try {
+    const cel = await srv.celular();
+    await cel.pedir('Joe Arroyo - La Rebelión', 'solicitud-original');
+    await srv.tv.esperarReproducciones(1);
+
+    const respuesta = await cel.pedir('La Rebelión (Official Audio)', 'solicitud-otro-canal');
+    assert.ok(respuesta.mensaje && respuesta.mensaje.includes('ya se reprodujo anteriormente'));
+    assert.equal(srv.estado().cola.length, 0, 'la repetición no entra en la cola');
+    assert.equal(srv.tv.reproducciones.length, 1, 'no se emite una segunda reproducción');
+  } finally { await srv.detener(); }
+});
+
+test('El perfil de artistas y géneros se reconstruye desde el historial persistente', async () => {
+  const dir = nuevoDir();
+  let srv = await arrancar({ dataDir: dir, buscar: async () => ({ videos: NUEVAS }) });
+  try {
+    const cel = await srv.celular();
+    await cel.pedir('Fruko y sus Tesos - Salsa de Siempre', 'perfil-seed');
+    await srv.tv.esperarReproducciones(1);
+  } finally { await srv.detener(); }
+
+  srv = await arrancar({ dataDir: dir, buscar: async () => ({ videos: NUEVAS }) });
+  try {
+    const perfil = srv.estado().perfilMusical;
+    assert.ok(perfil.artistas.some(([artista]) => artista === 'fruko y sus tesos'));
+    assert.ok(perfil.generos.some(([genero]) => genero === 'salsa'));
+    assert.equal(perfil.total, 1);
+  } finally { await srv.detener(); }
+});
