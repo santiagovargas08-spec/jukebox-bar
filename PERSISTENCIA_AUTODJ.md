@@ -30,7 +30,7 @@ El sistema de archivos del contenedor de Render puede ser efímero. Para conserv
 5. Guarda los cambios y despliega el servicio.
 6. Revisa los logs de inicio. Debe aparecer el número de reproducciones recuperadas desde /var/data/historial-canciones.jsonl.
 
-Si ya existe un historial en el contenedor anterior, copia data/historial-canciones.jsonl al disco persistente antes de retirar el despliegue anterior. Si no se migra, el servidor comenzará con un historial vacío.
+El servidor detecta el entorno Render y no inicia si falta JUKEBOX_DATA_DIR, para evitar que se use silenciosamente el almacenamiento efímero. Si ya existe un historial en el contenedor anterior, copia data/historial-canciones.jsonl al disco persistente antes de retirar el despliegue anterior. Si no se migra, el servidor comenzará con un historial vacío.
 
 Importante: el archivo JSONL local está pensado para una instancia de servidor por bar. No ejecutes varias instancias independientes compartiendo la misma cola o historial. Para escalar a varias instancias o administrar muchos bares desde un único servicio, conviene migrar a PostgreSQL con restricciones e índices únicos por bar.
 
