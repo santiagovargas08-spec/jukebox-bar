@@ -746,8 +746,8 @@ io.on('connection', (socket) => {
 
     // No aceptar resultados que solo contienen etiquetas de publicación o que
     // claramente son compilaciones/clips, aunque provengan de una búsqueda válida.
-    if (!pareceCancion(nueva)) {
-      socket.emit('error_cancion', { mensaje: 'Ese resultado no parece ser una canción individual. Elige otra versión.' });
+    if (!crearHuella(nueva).todos.size) {
+      socket.emit('error_cancion', { mensaje: 'No se pudo identificar el título musical de ese resultado. Elige otra versión.' });
       return;
     }
 
