@@ -30,6 +30,7 @@ let historialReproducidas = []; // 🔥 NUEVO: Historial de últimas canciones r
 // 🔥 CACHÉ DE BÚSQUEDAS PARA VELOCIDAD
 const cacheSearches = {};
 const CACHE_TTL = 3600000; // 1 hora en milisegundos
+const MAX_CACHE_SEARCHES = 500;
 
 // Motor Auto-DJ: recomendaciones locales, sin servicios ni APIs externas.
 const HISTORIAL_MAX = 60;
@@ -327,6 +328,10 @@ function puntuarCandidato(video, semilla, fuente, artistasRecientes, feedback, p
   if (vistas > 0) score += Math.min(8, Math.log10(vistas + 1) * 1.1);
   if (feedback) score += Math.max(-12, Math.min(12, feedback.score || 0));
 
+  const epocaCandidato = detectarEpoca(video);
+  const epocaDominante = perfil.epocas && perfil.epocas[0] ? Number(perfil.epocas[0][0]) : null;
+  if (epocaCandidato && epocaDominante) score += epocaCandidato === epocaDominante ? 6 : -2;
+
   const segundos = Number(video.seconds || (video.duration && video.duration.seconds) || 0);
   if (segundos > 0 && segundos < 75) score -= 25;
   if (segundos >= 150) score += 2;
@@ -459,6 +464,11 @@ function crearConsultasRecomendacion(semilla, perfil = obtenerPerfilAutoDJ(), ro
       peso: 33 - indice * 4
     });
   });
+
+  const epoca = perfil.epocas && perfil.epocas[0] ? Number(perfil.epocas[0][0]) : null;
+  if (epoca) {
+    base.push({ q: `grandes canciones de los años ${String(epoca).slice(-2)} artistas variados`, peso: 29 });
+  }
 
   // Añade una búsqueda basada en las dos pistas recientes más representativas.
   recientes.slice(0, 2).forEach((cancion, indice) => {
@@ -677,8 +687,14 @@ io.on('connection', (socket) => {
       const videos = r.videos ? r.videos.slice(0, 25) : [];
       videos.forEach(guardarMetadataVideo);
 
-      // GUARDAR EN CACHÉ
+      // GUARDAR EN CACHÉ con limpieza de entradas vencidas y límite de tamaño.
+      for (const [key, entrada] of Object.entries(cacheSearches)) {
+        if (now - entrada.timestamp >= CACHE_TTL) delete cacheSearches[key];
+      }
       cacheSearches[queryKey] = { videos, timestamp: now };
+      while (Object.keys(cacheSearches).length > MAX_CACHE_SEARCHES) {
+        delete cacheSearches[Object.keys(cacheSearches)[0]];
+      }
       
       socket.emit('resultados_busqueda', { items: videos, query });
     } catch (error) {
@@ -718,7 +734,7 @@ io.on('connection', (socket) => {
       thumbnail: cancion.thumbnail ? String(cancion.thumbnail) : '',
       timestamp: new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
       artista:   String(cancion.artista || cancion.artist || meta.artista || ''),
-      generos:   Array.isArray(cancion.generos) ? cancion.generos : (meta.video ? detectarGeneros(meta.video) : undefined),
+      generos:   Array.isArray(cancion.generos) ? cancion.generos : undefined,
       duracionSegundos: Number(cancion.duracionSegundos || meta.seconds || 0) || null
     });
 
