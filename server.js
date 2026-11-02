@@ -49,9 +49,22 @@ let detenido = false;
 // MEMORIA PERSISTENTE: recuerda TODAS las canciones reproducidas (sin límite) y sobrevive
 // a reinicios. Detecta la misma canción aunque cambie el videoId, el canal o las etiquetas.
 const DATA_DIR = process.env.JUKEBOX_DATA_DIR || path.join(__dirname, 'data');
-const memoria = new MemoriaCanciones({ archivo: path.join(DATA_DIR, 'historial-canciones.jsonl') });
-// Recomendaciones preparadas que se descartaron (p. ej. por una solicitud del público).
-const recomendacionesDescartadas = new Set();
+const memoria = new MemoriaCanciones({
+  archivo: path.join(DATA_DIR, 'historial-canciones.jsonl'),
+  strictPersistence: process.env.JUKEBOX_REQUIRE_PERSISTENCE !== 'false'
+});
+// Se reconstruye la ventana visible y el perfil desde TODO el historial persistente.
+historialReproducidas = memoria.obtenerRecientes(HISTORIAL_MAX).map(r => ({
+  ...r,
+  nombre: r.nombreSolicitante || 'Historial',
+  timestamp: new Date(r.reproducidaEn).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })
+}));
+// Metadatos de búsquedas recientes: permiten identificar artista/género cuando
+// un cliente solicita un video cuyo título no incluye al intérprete.
+const metadataVideos = new Map();
+const MAX_METADATA_VIDEOS = 2500;
+// Recomendaciones descartadas: se conserva identidad musical, no solo videoId.
+const recomendacionesDescartadas = new Map();
 const MAX_DESCARTADAS = 500;
 const videosFallidos = [];
 const feedbackAutoDj = new Map();
@@ -67,28 +80,72 @@ function nuevoIdSolicitud() {
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Cada canción que empieza a sonar (solicitada o Auto DJ) queda recordada para siempre.
+function guardarMetadataVideo(video) {
+  if (!video || !video.videoId) return;
+  const id = String(video.videoId);
+  metadataVideos.delete(id);
+  metadataVideos.set(id, {
+    videoId: id,
+    title: String(video.title || ''),
+    artista: nombreArtista(video),
+    author: video.author || null,
+    description: String(video.description || '').slice(0, 3000),
+    seconds: Number(video.seconds || (video.duration && video.duration.seconds) || 0) || 0,
+    thumbnail: video.thumbnail || ''
+  });
+  while (metadataVideos.size > MAX_METADATA_VIDEOS) {
+    metadataVideos.delete(metadataVideos.keys().next().value);
+  }
+}
+
+function enriquecerCancion(cancion) {
+  const meta = metadataVideos.get(String(cancion.videoId)) || {};
+  const combinada = { ...meta, ...cancion };
+  combinada.titulo = String(cancion.titulo || meta.title || '');
+  combinada.artista = String(cancion.artista || cancion.artist || meta.artista || nombreArtista(meta) || '');
+  combinada.generos = Array.isArray(cancion.generos) && cancion.generos.length
+    ? cancion.generos
+    : detectarGeneros({ ...meta, ...combinada });
+  combinada.epoca = cancion.epoca || detectarEpoca({ ...meta, ...combinada });
+  combinada.duracionSegundos = Number(cancion.duracionSegundos || meta.seconds || 0) || null;
+  return combinada;
+}
+
+// Cada canción queda guardada DURANTE el inicio de reproducción, antes de
+// notificar al televisor. En producción el servidor falla de forma cerrada
+// si el historial no se puede escribir.
 function marcarComoReproducido(cancion) {
-  if (!cancion || !cancion.videoId) return;
-  memoria.registrar(cancion);
+  if (!cancion || !cancion.videoId) throw new Error('Canción sin videoId');
+  const registrada = memoria.registrar(cancion);
+  if (!registrada && memoria.buscarRepetida(cancion).repetida) {
+    throw new Error('La canción ya figura en el historial persistente');
+  }
 }
 
 function emitirReproduccion(cancion) {
-  if (detenido) return;
-  console.log(`[PLAYBACK] Emitiendo nueva_reproduccion: "${cancion && cancion.titulo}" | origen=${cancion && cancion.origen || 'solicitud'} | id=${cancion && cancion.id} | videoId=${cancion && cancion.videoId}`);
-  reproduciendo = cancion;
-  reproduciendo.inicioMs = Date.now();
-  marcarComoReproducido(reproduciendo);
+  if (detenido) return false;
+  const preparada = enriquecerCancion(cancion);
+  preparada.inicioMs = Date.now();
+  try {
+    marcarComoReproducido(preparada);
+  } catch (error) {
+    console.error('[PLAYBACK] Reproducción bloqueada: no se pudo garantizar el historial:', error.message);
+    io.emit('error_reproduccion', { mensaje: 'No se pudo guardar el historial. La reproducción se pausó para evitar repetir canciones.' });
+    return false;
+  }
+  reproduciendo = preparada;
+  console.log(`[PLAYBACK] Emitiendo nueva_reproduccion: "${reproduciendo.titulo}" | origen=${reproduciendo.origen || 'solicitud'} | id=${reproduciendo.id} | videoId=${reproduciendo.videoId}`);
   io.emit('nueva_reproduccion', reproduciendo);
   io.emit('cola_actualizada', { cola, reproduciendo });
+  return true;
 }
 
 // Descarta la recomendación preparada y la recuerda para no volver a ofrecerla.
 function descartarAutoDjPreparada(motivo) {
   if (!autoDjPreparada) return;
-  recomendacionesDescartadas.add(String(autoDjPreparada.videoId));
+  recomendacionesDescartadas.set(String(autoDjPreparada.videoId), autoDjPreparada);
   while (recomendacionesDescartadas.size > MAX_DESCARTADAS) {
-    recomendacionesDescartadas.delete(recomendacionesDescartadas.values().next().value);
+    recomendacionesDescartadas.delete(recomendacionesDescartadas.keys().next().value);
   }
   console.log(`[AUTO-DJ] Recomendación descartada (${motivo}): "${autoDjPreparada.titulo}"`);
   autoDjPreparada = null;
@@ -101,7 +158,10 @@ function validarCandidatoAutoDj(video, opciones = {}) {
   if (!video || !video.videoId) return { ok: false, motivo: 'sin-videoId' };
   const id = String(video.videoId);
   if (!pareceCancion(video)) return { ok: false, motivo: 'no-es-una-cancion' };
-  if (recomendacionesDescartadas.has(id)) return { ok: false, motivo: 'recomendacion-descartada' };
+  if (recomendacionesDescartadas.has(id) ||
+      Array.from(recomendacionesDescartadas.values()).some(c => mismaHuella(crearHuella(video), crearHuella(c)))) {
+    return { ok: false, motivo: 'recomendacion-descartada' };
+  }
   if (videosFallidos.includes(id)) return { ok: false, motivo: 'video-fallido' };
 
   const rep = memoria.buscarRepetida(video);
@@ -131,8 +191,11 @@ function reproducirAutoDjPreparada() {
     return false;
   }
   const siguiente = autoDjPreparada;
+  if (!emitirReproduccion(siguiente)) {
+    programarReintentoAutoDJ();
+    return false;
+  }
   autoDjPreparada = null;
-  emitirReproduccion(siguiente);
   console.log(`[AUTO-DJ] Reproduciendo: "${siguiente.titulo}"`);
   rellenarColaAutoDJ();
   return true;
@@ -142,7 +205,10 @@ function intentarReproducir() {
   if (!reproduciendo && cola.length > 0) {
     descartarAutoDjPreparada('hay solicitudes en la cola');
     const siguiente = cola.shift();
-    emitirReproduccion(siguiente);
+    if (!emitirReproduccion(siguiente)) {
+      cola.unshift(siguiente);
+      return false;
+    }
     console.log(`[►] Auto-inicio → "${siguiente.titulo}" (${siguiente.nombre})`);
     if (cola.length === 0) rellenarColaAutoDJ();
     return true;
@@ -152,7 +218,6 @@ function intentarReproducir() {
 
 function agregarAlHistorial(cancion) {
   if (!cancion || !cancion.videoId) return;
-  marcarComoReproducido(cancion);
   if (historialReproducidas[0] && String(historialReproducidas[0].videoId) === String(cancion.videoId)) return;
   historialReproducidas.unshift({
     ...cancion,
@@ -218,7 +283,7 @@ const REGEX_GENEROS = Object.entries(MAPA_GENEROS).map(([genero, claves]) => [
 
 function detectarGeneros(video) {
   const texto = normalizarTexto([
-    video && video.title,
+    video && (video.title || video.titulo),
     video && video.description,
     nombreArtista(video)
   ].filter(Boolean).join(' '));
@@ -226,7 +291,7 @@ function detectarGeneros(video) {
 }
 
 function detectarEpoca(video) {
-  const texto = normalizarTexto(video && video.title);
+  const texto = normalizarTexto(video && (video.title || video.titulo));
   const anio = texto.match(/\b(19[5-9]\d|20[0-2]\d)\b/);
   if (anio) return Math.floor(Number(anio[1]) / 10) * 10;
   const decada = texto.match(/\b(50|60|70|80|90)s\b/);
@@ -320,17 +385,22 @@ function programarReintentoAutoDJ() {
 }
 
 function obtenerPerfilAutoDJ() {
-  // La pista actual y las últimas diez terminadas forman el gusto musical reciente.
+  // El resumen incluye todo el historial persistente; las últimas pistas reciben
+  // un peso adicional para que el estilo se adapte a lo que suena esta noche.
+  const resumen = memoria.resumenMusical();
   const recientes = [
     ...(reproduciendo ? [reproduciendo] : []),
-    ...historialReproducidas
-  ].filter(c => c && c.videoId).slice(0, 11);
+    ...memoria.obtenerRecientes(40)
+  ].filter((c, i, arr) => c && c.videoId &&
+    arr.findIndex(x => x && String(x.videoId) === String(c.videoId)) === i).slice(0, 30);
 
-  const pesosGenero = new Map();
-  const pesosArtista = new Map();
+  const pesosGenero = new Map(resumen.generos || []);
+  const pesosArtista = new Map(resumen.artistas || []);
   recientes.forEach((cancion, indice) => {
-    const peso = Math.max(0.35, 1 - indice * 0.065);
-    detectarGeneros(cancion).forEach(genero => {
+    const peso = Math.max(0.4, 1.5 - indice * 0.035);
+    const generosCancion = Array.isArray(cancion.generos) && cancion.generos.length
+      ? cancion.generos : detectarGeneros(cancion);
+    generosCancion.forEach(genero => {
       pesosGenero.set(genero, (pesosGenero.get(genero) || 0) + peso);
     });
     const artista = claveArtista(nombreArtista(cancion));
@@ -339,7 +409,7 @@ function obtenerPerfilAutoDJ() {
 
   const generos = Array.from(pesosGenero.entries()).sort((a, b) => b[1] - a[1]);
   const artistas = Array.from(pesosArtista.entries()).sort((a, b) => b[1] - a[1]);
-  return { recientes, generos, artistas };
+  return { recientes, generos, artistas, epocas: resumen.epocas || [], total: resumen.total };
 }
 
 const VARIANTES_BUSQUEDA = [
@@ -450,7 +520,7 @@ async function rellenarColaAutoDJ() {
 
   try {
     const artistasRecientes = new Map();
-    historialReproducidas.slice(0, 12).forEach(c => {
+    (perfilMusical.recientes || []).slice(0, 12).forEach(c => {
       const key = claveArtista(nombreArtista(c));
       if (key) artistasRecientes.set(key, (artistasRecientes.get(key) || 0) + 1);
     });
@@ -471,6 +541,7 @@ async function rellenarColaAutoDJ() {
         const videos = resultado && Array.isArray(resultado.videos) ? resultado.videos : [];
         videos.slice(0, AUTO_DJ_RESULTADOS_POR_CONSULTA).forEach(video => {
           if (!video || !video.videoId || !video.title) return;
+          guardarMetadataVideo(video);
           const id = String(video.videoId);
 
           // Validación contra el estado ACTUAL: historial persistente, canción sonando,
@@ -590,9 +661,10 @@ io.on('connection', (socket) => {
       // 🚀 SI ESTÁ EN CACHÉ Y NO EXPIRÓ, DEVOLVER AL INSTANTE
       if (cacheSearches[queryKey] && (now - cacheSearches[queryKey].timestamp) < CACHE_TTL) {
         console.log(`[⚡ CACHÉ] Búsqueda: "${query}" desde [${clienteId}]`);
-        socket.emit('resultados_busqueda', { 
-          items: cacheSearches[queryKey].videos, 
-          query 
+        cacheSearches[queryKey].videos.forEach(guardarMetadataVideo);
+        socket.emit('resultados_busqueda', {
+          items: cacheSearches[queryKey].videos,
+          query
         });
         return;
       }
@@ -601,7 +673,8 @@ io.on('connection', (socket) => {
       console.log(`[🔍] Buscando: "${query}" desde [${clienteId}]`);
       const r = await ytSearch(query.trim());
       const videos = r.videos ? r.videos.slice(0, 25) : [];
-      
+      videos.forEach(guardarMetadataVideo);
+
       // GUARDAR EN CACHÉ
       cacheSearches[queryKey] = { videos, timestamp: now };
       
@@ -633,14 +706,35 @@ io.on('connection', (socket) => {
       return;
     }
 
-    const nueva = {
-      id:        nuevoIdSolicitud(), // ID único y creciente para poder borrarla específicamente
+    const meta = metadataVideos.get(videoIdNormalizado) || {};
+    const nueva = enriquecerCancion({
+      id:        nuevoIdSolicitud(),
       videoId:   videoIdNormalizado,
       titulo:    String(cancion.titulo).trim().slice(0, 100),
       nombre:    String(cancion.nombre).trim().slice(0, 30),
+      nombreSolicitante: String(cancion.nombre).trim().slice(0, 30),
       thumbnail: cancion.thumbnail ? String(cancion.thumbnail) : '',
-      timestamp: new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })
-    };
+      timestamp: new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
+      artista:   String(cancion.artista || cancion.artist || meta.artista || ''),
+      generos:   Array.isArray(cancion.generos) ? cancion.generos : (meta.video ? detectarGeneros(meta.video) : undefined),
+      duracionSegundos: Number(cancion.duracionSegundos || meta.seconds || 0) || null
+    });
+
+    // Una sola regla de identidad para solicitudes, Auto DJ, historial y cola.
+    // Se comprueba antes de confirmar al cliente para que una repetición no entre.
+    const repetidaEnHistorial = memoria.buscarRepetida(nueva);
+    const repetidaActual = reproduciendo && mismaHuella(crearHuella(nueva), crearHuella(reproduciendo));
+    const repetidaCola = cola.find(c => mismaHuella(crearHuella(nueva), crearHuella(c)));
+    const repetidaPreparada = autoDjPreparada && mismaHuella(crearHuella(nueva), crearHuella(autoDjPreparada));
+    if (repetidaEnHistorial.repetida || repetidaActual || repetidaCola || repetidaPreparada) {
+      const yaSonada = repetidaEnHistorial.repetida;
+      socket.emit('error_cancion', {
+        mensaje: yaSonada
+          ? `🎵 "${nueva.titulo}" ya se reprodujo anteriormente y no se puede repetir.`
+          : `🎵 "${nueva.titulo}" ya está sonando o está en la fila.`
+      });
+      return;
+    }
 
     cola.push(nueva);
     console.log(`[COLA][DIAGNOSTICO] Solicitud recibida por ${clienteId}; reproduciendo=${reproduciendo ? reproduciendo.titulo + ' (id=' + reproduciendo.id + ', origen=' + (reproduciendo.origen || 'solicitud') + ')' : 'null'}; cola=${cola.length}`);
@@ -767,7 +861,11 @@ io.on('connection', (socket) => {
     if (cola.length > 0) {
       descartarAutoDjPreparada('hay solicitudes en la cola');
       const siguiente = cola.shift();
-      emitirReproduccion(siguiente);
+      if (!emitirReproduccion(siguiente)) {
+        cola.unshift(siguiente);
+        io.emit('cola_actualizada', { cola, reproduciendo: null });
+        return;
+      }
       console.log(`[►] Reproduciendo solicitud → "${siguiente.titulo}"`);
       if (cola.length === 0) rellenarColaAutoDJ();
       return;
@@ -811,7 +909,8 @@ module.exports = {
   detener,
   estadoInterno: () => ({
     cola: cola.slice(), reproduciendo, autoDjPreparada,
-    totalRecordadas: memoria.total, autoDjFallos
+    totalRecordadas: memoria.total, memoria: memoria.estado(),
+    perfilMusical: memoria.resumenMusical(), autoDjFallos
   })
 };
 
