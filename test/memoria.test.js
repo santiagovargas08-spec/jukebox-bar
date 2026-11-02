@@ -57,3 +57,32 @@ test('Si el disco no se puede usar, sigue funcionando en RAM', () => {
   m.registrar(v('a', 'Tema A', 'X'));
   assert.equal(m.buscarRepetida(v('b', 'Tema A (Audio)', 'Y')).repetida, true);
 });
+
+test('Persiste artista y géneros para reconstruir el perfil tras reiniciar', () => {
+  const archivo = path.join(tmp(), 'perfil.jsonl');
+  const cancion = {
+    videoId: 'perfil1',
+    titulo: 'Fruko y sus Tesos - Salsa de Siempre',
+    artista: 'Fruko y sus Tesos',
+    generos: ['salsa'],
+    epoca: 1990,
+    origen: 'solicitud'
+  };
+  const m1 = new MemoriaCanciones({ archivo, log: silencio, strictPersistence: true });
+  assert.equal(m1.registrar(cancion), true);
+  const m2 = new MemoriaCanciones({ archivo, log: silencio, strictPersistence: true });
+  const perfil = m2.resumenMusical();
+  assert.equal(perfil.total, 1);
+  assert.ok(perfil.artistas.some(([a]) => a === 'fruko y sus tesos'));
+  assert.ok(perfil.generos.some(([g]) => g === 'salsa'));
+  assert.ok(perfil.epocas.some(([e]) => e === 1990));
+});
+
+test('Modo estricto bloquea un historial corrupto para no olvidar canciones', () => {
+  const archivo = path.join(tmp(), 'corrupto.jsonl');
+  fs.writeFileSync(archivo, JSON.stringify({ videoId: 'ok', titulo: 'Tema válido' }) + '\n{"videoId":"cortado');
+  assert.throws(
+    () => new MemoriaCanciones({ archivo, log: silencio, strictPersistence: true }),
+    /línea\\(s\\) ilegible\\(s\\)/
+  );
+});
