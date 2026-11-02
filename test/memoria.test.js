@@ -20,6 +20,7 @@ test('Recuerda canciones tras reiniciar (nueva instancia, mismo archivo)', () =>
   assert.equal(m2.total, 2);
   assert.equal(m2.buscarRepetida(v('id1', 'x', 'y')).repetida, true, 'mismo videoId');
   assert.equal(m2.buscarRepetida(v('otro', 'La Rebelión (Audio)', 'Joe Arroyo')).repetida, true, 'otra subida de la misma canción');
+  assert.equal(m2.registrar(v('otro-video', 'La Rebelión (Audio)', 'Otro Canal')), false, 'el registro también rechaza otra subida del mismo tema');
   assert.equal(m2.buscarRepetida(v('otro2', 'Joe Arroyo - En Barranquilla Me Quedo', 'Joe Arroyo')).repetida, false, 'otra canción del mismo artista');
 });
 
