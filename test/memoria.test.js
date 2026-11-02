@@ -83,6 +83,6 @@ test('Modo estricto bloquea un historial corrupto para no olvidar canciones', ()
   fs.writeFileSync(archivo, JSON.stringify({ videoId: 'ok', titulo: 'Tema válido' }) + '\n{"videoId":"cortado');
   assert.throws(
     () => new MemoriaCanciones({ archivo, log: silencio, strictPersistence: true }),
-    /línea\\(s\\) ilegible\\(s\\)/
+    /línea\(s\) ilegible\(s\)/
   );
 });
