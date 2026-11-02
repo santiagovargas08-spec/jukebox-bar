@@ -1,0 +1,4 @@
+node_modules/
+# Historial persistente de canciones reproducidas (datos del bar, no código)
+data/
+*.log
