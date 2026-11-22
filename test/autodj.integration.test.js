@@ -137,6 +137,9 @@ test('Escenarios A, B, C: solicitudes FIFO, sin interrumpir, y Auto DJ retoma al
       await esperar(() => srv.estado().reproduciendo && srv.estado().reproduciendo.videoId === esperado);
       assert.equal(srv.estado().reproduciendo.origen, undefined, 'una solicitud no es de Auto DJ');
     }
+    // El guardado remoto es asíncrono: esperar también la entrega Socket.IO al TV,
+    // no solo el cambio de estado interno del servidor.
+    await srv.tv.esperarReproducciones(6);
     const ordenSolicitudes = srv.tv.reproducciones.map(c => c.videoId);
     assert.deepEqual(ordenSolicitudes, ['seed1', 'r1', 'r2', 'r3', 'r4', 'r5']);
     assert.ok(!ordenSolicitudes.includes(preparada), 'la recomendación descartada no se coló entre las solicitudes');
