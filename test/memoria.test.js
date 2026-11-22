@@ -87,3 +87,20 @@ test('Modo estricto bloquea un historial corrupto para no olvidar canciones', ()
     /línea\(s\) ilegible\(s\)/
   );
 });
+
+test('Permite registrar solicitudes repetidas sin desactivar el bloqueo por defecto', () => {
+  const archivo = path.join(tmp(), 'solicitudes-repetidas.jsonl');
+  const m = new MemoriaCanciones({ archivo, log: silencio, strictPersistence: true });
+  const primera = v('repetida-1', 'Joe Arroyo - La Rebelión', 'Joe Arroyo');
+  const segunda = v('repetida-2', 'La Rebelión (Audio)', 'Otro Canal');
+
+  assert.equal(m.registrar(primera), true);
+  assert.equal(m.registrar(segunda), false, 'el modo predeterminado sigue rechazando duplicados');
+  assert.equal(m.registrar(segunda, { permitirRepetida: true }), true, 'la solicitud manual repetida se registra');
+  assert.equal(m.total, 2);
+
+  const trasReinicio = new MemoriaCanciones({ archivo, log: silencio, strictPersistence: true });
+  assert.equal(trasReinicio.total, 2, 'las dos reproducciones quedan guardadas');
+  assert.equal(trasReinicio.buscarRepetida(v('autodj-nuevo', 'Joe Arroyo - La Rebelión', 'Joe Arroyo')).repetida, true,
+    'el Auto-DJ sigue detectando la canción como ya reproducida');
+});
