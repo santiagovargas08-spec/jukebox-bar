@@ -237,6 +237,7 @@ async function intentarReproducir() {
     const siguiente = cola.shift();
     if (!await emitirReproduccion(siguiente)) {
       cola.unshift(siguiente);
+      programarReintentoAutoDJ();
       return false;
     }
     console.log(`[►] Auto-inicio → "${siguiente.titulo}" (${siguiente.nombre})`);
@@ -406,15 +407,17 @@ function registrarFeedback(cancion, motivo) {
 }
 
 function programarReintentoAutoDJ() {
-  if (detenido || autoDjRetryTimer || cola.length > 0) return;
+  if (detenido || autoDjRetryTimer) return;
   // Espera creciente (10 s, 20 s, 40 s ... hasta 5 min) para no saturar YouTube cuando
   // no hay canciones nuevas, y sin perder nunca el historial ni tocar la cola pública.
   const espera = Math.min(AUTO_DJ_REINTENTO_MAX_MS, AUTO_DJ_REINTENTO_MS * Math.pow(2, Math.max(0, autoDjFallos - 1)));
   console.log(`[AUTO-DJ] Nuevo intento en ${espera >= 1000 ? Math.round(espera / 1000) + ' s' : espera + ' ms'} (fallos seguidos: ${autoDjFallos}).`);
   autoDjRetryTimer = setTimeout(() => {
     autoDjRetryTimer = null;
-    if (detenido || cola.length > 0) return;
-    if (autoDjPreparada && !reproduciendo) {
+    if (detenido) return;
+    if (cola.length > 0 && !reproduciendo) {
+      void intentarReproducir().catch(error => console.error('[PLAYBACK] Error en reintento de solicitud:', error.message));
+    } else if (autoDjPreparada && !reproduciendo) {
       void reproducirAutoDjPreparada().catch(error => console.error('[AUTO-DJ] Error al reproducir recomendación:', error.message));
     } else if (!autoDjPreparada) rellenarColaAutoDJ();
   }, espera);
@@ -918,6 +921,7 @@ io.on('connection', (socket) => {
       const siguiente = cola.shift();
       if (!await emitirReproduccion(siguiente)) {
         cola.unshift(siguiente);
+        programarReintentoAutoDJ();
         io.emit('cola_actualizada', { cola, reproduciendo: null });
         return;
       }
