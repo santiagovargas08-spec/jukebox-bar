@@ -123,7 +123,10 @@ function enriquecerCancion(cancion) {
 // si el historial no se puede escribir.
 function marcarComoReproducido(cancion) {
   if (!cancion || !cancion.videoId) throw new Error('Canción sin videoId');
-  const registrada = memoria.registrar(cancion);
+  // Las solicitudes del público pueden repetirse. El Auto-DJ, en cambio,
+  // conserva la protección histórica para no recomendar canciones ya sonadas.
+  const permitirRepetida = cancion.origen !== 'autodj';
+  const registrada = memoria.registrar(cancion, { permitirRepetida });
   if (!registrada && memoria.buscarRepetida(cancion).repetida) {
     throw new Error('La canción ya figura en el historial persistente');
   }
@@ -716,19 +719,9 @@ io.on('connection', (socket) => {
       return;
     }
 
-    // 🔥 VALIDACIÓN: Evitar duplicados en la fila para TODOS (sin importar quién la pidió)
+    // Las solicitudes pueden repetirse: cada petición del público genera
+    // su propia entrada FIFO, incluso si el tema ya está sonando o en la fila.
     const videoIdNormalizado = String(cancion.videoId).trim();
-    
-    const yaEnCola = cola.some(c => String(c.videoId) === videoIdNormalizado);
-    const yaSuena = reproduciendo && String(reproduciendo.videoId) === videoIdNormalizado;
-
-    if (yaEnCola || yaSuena) {
-      console.log(`[⚠️  DUPLICADO] ${cancion.nombre} intentó pedir "${cancion.titulo}" pero ya está en la fila.`);
-      socket.emit('error_cancion', { 
-        mensaje: `🎵 "${cancion.titulo}" ya está en la fila. ¡Todos la disfrutaremos juntos!` 
-      });
-      return;
-    }
 
     const meta = metadataVideos.get(videoIdNormalizado) || {};
     const nueva = enriquecerCancion({
@@ -751,21 +744,9 @@ io.on('connection', (socket) => {
       return;
     }
 
-    // Una sola regla de identidad para solicitudes, Auto DJ, historial y cola.
-    // Se comprueba antes de confirmar al cliente para que una repetición no entre.
-    const repetidaEnHistorial = memoria.buscarRepetida(nueva);
-    const repetidaActual = reproduciendo && mismaHuella(crearHuella(nueva), crearHuella(reproduciendo));
-    const repetidaCola = cola.find(c => mismaHuella(crearHuella(nueva), crearHuella(c)));
+    // No se bloquean solicitudes por coincidir con el historial, la canción
+    // actual o una entrada ya presente en la cola. Cada solicitud es independiente.
     const coincidePreparada = autoDjPreparada && mismaHuella(crearHuella(nueva), crearHuella(autoDjPreparada));
-    if (repetidaEnHistorial.repetida || repetidaActual || repetidaCola) {
-      const yaSonada = repetidaEnHistorial.repetida;
-      socket.emit('error_cancion', {
-        mensaje: yaSonada
-          ? `🎵 "${nueva.titulo}" ya se reprodujo anteriormente y no se puede repetir.`
-          : `🎵 "${nueva.titulo}" ya está sonando o está en la fila.`
-      });
-      return;
-    }
 
     // Una recomendación preparada todavía no ha sonado: si el público solicita
     // ese mismo tema, se descarta el objeto Auto DJ y se acepta la solicitud FIFO.
