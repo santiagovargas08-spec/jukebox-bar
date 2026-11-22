@@ -25,6 +25,7 @@ Configura en Render → servicio web → Environment:
 - `GITHUB_HISTORY_REPO`: propietario/repositorio privado, por ejemplo `santiagovargas08-spec/jukebox-bar-data`.
 - `GITHUB_HISTORY_BRANCH`: rama de almacenamiento; predeterminado `main`.
 - `GITHUB_HISTORY_DIRECTORY`: carpeta para segmentos; predeterminado `history`.
+- `GITHUB_HISTORY_FILE`: nombre base del archivo; predeterminado `historial-canciones.jsonl`. Se crean segmentos numerados, por ejemplo `historial-canciones-000001.jsonl`.
 
 El token debe tener acceso únicamente al repositorio privado de datos y permiso **Contents: Read and write**. Nunca guardes el token en el código, en un archivo del repositorio ni en el historial.
 
@@ -32,7 +33,7 @@ Al iniciar, el servidor valida que el repositorio exista y sea privado, descarga
 
 ### Escritura y segmentación
 
-Los registros se guardan en `history/part-000001.jsonl`, `part-000002.jsonl`, etc. Cada segmento contiene hasta 100 reproducciones. Las escrituras se serializan, usan el SHA actual del archivo y reintentan conflictos de actualización. Un segmento nuevo se crea al completar el anterior.
+Los registros se guardan en `history/historial-canciones-000001.jsonl`, `historial-canciones-000002.jsonl`, etc. (el prefijo se obtiene de `GITHUB_HISTORY_FILE`). Cada segmento contiene hasta 100 reproducciones. Las escrituras se serializan, usan el SHA actual del archivo y reintentan conflictos de actualización. Un segmento nuevo se crea al completar el anterior.
 
 Cada reproducción genera un commit en el repositorio privado. Esto permite que el historial sobreviva a reinicios y despliegues del contenedor gratuito. GitHub no es una base de datos: es una solución de persistencia para el piloto y una sola instancia del jukebox. Tiene límites de API, latencia y crecimiento del historial/commits. Para varios bares o mayor volumen, migra a una base de datos administrada con aislamiento por bar.
 
