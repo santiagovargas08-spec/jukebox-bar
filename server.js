@@ -50,7 +50,7 @@ let detenido = false;
 // En Render Free no existe disco persistente. Allí se usa un repositorio privado
 // de GitHub; en desarrollo local se conserva el archivo JSONL tradicional.
 const EN_RENDER = Boolean(process.env.RENDER_SERVICE_ID || process.env.RENDER === 'true');
-const { GitHubHistoryStore } = require('./github-history-store');
+const { GitHubHistoryStore } = require('./lib/github-history-store');
 if (EN_RENDER && (!process.env.GITHUB_TOKEN || !process.env.GITHUB_HISTORY_REPO)) {
   throw new Error('Configura GITHUB_TOKEN y GITHUB_HISTORY_REPO en Render para conservar el historial.');
 }
