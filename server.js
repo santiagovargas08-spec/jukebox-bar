@@ -69,6 +69,8 @@ async function inicializarMemoria() {
   if (githubStore) {
     const registros = await githubStore.cargar();
     memoria = new MemoriaCanciones({ strictPersistence: true });
+    memoria.persistente = true; // El respaldo activo es el repositorio privado de GitHub.
+    memoria.errorPersistencia = null;
     for (const registro of registros) memoria.registrar(registro, { permitirRepetida: true });
   } else {
     const DATA_DIR = process.env.JUKEBOX_DATA_DIR || path.join(__dirname, 'data');
