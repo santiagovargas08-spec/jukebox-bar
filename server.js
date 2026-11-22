@@ -958,7 +958,7 @@ async function iniciarServidor() {
 iniciarServidor().catch(error => {
   console.error('[STARTUP] No se pudo inicializar el historial persistente:', error.message);
   process.exitCode = 1;
-  server.close();
+  if (server.listening) server.close();
 });
 
 // Apagado ordenado (también lo usan las pruebas automáticas).
