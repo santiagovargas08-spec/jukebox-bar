@@ -47,23 +47,38 @@ let autoDjFallos = 0;                 // intentos seguidos sin canción nueva (p
 let autoDjRotacion = 0;               // rota las búsquedas para no pedir siempre lo mismo
 let detenido = false;
 
-// MEMORIA PERSISTENTE: recuerda TODAS las canciones reproducidas (sin límite) y sobrevive
-// a reinicios. Detecta la misma canción aunque cambie el videoId, el canal o las etiquetas.
+// En Render Free no existe disco persistente. Allí se usa un repositorio privado
+// de GitHub; en desarrollo local se conserva el archivo JSONL tradicional.
 const EN_RENDER = Boolean(process.env.RENDER_SERVICE_ID || process.env.RENDER === 'true');
-if (EN_RENDER && !process.env.JUKEBOX_DATA_DIR) {
-  throw new Error('Configura JUKEBOX_DATA_DIR y un Disk persistente en Render (recomendado: /var/data) antes de iniciar Jukebox Bar.');
+const { GitHubHistoryStore } = require('./github-history-store');
+if (EN_RENDER && (!process.env.GITHUB_TOKEN || !process.env.GITHUB_HISTORY_REPO)) {
+  throw new Error('Configura GITHUB_TOKEN y GITHUB_HISTORY_REPO en Render para conservar el historial.');
 }
-const DATA_DIR = process.env.JUKEBOX_DATA_DIR || path.join(__dirname, 'data');
-const memoria = new MemoriaCanciones({
-  archivo: path.join(DATA_DIR, 'historial-canciones.jsonl'),
-  strictPersistence: process.env.JUKEBOX_REQUIRE_PERSISTENCE !== 'false'
-});
-// Se reconstruye la ventana visible y el perfil desde TODO el historial persistente.
-historialReproducidas = memoria.obtenerRecientes(HISTORIAL_MAX).map(r => ({
-  ...r,
-  nombre: r.nombreSolicitante || 'Historial',
-  timestamp: new Date(r.reproducidaEn).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })
-}));
+const githubStore = EN_RENDER ? new GitHubHistoryStore() : null;
+let memoria = null;
+
+function reconstruirHistorialVisible() {
+  historialReproducidas = memoria.obtenerRecientes(HISTORIAL_MAX).map(r => ({
+    ...r,
+    nombre: r.nombreSolicitante || 'Historial',
+    timestamp: new Date(r.reproducidaEn).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })
+  }));
+}
+
+async function inicializarMemoria() {
+  if (githubStore) {
+    const registros = await githubStore.cargar();
+    memoria = new MemoriaCanciones({ strictPersistence: true });
+    for (const registro of registros) memoria.registrar(registro, { permitirRepetida: true });
+  } else {
+    const DATA_DIR = process.env.JUKEBOX_DATA_DIR || path.join(__dirname, 'data');
+    memoria = new MemoriaCanciones({
+      archivo: path.join(DATA_DIR, 'historial-canciones.jsonl'),
+      strictPersistence: process.env.JUKEBOX_REQUIRE_PERSISTENCE !== 'false'
+    });
+  }
+  reconstruirHistorialVisible();
+}
 // Metadatos de búsquedas recientes: permiten identificar artista/género cuando
 // un cliente solicita un video cuyo título no incluye al intérprete.
 const metadataVideos = new Map();
@@ -121,31 +136,38 @@ function enriquecerCancion(cancion) {
 // Cada canción queda guardada DURANTE el inicio de reproducción, antes de
 // notificar al televisor. En producción el servidor falla de forma cerrada
 // si el historial no se puede escribir.
-function marcarComoReproducido(cancion) {
+let inicioReproduccionEnCurso = false;
+
+async function marcarComoReproducido(cancion) {
   if (!cancion || !cancion.videoId) throw new Error('Canción sin videoId');
   const esAutoDj = cancion.origen === 'autodj';
+  if (githubStore) await githubStore.append(cancion);
   const registrada = memoria.registrar(cancion, { permitirRepetida: !esAutoDj });
   if (!registrada && esAutoDj && memoria.buscarRepetida(cancion).repetida) {
     throw new Error('La canción ya figura en el historial persistente');
   }
 }
 
-function emitirReproduccion(cancion) {
-  if (detenido) return false;
+async function emitirReproduccion(cancion) {
+  if (detenido || inicioReproduccionEnCurso) return false;
+  inicioReproduccionEnCurso = true;
   const preparada = enriquecerCancion(cancion);
   preparada.inicioMs = Date.now();
   try {
-    marcarComoReproducido(preparada);
+    await marcarComoReproducido(preparada);
+    if (detenido) return false;
+    reproduciendo = preparada;
+    console.log(`[PLAYBACK] Emitiendo nueva_reproduccion: "${reproduciendo.titulo}" | origen=${reproduciendo.origen || 'solicitud'} | id=${reproduciendo.id} | videoId=${reproduciendo.videoId}`);
+    io.emit('nueva_reproduccion', reproduciendo);
+    io.emit('cola_actualizada', { cola, reproduciendo });
+    return true;
   } catch (error) {
     console.error('[PLAYBACK] Reproducción bloqueada: no se pudo garantizar el historial:', error.message);
     io.emit('error_reproduccion', { mensaje: 'No se pudo guardar el historial. La reproducción se pausó para evitar repetir canciones.' });
     return false;
+  } finally {
+    inicioReproduccionEnCurso = false;
   }
-  reproduciendo = preparada;
-  console.log(`[PLAYBACK] Emitiendo nueva_reproduccion: "${reproduciendo.titulo}" | origen=${reproduciendo.origen || 'solicitud'} | id=${reproduciendo.id} | videoId=${reproduciendo.videoId}`);
-  io.emit('nueva_reproduccion', reproduciendo);
-  io.emit('cola_actualizada', { cola, reproduciendo });
-  return true;
 }
 
 // Descarta la recomendación preparada y la recuerda para no volver a ofrecerla.
@@ -189,8 +211,8 @@ function validarCandidatoAutoDj(video, opciones = {}) {
   return { ok: true };
 }
 
-function reproducirAutoDjPreparada() {
-  if (detenido || reproduciendo || cola.length > 0 || !autoDjPreparada) return false;
+async function reproducirAutoDjPreparada() {
+  if (detenido || reproduciendo || inicioReproduccionEnCurso || cola.length > 0 || !autoDjPreparada) return false;
   // Última comprobación justo antes de sonar: nunca se emite una repetida.
   const control = validarCandidatoAutoDj(autoDjPreparada, { ignorarPreparada: true });
   if (!control.ok) {
@@ -199,7 +221,7 @@ function reproducirAutoDjPreparada() {
     return false;
   }
   const siguiente = autoDjPreparada;
-  if (!emitirReproduccion(siguiente)) {
+  if (!await emitirReproduccion(siguiente)) {
     programarReintentoAutoDJ();
     return false;
   }
@@ -209,11 +231,11 @@ function reproducirAutoDjPreparada() {
   return true;
 }
 
-function intentarReproducir() {
-  if (!reproduciendo && cola.length > 0) {
+async function intentarReproducir() {
+  if (!reproduciendo && !inicioReproduccionEnCurso && cola.length > 0) {
     descartarAutoDjPreparada('hay solicitudes en la cola');
     const siguiente = cola.shift();
-    if (!emitirReproduccion(siguiente)) {
+    if (!await emitirReproduccion(siguiente)) {
       cola.unshift(siguiente);
       return false;
     }
@@ -392,8 +414,9 @@ function programarReintentoAutoDJ() {
   autoDjRetryTimer = setTimeout(() => {
     autoDjRetryTimer = null;
     if (detenido || cola.length > 0) return;
-    if (autoDjPreparada && !reproduciendo) reproducirAutoDjPreparada();
-    else if (!autoDjPreparada) rellenarColaAutoDJ();
+    if (autoDjPreparada && !reproduciendo) {
+      void reproducirAutoDjPreparada().catch(error => console.error('[AUTO-DJ] Error al reproducir recomendación:', error.message));
+    } else if (!autoDjPreparada) rellenarColaAutoDJ();
   }, espera);
   if (autoDjRetryTimer.unref) autoDjRetryTimer.unref();
 }
@@ -646,7 +669,9 @@ async function rellenarColaAutoDJ() {
     };
     console.log(`[AUTO-DJ] Siguiente canción preparada: "${autoDjPreparada.titulo}"`);
 
-    if (!reproduciendo && cola.length === 0) reproducirAutoDjPreparada();
+    if (!reproduciendo && cola.length === 0) {
+      void reproducirAutoDjPreparada().catch(error => console.error('[AUTO-DJ] Error al iniciar:', error.message));
+    }
   } catch (error) {
     console.error('[AUTO-DJ] Error generando recomendación:', error.message);
     autoDjFallos++;
@@ -782,7 +807,7 @@ io.on('connection', (socket) => {
     }
 
     // Solo iniciar inmediatamente cuando realmente no hay nada reproduciéndose.
-    intentarReproducir();
+    void intentarReproducir().catch(error => console.error('[PLAYBACK] Error iniciando solicitud:', error.message));
     io.emit('cola_actualizada', { cola, reproduciendo });
   });
 
@@ -816,7 +841,7 @@ io.on('connection', (socket) => {
       registrarFeedback(reproduciendo, motivo);
       if (motivo === 'ended' || motivo === 'natural_end') agregarAlHistorial(reproduciendo);
     }
-    avanzarCola(motivo);
+    void avanzarCola(motivo).catch(error => console.error('[PLAYBACK] Error avanzando cola:', error.message));
   });
 
   // ── ✨ NUEVOS EVENTOS: PANEL DE ADMINISTRACIÓN ────────────────
@@ -826,7 +851,7 @@ io.on('connection', (socket) => {
     console.warn(`[AVANCE][DIAGNOSTICO] admin_saltar recibido desde ${clienteId}; actual=${reproduciendo ? reproduciendo.titulo + ' (id=' + reproduciendo.id + ')' : 'null'}; cola=${cola.length}`);
     console.log(`[⚡ ADMIN] Forzó saltar canción actual.`);
     if (reproduciendo) registrarFeedback(reproduciendo, 'admin_skip');
-    avanzarCola('admin_saltar');
+    void avanzarCola('admin_saltar').catch(error => console.error('[PLAYBACK] Error en salto admin:', error.message));
   });
 
   // Eliminar una canción específica de la fila usando su ID
@@ -884,13 +909,14 @@ io.on('connection', (socket) => {
   });
 
   // Función interna para avanzar la lista
-  function avanzarCola(motivo = '') {
+  async function avanzarCola(motivo = '') {
+    if (inicioReproduccionEnCurso) return;
     reproduciendo = null;
 
     if (cola.length > 0) {
       descartarAutoDjPreparada('hay solicitudes en la cola');
       const siguiente = cola.shift();
-      if (!emitirReproduccion(siguiente)) {
+      if (!await emitirReproduccion(siguiente)) {
         cola.unshift(siguiente);
         io.emit('cola_actualizada', { cola, reproduciendo: null });
         return;
@@ -901,7 +927,7 @@ io.on('connection', (socket) => {
     }
 
     console.log('[AUTO-DJ] Cola pública vacía. Continuando reproducción automática.');
-    if (!reproducirAutoDjPreparada()) {
+    if (!await reproducirAutoDjPreparada()) {
       io.emit('cola_actualizada', { cola, reproduciendo: null });
       rellenarColaAutoDJ();
     }
@@ -917,10 +943,18 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  const puerto = server.address().port;
-  console.log(`\n Jukebox con Panel de Administración activo en puerto ${puerto}`);
-  console.log(` -> Panel Admin: http://localhost:${puerto}/admin.html\n`);
+async function iniciarServidor() {
+  await inicializarMemoria();
+  server.listen(PORT, () => {
+    const puerto = server.address().port;
+    console.log(`\n Jukebox con Panel de Administración activo en puerto ${puerto}`);
+    console.log(` -> Panel Admin: http://localhost:${puerto}/admin.html\n`);
+  });
+}
+iniciarServidor().catch(error => {
+  console.error('[STARTUP] No se pudo inicializar el historial persistente:', error.message);
+  process.exitCode = 1;
+  server.close();
 });
 
 // Apagado ordenado (también lo usan las pruebas automáticas).
@@ -929,6 +963,7 @@ function detener() {
   clearTimeout(autoDjRetryTimer);
   autoDjRetryTimer = null;
   io.close();
+  if (githubStore) void githubStore.cerrar();
   if (server.listening) server.close();
 }
 
