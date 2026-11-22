@@ -73,7 +73,7 @@ test('Rota a un nuevo segmento al alcanzar 100 registros', async () => {
     await store.append({ videoId: 'v' + i, titulo: 'Tema ' + i });
   }
   const paths = [...fake.archivos.keys()].sort();
-  assert.deepEqual(paths, ['history/part-000001.jsonl', 'history/part-000002.jsonl']);
+  assert.deepEqual(paths, ['history/historial-canciones-000001.jsonl', 'history/historial-canciones-000002.jsonl']);
   const store2 = new GitHubHistoryStore({
     token: 'test-token', repo: 'propietario/datos', fetchImpl: fake.fetchImpl,
     log: { log() {}, error() {} }
