@@ -333,17 +333,36 @@ test('Reordenar la cola desde el admin no pierde solicitudes que llegaron mientr
   } finally { await srv.detener(); }
 });
 
-test('Una solicitud pública no puede volver a poner una canción ya reproducida con otro videoId', async () => {
+test('Una solicitud pública SÍ puede volver a poner una canción ya reproducida', async () => {
   const srv = await arrancar({ dataDir: nuevoDir(), buscar: async () => ({ videos: NUEVAS }) });
   try {
     const cel = await srv.celular();
+    const admin = await srv.conectar();
     await cel.pedir('Joe Arroyo - La Rebelión', 'solicitud-original');
     await srv.tv.esperarReproducciones(1);
 
+    admin.emit('admin_saltar');
     const respuesta = await cel.pedir('La Rebelión (Official Audio)', 'solicitud-otro-canal');
-    assert.ok(respuesta.mensaje && respuesta.mensaje.includes('ya se reprodujo anteriormente'));
-    assert.equal(srv.estado().cola.length, 0, 'la repetición no entra en la cola');
-    assert.equal(srv.tv.reproducciones.length, 1, 'no se emite una segunda reproducción');
+    assert.equal(Boolean(respuesta.mensaje), false, 'la solicitud repetida no debe devolver error');
+
+    await esperar(() =>
+      srv.estado().cola.some(c => c.videoId === 'solicitud-otro-canal') ||
+      (srv.estado().reproduciendo && srv.estado().reproduciendo.videoId === 'solicitud-otro-canal')
+    );
+
+    // Si Auto DJ ocupó el turno tras el salto, la solicitud queda en cola y
+    // debe sonar al saltar esa recomendación automática.
+    if (
+      srv.estado().reproduciendo &&
+      srv.estado().reproduciendo.origen === 'autodj' &&
+      srv.estado().cola.some(c => c.videoId === 'solicitud-otro-canal')
+    ) {
+      admin.emit('admin_saltar');
+    }
+    await esperar(() =>
+      srv.estado().reproduciendo &&
+      srv.estado().reproduciendo.videoId === 'solicitud-otro-canal'
+    );
   } finally { await srv.detener(); }
 });
 

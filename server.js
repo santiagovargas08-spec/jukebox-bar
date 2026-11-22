@@ -123,11 +123,9 @@ function enriquecerCancion(cancion) {
 // si el historial no se puede escribir.
 function marcarComoReproducido(cancion) {
   if (!cancion || !cancion.videoId) throw new Error('Canción sin videoId');
-  // Las solicitudes del público pueden repetirse. El Auto-DJ, en cambio,
-  // conserva la protección histórica para no recomendar canciones ya sonadas.
-  const permitirRepetida = cancion.origen !== 'autodj';
-  const registrada = memoria.registrar(cancion, { permitirRepetida });
-  if (!registrada && memoria.buscarRepetida(cancion).repetida) {
+  const esAutoDj = cancion.origen === 'autodj';
+  const registrada = memoria.registrar(cancion, { permitirRepetida: !esAutoDj });
+  if (!registrada && esAutoDj && memoria.buscarRepetida(cancion).repetida) {
     throw new Error('La canción ya figura en el historial persistente');
   }
 }
@@ -723,6 +721,14 @@ io.on('connection', (socket) => {
     // su propia entrada FIFO, incluso si el tema ya está sonando o en la fila.
     const videoIdNormalizado = String(cancion.videoId).trim();
 
+    // Evita duplicar exactamente el mismo videoId si ya está sonando o en espera.
+    const yaEnCola = cola.some(c => String(c.videoId) === videoIdNormalizado);
+    const yaSuena = reproduciendo && String(reproduciendo.videoId) === videoIdNormalizado;
+    if (yaEnCola || yaSuena) {
+      socket.emit('error_cancion', { mensaje: `🎵 "${String(cancion.titulo).trim()}" ya está sonando o está en la fila.` });
+      return;
+    }
+
     const meta = metadataVideos.get(videoIdNormalizado) || {};
     const nueva = enriquecerCancion({
       id:        nuevoIdSolicitud(),
@@ -744,8 +750,15 @@ io.on('connection', (socket) => {
       return;
     }
 
-    // No se bloquean solicitudes por coincidir con el historial, la canción
-    // actual o una entrada ya presente en la cola. Cada solicitud es independiente.
+    // Se permite repetir canciones del historial, pero no duplicar un tema
+    // que ya está sonando o que espera en la cola pública.
+    const repetidaActual = reproduciendo && mismaHuella(crearHuella(nueva), crearHuella(reproduciendo));
+    const repetidaCola = cola.some(c => mismaHuella(crearHuella(nueva), crearHuella(c)));
+    if (repetidaActual || repetidaCola) {
+      socket.emit('error_cancion', { mensaje: `🎵 "${nueva.titulo}" ya está sonando o está en la fila.` });
+      return;
+    }
+
     const coincidePreparada = autoDjPreparada && mismaHuella(crearHuella(nueva), crearHuella(autoDjPreparada));
 
     // Una recomendación preparada todavía no ha sonado: si el público solicita

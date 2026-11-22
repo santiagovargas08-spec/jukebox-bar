@@ -34,6 +34,12 @@ El servidor detecta el entorno Render y no inicia si falta JUKEBOX_DATA_DIR, par
 
 Importante: el archivo JSONL local está pensado para una instancia de servidor por bar. No ejecutes varias instancias independientes compartiendo la misma cola o historial. Para escalar a varias instancias o administrar muchos bares desde un único servicio, conviene migrar a PostgreSQL con restricciones e índices únicos por bar.
 
+## Solicitudes del público vs. Auto DJ
+
+Las solicitudes recibidas desde el QR pueden volver a pedir canciones que ya fueron reproducidas. Cuando esas solicitudes se reproducen, se registran nuevamente en el historial persistente. Solo se rechazan si la misma canción ya está sonando o ya se encuentra en la fila pública.
+
+El Auto DJ mantiene una política distinta: nunca recomienda ni reproduce canciones que ya aparecen en el historial, incluso si YouTube las devuelve con otro videoId, canal o etiqueta.
+
 ## Cómo se identifica una canción
 
 La huella musical normaliza acentos, mayúsculas, puntuación y etiquetas de publicación (Official Video, Audio, Lyrics, HD, Remastered, Live, etc.). Separa título y artista cuando los metadatos lo permiten y compara palabras del título, no solo el artista. Un mismo artista con canciones distintas no se considera duplicado por compartir su nombre.
